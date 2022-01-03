@@ -1,0 +1,6 @@
+nohup.out
+checkpoints/
+logs/
+inference/
+images/
+**/__pycache__/
