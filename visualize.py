@@ -16,7 +16,9 @@ def main():
 				PLOTS_PATH = os.path.join(TEST_DATASET_DIR, "images")
 				INF_PATH = os.path.join(TEST_DATASET_DIR, "inference")
 
-				for filename in glob(os.path.join(INF_PATH, "*.mat")):
+				print("Fusion: %s\nDataset: %s\nIllumination: %s" % (fusion, test_dataset, illumination))
+
+				for filename in glob(os.path.join(INF_PATH, fusion, "*.mat")):
 					gt_filename = filename.split("/")[-1].split(".")[0].split("_")[-1]
 					print(gt_filename + ".mat")
 
