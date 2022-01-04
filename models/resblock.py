@@ -105,10 +105,10 @@ class resblock(nn.Module):
 
 		gnn_out = self.downsampling_block(out)
 
-		if (x.size(2) > 64):
-			gnn_out = self.split_tensor(gnn_out, split_size=64)
-		else:
-			gnn_out = self.gnn_block(gnn_out)
+		# if (x.size(2) > 64):
+		# 	gnn_out = self.split_tensor(gnn_out, split_size=64)
+		# else:
+		gnn_out = self.gnn_block(gnn_out)
 
 		gnn_out = self.upsampling_block(gnn_out)
 
