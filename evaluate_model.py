@@ -1,11 +1,9 @@
 from __future__ import division
 
 import os
-import time
 import numpy as np
 
 import torch
-import torch.nn as nn
 
 from loss import mrae, rmse
 from utils import save_matv73, reconstruction, load_mat
