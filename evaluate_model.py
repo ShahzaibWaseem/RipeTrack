@@ -27,6 +27,7 @@ def main():
 
 		for test_dataset in TEST_DATASETS:
 			for illumination in ILLUMINATIONS:
+				print("\nFusion: %s\nDataset: %s\nIllumination: %s\n" % (fusion, test_dataset, illumination))
 				TEST_DATASET_DIR = os.path.join(TEST_ROOT_DATASET_DIR, "working_%s" % test_dataset, "%s_%s_204ch" % (test_dataset, illumination), "test")
 				
 				GT_PATH = os.path.join(TEST_DATASET_DIR, "mat")
@@ -59,7 +60,6 @@ def main():
 
 					mat_name = "inf_" + mat_file_name + '.mat'
 					mat_dir = os.path.join(INF_PATH, fusion, mat_name)
-					print(mat_dir)
 					save_matv73(mat_dir, var_name, img_res3)
 
 					gt_name = mat_file_name + '.mat'
