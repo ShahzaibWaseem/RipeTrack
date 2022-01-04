@@ -40,7 +40,16 @@ def main():
 					rgb_img_path = img_name
 					nir_img_path = os.path.join(IMG_PATH, img_name.split("/")[-1].replace("RGB", "NIRc"))
 
-					rgb = imread(rgb_img_path)/255
+					rgb = imread(rgb_img_path)
+					
+					rgb_new = np.zeros(rgb.shape)
+					rgb_new[:,:,0] = rgb[:,:,2]
+					rgb_new[:,:,1] = rgb[:,:,1]
+					rgb_new[:,:,2] = rgb[:,:,0]
+					rgb = rgb_new
+
+					rgb = rgb/255
+
 					nir = imread(nir_img_path)/255
 
 					image = np.dstack((rgb, nir))
