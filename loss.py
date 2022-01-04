@@ -42,3 +42,39 @@ def rmse(img_res,img_gt):
 	error_relative = error/img_gt
 	rrmse =np.sqrt(np.mean((np.power(error_relative, 2))))
 	return rrmse
+
+def sam_loss(input_tensor, target_tensor):
+	# inner product
+	dot = torch.sum(input_tensor * target_tensor, dim=1).view(-1)
+	# norm calculations
+	image = input_tensor.view(-1, input_tensor.shape[1])
+	norm_original = torch.norm(image, p=2, dim=1)
+
+	target = target_tensor.view(-1, target_tensor.shape[1])
+	norm_reconstructed = torch.norm(target, p=2, dim=1)
+
+	norm_product = (norm_original.mul(norm_reconstructed)).pow(-1)
+	argument = dot.mul(norm_product)
+	# for avoiding arccos(1)
+	acos = torch.acos(torch.clamp(argument, -1 + 1e-7, 1 - 1e-7))
+	loss = torch.mean(acos)
+
+	if torch.isnan(loss):
+		raise ValueError(
+			f"Loss is NaN value. Consecutive values - dot: {dot}, \
+			norm original: {norm_original}, norm reconstructed: {norm_reconstructed}, \
+			norm product: {norm_product}, argument: {argument}, acos: {acos}, \
+			loss: {loss}, input: {input_tensor}, output: {target}"
+		)
+	return loss
+
+def spectral_angle(a, b):
+	""" Spectral angle """
+	va = a / np.sqrt(a.dot(a))
+	vb = b / np.sqrt(b.dot(b))
+	return np.arccos(np.clip(va.dot(vb), -1, 1))
+
+def val_msad(X, Y):
+	""" mean spectral angle """
+	assert len(X) == len(Y)
+	return np.mean([spectral_angle(X[i], Y[i]) for i in range(len(X))])

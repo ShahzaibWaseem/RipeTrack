@@ -9,7 +9,7 @@ from torch.autograd import Variable
 import torch.backends.cudnn as cudnn
 from torch.utils.data import DataLoader, ConcatDataset
 
-from loss import rrmse_loss
+from loss import rrmse_loss, sam_loss
 from dataset import DatasetFromHdf5
 from models.resblock import resblock,conv_bn_relu_res_block
 
@@ -51,7 +51,8 @@ def main():
 	# Parameters, Loss and Optimizer
 	start_epoch = 0
 	iteration = 0
-	criterion = rrmse_loss
+	criterion_mrae = rrmse_loss
+	criterion_sam = sam_loss
 
 	logger = initialize_logger(filename="train.log")
 	loss_csv = open(os.path.join(LOGS_PATH, "loss.csv"), "w+")
@@ -86,8 +87,8 @@ def main():
 		for epoch in range(start_epoch+1, end_epoch):
 			start_time = time.time()
 
-			train_loss, iteration, lr = train(train_data_loader, model, criterion, optimizer, iteration, init_lr, end_epoch)
-			val_loss = validate(val_data_loader, model, criterion)
+			train_loss, iteration, lr = train(train_data_loader, model, criterion_mrae, criterion_sam, optimizer, iteration, init_lr, end_epoch)
+			val_loss = validate(val_data_loader, model, criterion_mrae, criterion_sam)
 
 			save_checkpoint(epoch, fusion, iteration, model, optimizer)
 
@@ -100,7 +101,7 @@ def main():
 			logger.info(log_string % (epoch, iteration, epoch_time, lr, train_loss, val_loss))
 
 # Training
-def train(train_data_loader, model, criterion, optimizer, iteration, init_lr, end_epoch):
+def train(train_data_loader, model, criterion_mrae, criterion_sam, optimizer, iteration, init_lr, end_epoch):
 	""" Trains the model on the dataloader provided """
 	model.train()
 	losses = AverageMeter()
@@ -117,7 +118,8 @@ def train(train_data_loader, model, criterion, optimizer, iteration, init_lr, en
 
 		# Forward + Backward + Optimize
 		output = model(images)
-		loss = criterion(output, labels)
+		loss = criterion_mrae(output, labels) + criterion_sam(output, labels)
+
 		optimizer.zero_grad()
 		loss.backward()
 
@@ -129,7 +131,7 @@ def train(train_data_loader, model, criterion, optimizer, iteration, init_lr, en
 	return losses.avg, iteration, lr
 
 # Validate
-def validate(val_data_loader, model, criterion):
+def validate(val_data_loader, model, criterion_mrae, criterion_sam):
 	""" Validates the model on the dataloader provided """
 	model.eval()
 	losses = AverageMeter()
@@ -143,7 +145,7 @@ def validate(val_data_loader, model, criterion):
 
 		# compute output
 		output = model(images)
-		loss = criterion(output, labels)
+		loss = criterion_mrae(output, labels) + criterion_sam(output, labels)
 
 		#  record loss
 		losses.update(loss.item())
