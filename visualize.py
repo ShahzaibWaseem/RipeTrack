@@ -16,14 +16,18 @@ def main():
 				PLOTS_PATH = os.path.join(TEST_DATASET_DIR, "images")
 				INF_PATH = os.path.join(TEST_DATASET_DIR, "inference")
 
-				print("Fusion: %s\nDataset: %s\nIllumination: %s" % (fusion, test_dataset, illumination))
+				print("\nFusion: %s\nDataset: %s\nIllumination: %s\n" % (fusion, test_dataset, illumination))
 
 				for filename in glob(os.path.join(INF_PATH, fusion, "*.mat")):
-					gt_filename = filename.split("/")[-1].split(".")[0].split("_")[-1]
-					print(gt_filename + ".mat")
+					if(illumination == "cfl_led"):
+						gt_filename = "_".join(filename.split("/")[-1].split(".")[0].split("_")[1:3])
+					else:
+						gt_filename = filename.split("/")[-1].split(".")[0].split("_")[-1]
 
+					print(gt_filename + ".mat")
+					
 					inf_file = load_mat(filename, var_name)[var_name]
-					gt_file = load_mat(os.path.join(GT_PATH, gt_filename+".mat"), var_name)[var_name]
+					gt_file = load_mat(os.path.join(GT_PATH, gt_filename + ".mat"), var_name)[var_name]
 
 					# view a section of the mat file created and compare it to the ground truth
 					if "195" in filename:
