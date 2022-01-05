@@ -5,7 +5,7 @@ import numpy as np
 
 import torch
 
-from loss import mrae, rmse
+from loss import mrae, rmse, val_msad
 from utils import save_matv73, reconstruction, load_mat
 from models.resblock import resblock, conv_bn_relu_res_block
 
@@ -35,7 +35,11 @@ def main():
 				INF_PATH = os.path.join(TEST_DATASET_DIR, "inference")
 
 				for img_name in glob(os.path.join(IMG_PATH, "*_dense_demRGB.png")):
-					mat_file_name = img_name.split("/")[-1].split("_")[0]
+					if(illumination == "cfl_led"):
+						mat_file_name = "_".join(img_name.split("/")[-1].split("_")[0:2])
+					else:
+						mat_file_name = img_name.split("/")[-1].split("_")[0]
+						
 					rgb_img_path = img_name
 					nir_img_path = os.path.join(IMG_PATH, img_name.split("/")[-1].replace("RGB", "NIRc"))
 
@@ -67,8 +71,9 @@ def main():
 					gt = load_mat(gt_dir, var_name)
 					mrae_error =  mrae(img_res3, gt[var_name][:,:,1:204:4])
 					rrmse_error = rmse(img_res3, gt[var_name][:,:,1:204:4])
+					msad_error = val_msad(img_res3, gt[var_name][:,:,1:204:4])
 
-					print("[%s] MRAE=%0.9f RRMSE=%0.9f" %(img_name, mrae_error, rrmse_error))
+					print("[%s] MRAE=%0.9f RRMSE=%0.9f, MSAD=%0.9f" %(img_name, mrae_error, rrmse_error, msad_error))
 
 if __name__ == "__main__":
 	init_directories()
