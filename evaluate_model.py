@@ -5,7 +5,7 @@ import numpy as np
 
 import torch
 
-from loss import test_mrae, test_rmse, test_msam, test_sid
+from loss import test_mrae, test_rmse, test_msam, test_sid, test_psnr
 from utils import save_matv73, reconstruction, load_mat
 from models.resblock import resblock, conv_bn_relu_res_block
 
@@ -73,8 +73,9 @@ def main():
 					rrmse_error = test_rmse(img_res3, gt[var_name][:,:,1:204:4])
 					sam_error = test_msam(img_res3, gt[var_name][:,:,1:204:4])
 					sid_error = test_sid(img_res3, gt[var_name][:,:,1:204:4])
+					psnr_error = test_psnr(img_res3, gt[var_name][:,:,1:204:4])
 
-					print("[%s] MRAE=%0.9f, RRMSE=%0.9f, SAM=%0.9f, SID=%0.9f" %(img_name, mrae_error, rrmse_error, sam_error, sid_error))
+					print("[%s] MRAE=%0.9f, RRMSE=%0.9f, SAM=%0.9f, SID=%0.9f, PSNR=%0.9%" %(img_name, mrae_error, rrmse_error, sam_error, sid_error, psnr_error))
 
 if __name__ == "__main__":
 	init_directories()

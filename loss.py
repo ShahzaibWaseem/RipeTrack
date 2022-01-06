@@ -54,17 +54,17 @@ def sam_loss(input_tensor, target_tensor):
 		)
 	return loss
 
-def test_mrae(img_res,img_gt):
+def test_mrae(img_res, img_gt):
 	"""Calculate the relative MRAE"""
-	error= img_res- img_gt
+	error = img_res - img_gt
 	error_relative = error/img_gt
 	rrmse = np.mean(np.abs(error_relative))
 	return rrmse
 
-def test_rmse(img_res,img_gt):
-	error= img_res- img_gt
+def test_rmse(img_res, img_gt):
+	error = img_res - img_gt
 	error_relative = error/img_gt
-	rrmse =np.sqrt(np.mean((np.power(error_relative, 2))))
+	rrmse = np.sqrt(np.mean((np.power(error_relative, 2))))
 	return rrmse
 
 def spectral_angle(a, b):
@@ -83,7 +83,6 @@ def test_msam(X, Y):
 	assert len(X_flat) == len(Y_flat)
 	return np.mean([spectral_angle(X_flat[i], Y_flat[i]) for i in range(len(X_flat))])
 
-
 def spectral_divergence(a, b):
 	p = (a / np.sum(a)) + np.spacing(1)
 	q = (b / np.sum(b)) + np.spacing(1)
@@ -95,3 +94,11 @@ def test_sid(X, Y):
 	Y_flat = Y.reshape(-1, Y.shape[2])
 	assert len(X_flat) == len(Y_flat)
 	return np.mean([spectral_divergence(X_flat[i], Y_flat[i]) for i in range(len(X_flat))])
+
+def mse(img_res, img_gt):
+	error = (img_res - img_gt) / 4095		# to scale
+	rrmse = np.mean((np.power(error, 2)))
+	return rrmse
+
+def test_psnr(X, Y):
+	return 10 * np.log10(1 / mse(X, Y))
