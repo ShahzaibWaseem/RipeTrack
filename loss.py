@@ -43,7 +43,7 @@ def sam_loss(input_tensor, target_tensor):
 	argument = dot.mul(norm_product)
 	# for avoiding arccos(1)
 	acos = torch.acos(torch.clamp(argument, -1 + 1e-7, 1 - 1e-7))
-	loss = np.pi - torch.mean(acos)
+	loss = torch.mean(acos)
 
 	if torch.isnan(loss):
 		raise ValueError(
@@ -85,7 +85,9 @@ def test_msam(X, Y):
 
 
 def spectral_divergence(a, b):
-	pass
+	p = (a / np.sum(a)) + np.spacing(1)
+	q = (b / np.sum(b)) + np.spacing(1)
+	return np.sum(p * np.log(p / q) + q * np.log(q / p))
 
 def test_sid(X, Y):
 	""" mean spectral information divergence """

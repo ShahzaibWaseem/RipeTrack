@@ -9,7 +9,7 @@ from torch.autograd import Variable
 import torch.backends.cudnn as cudnn
 from torch.utils.data import DataLoader, ConcatDataset
 
-from loss import rrmse_loss, sam_loss
+from loss import mrae_loss, sam_loss
 from dataset import DatasetFromHdf5
 from models.resblock import resblock,conv_bn_relu_res_block
 
@@ -51,7 +51,7 @@ def main():
 	# Parameters, Loss and Optimizer
 	start_epoch = 0
 	iteration = 0
-	criterion_mrae = rrmse_loss
+	criterion_mrae = mrae_loss
 	criterion_sam = sam_loss
 
 	logger = initialize_logger(filename="train.log")
@@ -79,7 +79,7 @@ def main():
 		if torch.cuda.is_available():
 			model.cuda()
 
-		model_run_title = "\n%s RESNET + GNN (meat (halogen + CFL + LED) - patches)\n" % fusion
+		model_run_title = "\n%s RESNET + GNN (meat (halogen + CFL + LED) - SAM MRAE patches)\n" % fusion
 		
 		print(model_run_title)
 		logger.info(model_run_title)
@@ -118,7 +118,7 @@ def train(train_data_loader, model, criterion_mrae, criterion_sam, optimizer, it
 
 		# Forward + Backward + Optimize
 		output = model(images)
-		loss = criterion_mrae(output, labels) + criterion_sam(output, labels)
+		loss = criterion_mrae(output, labels) + (criterion_sam(output, labels) * 0.1)
 
 		optimizer.zero_grad()
 		loss.backward()
@@ -145,7 +145,7 @@ def validate(val_data_loader, model, criterion_mrae, criterion_sam):
 
 		# compute output
 		output = model(images)
-		loss = criterion_mrae(output, labels) + criterion_sam(output, labels)
+		loss = criterion_mrae(output, labels) + (criterion_sam(output, labels) * 0.1)
 
 		#  record loss
 		losses.update(loss.item())
