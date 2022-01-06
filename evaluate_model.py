@@ -6,7 +6,7 @@ import numpy as np
 import torch
 
 from loss import test_mrae, test_rmse, test_msam, test_sid, test_psnr
-from utils import save_matv73, reconstruction, load_mat
+from utils import save_matv73, reconstruction, load_mat, initialize_logger
 from models.resblock import resblock, conv_bn_relu_res_block
 
 from glob import glob
@@ -15,6 +15,9 @@ from imageio import imread
 from config import ILLUMINATIONS, TEST_ROOT_DATASET_DIR, TEST_DATASETS, MODEL_PATH, var_name, checkpoint_file, fusion_techniques, init_directories
 
 def main():
+	logger = initialize_logger(filename="test.log")
+	log_string = "[%s] MRAE=%0.9f, RRMSE=%0.9f, SAM=%0.9f, SID=%0.9f, PSNR=%0.9%"
+
 	for fusion in fusion_techniques:
 		save_point = torch.load(os.path.join(MODEL_PATH, fusion, checkpoint_file))
 		model_param = save_point['state_dict']
@@ -28,6 +31,8 @@ def main():
 		for test_dataset in TEST_DATASETS:
 			for illumination in ILLUMINATIONS:
 				print("\nFusion: %s\nDataset: %s\nIllumination: %s\n" % (fusion, test_dataset, illumination))
+				logger.info("Fusion: %s\tDataset: %s\tIllumination: %s\n" % (fusion, test_dataset, illumination))
+
 				TEST_DATASET_DIR = os.path.join(TEST_ROOT_DATASET_DIR, "working_%s" % test_dataset, "%s_%s_204ch" % (test_dataset, illumination), "test")
 				
 				GT_PATH = os.path.join(TEST_DATASET_DIR, "mat")
@@ -62,11 +67,11 @@ def main():
 					img_res2 = np.flip(reconstruction(np.flip(image, 2).copy(),model),1)
 					img_res3 = (img_res1+img_res2)/2
 
-					mat_name = "inf_" + mat_file_name + '.mat'
+					mat_name = "inf_" + mat_file_name + ".mat"
 					mat_dir = os.path.join(INF_PATH, fusion, mat_name)
 					save_matv73(mat_dir, var_name, img_res3)
 
-					gt_name = mat_file_name + '.mat'
+					gt_name = mat_file_name + ".mat"
 					gt_dir = os.path.join(GT_PATH, gt_name)
 					gt = load_mat(gt_dir, var_name)
 					mrae_error =  test_mrae(img_res3, gt[var_name][:,:,1:204:4])
@@ -75,7 +80,8 @@ def main():
 					sid_error = test_sid(img_res3, gt[var_name][:,:,1:204:4])
 					psnr_error = test_psnr(img_res3, gt[var_name][:,:,1:204:4])
 
-					print("[%s] MRAE=%0.9f, RRMSE=%0.9f, SAM=%0.9f, SID=%0.9f, PSNR=%0.9%" %(img_name, mrae_error, rrmse_error, sam_error, sid_error, psnr_error))
+					print(log_string %(img_name, mrae_error, rrmse_error, sam_error, sid_error, psnr_error))
+					logger.info(log_string %(img_name, mrae_error, rrmse_error, sam_error, sid_error, psnr_error))
 
 if __name__ == "__main__":
 	init_directories()
