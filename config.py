@@ -32,6 +32,10 @@ def init_directories():
 		if not os.path.exists(directory):
 			os.makedirs(directory)
 
+	for fusion in fusion_techniques:
+		if not os.path.exists(os.path.join(MODEL_PATH, fusion)):
+			os.makedirs(os.path.join(MODEL_PATH, fusion))
+
 	for test_dataset in TEST_DATASETS:
 		for illumination in ILLUMINATIONS:
 			for directory in ["inference", "images"]:
