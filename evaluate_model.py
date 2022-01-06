@@ -5,7 +5,7 @@ import numpy as np
 
 import torch
 
-from loss import mrae, rmse, val_msad
+from loss import test_mrae, test_rmse, test_msam
 from utils import save_matv73, reconstruction, load_mat
 from models.resblock import resblock, conv_bn_relu_res_block
 
@@ -39,7 +39,7 @@ def main():
 						mat_file_name = "_".join(img_name.split("/")[-1].split("_")[0:2])
 					else:
 						mat_file_name = img_name.split("/")[-1].split("_")[0]
-						
+
 					rgb_img_path = img_name
 					nir_img_path = os.path.join(IMG_PATH, img_name.split("/")[-1].replace("RGB", "NIRc"))
 
@@ -69,11 +69,11 @@ def main():
 					gt_name = mat_file_name + '.mat'
 					gt_dir = os.path.join(GT_PATH, gt_name)
 					gt = load_mat(gt_dir, var_name)
-					mrae_error =  mrae(img_res3, gt[var_name][:,:,1:204:4])
-					rrmse_error = rmse(img_res3, gt[var_name][:,:,1:204:4])
-					msad_error = val_msad(img_res3, gt[var_name][:,:,1:204:4])
+					mrae_error =  test_mrae(img_res3, gt[var_name][:,:,1:204:4])
+					rrmse_error = test_rmse(img_res3, gt[var_name][:,:,1:204:4])
+					sam_error = test_msam(img_res3, gt[var_name][:,:,1:204:4])
 
-					print("[%s] MRAE=%0.9f RRMSE=%0.9f, MSAD=%0.9f" %(img_name, mrae_error, rrmse_error, msad_error))
+					print("[%s] MRAE=%0.9f, RRMSE=%0.9f, SAM=%0.9f" %(img_name, mrae_error, rrmse_error, sam_error))
 
 if __name__ == "__main__":
 	init_directories()
