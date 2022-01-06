@@ -1,12 +1,10 @@
 #!/usr/local/bin/python
 from __future__ import division
 
-import random
 import numpy as np
 
 import torch
 import torch.nn as nn
-import torch.optim as optim
 from torch.autograd import Variable
 
 class reconstruct_loss(nn.Module):
@@ -24,26 +22,14 @@ class reconstruct_loss(nn.Module):
 		reconstruction_loss = torch.mean(torch.abs(reconsturct_input - network_input))
 		return reconstruction_loss
 
-def rrmse_loss(outputs, label):
-	"""Computes the rrmse value"""
+def mrae_loss(outputs, label):
+	""" Computes the MRAE value (Training Loss) """
 	error = torch.abs(outputs-label)/label
 	rrmse = torch.mean(error.view(-1))
 	return rrmse
 
-def mrae(img_res,img_gt):
-	"""Calculate the relative RMSE"""
-	error= img_res- img_gt
-	error_relative = error/img_gt
-	rrmse = np.mean((np.sqrt(np.power(error_relative, 2))))
-	return rrmse
-
-def rmse(img_res,img_gt):
-	error= img_res- img_gt
-	error_relative = error/img_gt
-	rrmse =np.sqrt(np.mean((np.power(error_relative, 2))))
-	return rrmse
-
 def sam_loss(input_tensor, target_tensor):
+	""" Spectral Angle Mapper Training Loss """
 	# inner product
 	dot = torch.sum(input_tensor * target_tensor, dim=1).view(-1)
 	# norm calculations
@@ -57,7 +43,7 @@ def sam_loss(input_tensor, target_tensor):
 	argument = dot.mul(norm_product)
 	# for avoiding arccos(1)
 	acos = torch.acos(torch.clamp(argument, -1 + 1e-7, 1 - 1e-7))
-	loss = torch.mean(acos)
+	loss = np.pi - torch.mean(acos)
 
 	if torch.isnan(loss):
 		raise ValueError(
@@ -68,13 +54,42 @@ def sam_loss(input_tensor, target_tensor):
 		)
 	return loss
 
+def test_mrae(img_res,img_gt):
+	"""Calculate the relative MRAE"""
+	error= img_res- img_gt
+	error_relative = error/img_gt
+	rrmse = np.mean(np.abs(error_relative))
+	return rrmse
+
+def test_rmse(img_res,img_gt):
+	error= img_res- img_gt
+	error_relative = error/img_gt
+	rrmse =np.sqrt(np.mean((np.power(error_relative, 2))))
+	return rrmse
+
 def spectral_angle(a, b):
 	""" Spectral angle """
+	a = a / 4095
+	b = b / 4095
 	va = a / np.sqrt(a.dot(a))
 	vb = b / np.sqrt(b.dot(b))
-	return np.arccos(np.clip(va.dot(vb), -1, 1))
+	# print(va.shape, vb.shape)
+	return np.arccos(va.dot(vb))
 
-def val_msad(X, Y):
-	""" mean spectral angle """
-	assert len(X) == len(Y)
-	return np.mean([spectral_angle(X[i], Y[i]) for i in range(len(X))])
+def test_msam(X, Y):
+	""" mean spectral angle mapper """
+	X_flat = X.reshape(-1, X.shape[2])
+	Y_flat = Y.reshape(-1, Y.shape[2])
+	assert len(X_flat) == len(Y_flat)
+	return np.mean([spectral_angle(X_flat[i], Y_flat[i]) for i in range(len(X_flat))])
+
+
+def spectral_divergence(a, b):
+	pass
+
+def test_sid(X, Y):
+	""" mean spectral information divergence """
+	X_flat = X.reshape(-1, X.shape[2])
+	Y_flat = Y.reshape(-1, Y.shape[2])
+	assert len(X_flat) == len(Y_flat)
+	return np.mean([spectral_divergence(X_flat[i], Y_flat[i]) for i in range(len(X_flat))])
