@@ -16,7 +16,7 @@ from config import ILLUMINATIONS, TEST_ROOT_DATASET_DIR, TEST_DATASETS, MODEL_PA
 
 def main():
 	logger = initialize_logger(filename="test.log")
-	log_string = "[%s] MRAE=%0.9f, RRMSE=%0.9f, SAM=%0.9f, SID=%0.9f, PSNR=%0.9%"
+	log_string = "[%s] MRAE=%0.9f, RRMSE=%0.9f, SAM=%0.9f, SID=%0.9f, PSNR=%0.9f"
 
 	for fusion in fusion_techniques:
 		save_point = torch.load(os.path.join(MODEL_PATH, fusion, checkpoint_file))
