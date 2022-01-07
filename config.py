@@ -25,7 +25,17 @@ ILLUMINATIONS = ["h", "cfl_led"]
 checkpoint_file = "HS_model_49.pkl"
 # checkpoint_file = "HS_model_%d.pkl" % end_epoch
 
-VIEW_BANDS = [10, 20, 30, 40, 50]
+plt_dict = {"mathtext.default": "regular",
+			"axes.linewidth": 2}
+
+text_font_dict = {"family": "serif",
+				  "size": 25}
+
+title_font_dict = {"fontname": "serif",
+				   "size": 25}
+
+VIEW_BANDS = [11, 21, 36, 44]
+ACTUAL_BANDS = [520, 640, 820, 910]
 
 var_name = "rad"
 
