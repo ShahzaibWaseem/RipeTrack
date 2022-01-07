@@ -10,7 +10,9 @@ import matplotlib
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-from config import ILLUMINATIONS, TEST_ROOT_DATASET_DIR, TEST_DATASETS, VIEW_BANDS, ACTUAL_BANDS, var_name, fusion_techniques, init_directories
+from config import ILLUMINATIONS, TEST_ROOT_DATASET_DIR, TEST_DATASETS, VIEW_BANDS, ACTUAL_BANDS, var_name, text_font_dict, title_font_dict, plt_dict, fusion_techniques, init_directories
+
+plt.rcParams.update(plt_dict)
 
 def main():
 	for fusion in fusion_techniques:
@@ -42,7 +44,7 @@ def main():
 						# Reconstructed Hypercube (gamma adjustment)
 						img = inf_file[:,:,VIEW_BANDS[j]].reshape(512, 512)
 						axs[0, j].imshow(exposure.adjust_gamma(img, 0.25), interpolation="nearest", cmap="gray")
-						axs[0, j].set_title(str(ACTUAL_BANDS[j]) + " nm", size=16)
+						axs[0, j].set_title(str(ACTUAL_BANDS[j]) + " nm", **title_font_dict)
 						axs[0, j].set_xticks([])
 						axs[0, j].set_yticks([])
 
@@ -55,19 +57,20 @@ def main():
 						# Difference b/w the two hypercubes
 						diff = np.abs(lab - img)
 						axs[2, j].imshow(diff, cmap="hot_r")
-						axs[2, j].text(150, 550, "PSNR=%0.2f" % test_psnr(img, lab), size=16)
+						axs[2, j].text(75, 570, "PSNR=%0.2f" % test_psnr(img, lab), **text_font_dict)
 						axs[2, j].set_xticks([])
 						axs[2, j].set_yticks([])
 
 					norm = matplotlib.colors.Normalize(0, 1)
 					# divider = make_axes_locatable(plt.gca())
 					# cax = divider.append_axes("right", "5%", pad="1%")
-					cax = fig.add_axes([0.963, 0.0449, 0.01, 0.285])
+					cax = fig.add_axes([0.945, 0.0455, 0.015, 0.2945])
+					cax.tick_params(labelsize=18)
 					matplotlib.colorbar.ColorbarBase(cax, cmap=plt.get_cmap("hot_r"), norm=norm)
-					axs[0, len(VIEW_BANDS) - 1].text(525, 370, "Reconstructed", size=16, rotation=-90)
-					axs[1, len(VIEW_BANDS) - 1].text(525, 370, "Ground Truth", size=16, rotation=-90)
-					fig.tight_layout(pad=2)
-					fig.savefig(os.path.join(PLOTS_PATH, fusion, "%s.png" % (gt_filename)), dpi=fig.dpi*2)
+					axs[0, len(VIEW_BANDS) - 1].text(525, 325, "$HS_{51}$", rotation=-90, **text_font_dict)
+					axs[1, len(VIEW_BANDS) - 1].text(525, 425, "Ground Truth", rotation=-90, **text_font_dict)
+					fig.tight_layout(pad=1, h_pad=-1.5, w_pad=-5)
+					fig.savefig(os.path.join(PLOTS_PATH, fusion, "%s.png" % (gt_filename)), dpi=fig.dpi*2, bbox_inches="tight")
 					plt.show()
 
 if __name__ == "__main__":
