@@ -13,6 +13,8 @@ end_epoch = 50
 init_lr = 0.0001
 fusion_techniques = ["concat", "add", "multiply"]
 
+model_run_title = "%s RESNET + GNN (meat (halogen + CFL + LED) - SAM MRAE patches)\n"
+
 MODEL_PATH = os.path.join(".", "checkpoints")
 LOGS_PATH = os.path.join(".", "logs")
 
