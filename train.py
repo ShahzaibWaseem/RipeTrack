@@ -79,10 +79,10 @@ def main():
 		if torch.cuda.is_available():
 			model.cuda()
 
-		model_run_title = model_run_title % fusion
+		model_run = model_run_title % fusion
 		
-		print(model_run_title)
-		logger.info(model_run_title)
+		print("\n" + model_run)
+		logger.info(model_run)
 
 		for epoch in range(start_epoch+1, end_epoch):
 			start_time = time.time()
