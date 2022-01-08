@@ -23,21 +23,21 @@ class reconstruct_loss(nn.Module):
 		reconstruction_loss = torch.mean(torch.abs(reconsturct_input - network_input))
 		return reconstruction_loss
 
-def mrae_loss(outputs, label):
+def mrae_loss(tensor_pred, tensor_gt):
 	""" Computes the MRAE value (Training Loss) """
-	error = torch.abs(outputs-label)/label
+	error = torch.abs(tensor_pred-tensor_gt)/tensor_gt
 	rrmse = torch.mean(error.view(-1))
 	return rrmse
 
-def sam_loss(input_tensor, target_tensor):
-	""" Spectral Angle Mapper Training Loss """
+def sam_loss(tensor_pred, tensor_gt):
+	""" Spectral Angle Mapper (Training Loss) """
 	# inner product
-	dot = torch.sum(input_tensor * target_tensor, dim=1).view(-1)
+	dot = torch.sum(tensor_pred * tensor_gt, dim=1).view(-1)
 	# norm calculations
-	image = input_tensor.view(-1, input_tensor.shape[1])
+	image = tensor_pred.view(-1, tensor_pred.shape[1])
 	norm_original = torch.norm(image, p=2, dim=1)
 
-	target = target_tensor.view(-1, target_tensor.shape[1])
+	target = tensor_gt.view(-1, tensor_gt.shape[1])
 	norm_reconstructed = torch.norm(target, p=2, dim=1)
 
 	norm_product = (norm_original.mul(norm_reconstructed)).pow(-1)
@@ -51,61 +51,60 @@ def sam_loss(input_tensor, target_tensor):
 			f"Loss is NaN value. Consecutive values - dot: {dot}, \
 			norm original: {norm_original}, norm reconstructed: {norm_reconstructed}, \
 			norm product: {norm_product}, argument: {argument}, acos: {acos}, \
-			loss: {loss}, input: {input_tensor}, output: {target}"
+			loss: {loss}, input: {tensor_pred}, output: {target}"
 		)
 	return loss
 
-def test_mrae(img_res, img_gt):
+def test_mrae(img_pred, img_gt):
 	"""Calculate the relative MRAE"""
-	error = img_res - img_gt
+	error = img_pred - img_gt
 	error_relative = error/img_gt
 	rrmse = np.mean(np.abs(error_relative))
 	return rrmse
 
-def test_rmse(img_res, img_gt):
-	error = img_res - img_gt
+def test_rmse(img_pred, img_gt):
+	error = img_pred - img_gt
 	error_relative = error/img_gt
 	rrmse = np.sqrt(np.mean((np.power(error_relative, 2))))
 	return rrmse
 
 def spectral_angle(a, b):
 	""" Spectral angle """
-	a = a / 4095
-	b = b / 4095
 	va = a / np.sqrt(a.dot(a))
 	vb = b / np.sqrt(b.dot(b))
 	# print(va.shape, vb.shape)
 	return np.arccos(va.dot(vb))
 
-def test_msam(X, Y):
+def test_msam(img_pred, img_gt):
 	""" mean spectral angle mapper """
-	X_flat = X.reshape(-1, X.shape[2])
-	Y_flat = Y.reshape(-1, Y.shape[2])
-	assert len(X_flat) == len(Y_flat)
-	return np.mean([spectral_angle(X_flat[i], Y_flat[i]) for i in range(len(X_flat))])
+	img_pred_flat = img_pred.reshape(-1, img_pred.shape[2])
+	img_gt_flat = img_gt.reshape(-1, img_gt.shape[2])
+	assert len(img_pred_flat) == len(img_gt_flat)
+	return np.mean([spectral_angle(img_pred_flat[i]/4095, img_gt_flat[i]/4095) for i in range(len(img_pred_flat))])
 
 def spectral_divergence(a, b):
+	""" Spectral Divergence """
 	p = (a / np.sum(a)) + np.spacing(1)
 	q = (b / np.sum(b)) + np.spacing(1)
 	return np.sum(p * np.log(p / q) + q * np.log(q / p))
 
-def test_sid(X, Y):
+def test_sid(img_pred, img_gt):
 	""" mean spectral information divergence """
-	X_flat = X.reshape(-1, X.shape[2])
-	Y_flat = Y.reshape(-1, Y.shape[2])
-	assert len(X_flat) == len(Y_flat)
-	return np.mean([spectral_divergence(X_flat[i], Y_flat[i]) for i in range(len(X_flat))])
+	img_pred_flat = img_pred.reshape(-1, img_pred.shape[2])
+	img_gt_flat = img_gt.reshape(-1, img_gt.shape[2])
+	assert len(img_pred_flat) == len(img_gt_flat)
+	return np.mean([spectral_divergence(img_pred_flat[i]/4095, img_gt_flat[i]/4095) for i in range(len(img_pred_flat))])
 
-def mse(img_res, img_gt):
-	error = (img_res - img_gt) / 4095		# to scale
-	rrmse = np.mean((np.power(error, 2)))
-	return rrmse
+def mse(img_pred, img_gt):
+	error = (img_pred - img_gt)
+	mse = np.mean((np.power(error, 2)))
+	return mse
 
-def test_psnr(X, Y):
-	return 10 * np.log10(1 / mse(X, Y))
+def test_psnr(img_pred, img_gt):
+	return 10 * np.log10(4095**2 / mse(img_pred, img_gt))
 
-def test_ssim(org_img, pred_img, max_p=4095):
+def test_ssim(img_pred, img_gt, max_p=4095):
 	"""
 	Structural Simularity Index
 	"""
-	return structural_similarity(org_img, pred_img, data_range=max_p, channel_axis=True)
+	return structural_similarity(img_gt, img_pred, data_range=max_p, channel_axis=True)
