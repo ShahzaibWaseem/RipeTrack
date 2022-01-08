@@ -5,7 +5,7 @@ import numpy as np
 
 import torch
 
-from loss import test_mrae, test_rmse, test_msam, test_sid, test_psnr
+from loss import test_mrae, test_rmse, test_msam, test_sid, test_psnr, test_ssim
 from utils import save_matv73, reconstruction, load_mat, initialize_logger
 from models.resblock import resblock, conv_bn_relu_res_block
 
@@ -16,7 +16,7 @@ from config import ILLUMINATIONS, TEST_ROOT_DATASET_DIR, TEST_DATASETS, MODEL_PA
 
 def main():
 	logger = initialize_logger(filename="test.log")
-	log_string = "[%s] MRAE=%0.9f, RRMSE=%0.9f, SAM=%0.9f, SID=%0.9f, PSNR=%0.9f"
+	log_string = "[%s] MRAE=%0.9f, RRMSE=%0.9f, SAM=%0.9f, SID=%0.9f, PSNR=%0.9f, SSIM=%0.9f"
 
 	for fusion in fusion_techniques:
 		save_point = torch.load(os.path.join(MODEL_PATH, fusion, checkpoint_file))
@@ -79,9 +79,10 @@ def main():
 					sam_error = test_msam(img_res3, gt[var_name][:,:,1:204:4])
 					sid_error = test_sid(img_res3, gt[var_name][:,:,1:204:4])
 					psnr_error = test_psnr(img_res3, gt[var_name][:,:,1:204:4])
+					ssim_error = test_ssim(img_res3, gt[var_name][:,:,1:204:4])
 
-					print(log_string %(img_name, mrae_error, rrmse_error, sam_error, sid_error, psnr_error))
-					logger.info(log_string %(img_name, mrae_error, rrmse_error, sam_error, sid_error, psnr_error))
+					print(log_string %(mat_name, mrae_error, rrmse_error, sam_error, sid_error, psnr_error, ssim_error))
+					logger.info(log_string %(mat_name, mrae_error, rrmse_error, sam_error, sid_error, psnr_error, ssim_error))
 
 if __name__ == "__main__":
 	init_directories()

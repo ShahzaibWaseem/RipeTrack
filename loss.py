@@ -2,6 +2,7 @@
 from __future__ import division
 
 import numpy as np
+from skimage.metrics import structural_similarity
 
 import torch
 import torch.nn as nn
@@ -102,3 +103,9 @@ def mse(img_res, img_gt):
 
 def test_psnr(X, Y):
 	return 10 * np.log10(1 / mse(X, Y))
+
+def test_ssim(org_img, pred_img, max_p=4095):
+	"""
+	Structural Simularity Index
+	"""
+	return structural_similarity(org_img, pred_img, data_range=max_p, channel_axis=True)
