@@ -28,8 +28,8 @@ def main():
 
 		for test_dataset in TEST_DATASETS:
 			for illumination in ILLUMINATIONS:
-				print("\nFusion: %s\nDataset: %s\nIllumination: %s\n" % (fusion, test_dataset, illumination))
-				logger.info("Fusion: %s\tDataset: %s\tIllumination: %s\n" % (fusion, test_dataset, illumination))
+				print("\nFusion: %s\nDataset: %s\nIllumination: %s\nModel: %s\n" % (fusion, test_dataset, illumination, checkpoint_file))
+				logger.info("Fusion: %s\tDataset: %s\tIllumination: %s\tModel: %s\n" % (fusion, test_dataset, illumination, checkpoint_file))
 
 				TEST_DATASET_DIR = os.path.join(TEST_ROOT_DATASET_DIR, "working_%s" % test_dataset, "%s_%s_204ch" % (test_dataset, illumination), "test")
 				GT_PATH = os.path.join(TEST_DATASET_DIR, "mat")
