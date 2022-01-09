@@ -62,7 +62,7 @@ def test_mrae(img_pred, img_gt):
 	rrmse = np.mean(np.abs(error_relative))
 	return rrmse
 
-def test_rmse(img_pred, img_gt):
+def test_rrmse(img_pred, img_gt):
 	error = img_pred - img_gt
 	error_relative = error/img_gt
 	rrmse = np.sqrt(np.mean((np.power(error_relative, 2))))

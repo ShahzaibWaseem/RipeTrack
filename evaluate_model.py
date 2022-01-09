@@ -5,7 +5,7 @@ import numpy as np
 
 import torch
 
-from loss import test_mrae, test_rmse, test_msam, test_sid, test_psnr, test_ssim
+from loss import test_mrae, test_rrmse, test_msam, test_sid, test_psnr, test_ssim
 from utils import save_matv73, reconstruction, load_mat, initialize_logger
 from models.resblock import resblock, conv_bn_relu_res_block
 
@@ -69,7 +69,7 @@ def main():
 					gt = load_mat(gt_dir, var_name)[var_name][:,:, 1:204:4]
 
 					mrae_error =  test_mrae(inf, gt)
-					rrmse_error = test_rmse(inf, gt)
+					rrmse_error = test_rrmse(inf, gt)
 					sam_error = test_msam(inf, gt)
 					sid_error = test_sid(inf, gt)
 					psnr_error = test_psnr(inf, gt)
