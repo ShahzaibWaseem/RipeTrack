@@ -43,18 +43,15 @@ def main():
 						mat_file_name = img_name.split("/")[-1].split("_")[0]
 
 					rgb_img_path = img_name
-					nir_img_path = os.path.join(IMG_PATH, img_name.split("/")[-1].replace("RGB", "NIRc"))
 
 					rgb = imread(rgb_img_path)/255
+					rgb[:,:, [0, 2]] = rgb[:,:, [2, 0]]		# flipping red and blue channels (shape used for training)
 
-					# flipping red and blue channels (shape used for training)
-					rgb[:,:, [0, 2]] = rgb[:,:, [2, 0]]
-
+					nir_img_path = os.path.join(IMG_PATH, img_name.split("/")[-1].replace("RGB", "NIRc"))
 					nir = imread(nir_img_path)/255
 
 					image = np.dstack((rgb, nir))
-					# fixing the dimensions [Channel should be first in torch]
-					image = np.expand_dims(np.transpose(image, [2, 1, 0]), axis=0).copy()
+					image = np.expand_dims(np.transpose(image, [2, 1, 0]), axis=0).copy()	# fixing the dimensions [Channel should be first in torch]
 
 					img_res1 = reconstruction(image, model)
 					img_res2 = np.flip(reconstruction(np.flip(image, 2).copy(), model), 1)
