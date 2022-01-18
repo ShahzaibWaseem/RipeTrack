@@ -7,7 +7,8 @@ import torch
 
 from loss import test_mrae, test_rrmse, test_msam, test_sid, test_psnr, test_ssim
 from utils import save_matv73, reconstruction, load_mat, initialize_logger
-from models.resblock import resblock, conv_bn_relu_res_block
+from models.resblock import resblock
+from models.model import Network
 
 from glob import glob
 from imageio import imread
@@ -21,7 +22,7 @@ def main():
 	for fusion in fusion_techniques:
 		save_point = torch.load(os.path.join(MODEL_PATH, fusion, checkpoint_file))
 		model_param = save_point['state_dict']
-		model = resblock(conv_bn_relu_res_block, block_num=10, input_channel=4, output_channel=51, fusion=fusion)
+		model = Network(resblock, block_num=10, input_channel=4, output_channel=51, fusion=fusion)
 		model.load_state_dict(model_param)
 		model = model.cuda()
 		model.eval()

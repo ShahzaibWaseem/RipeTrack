@@ -6,19 +6,19 @@ import time
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
-import torch.backends.cudnn as cudnn
 from torch.utils.data import DataLoader, ConcatDataset
 
 from loss import mrae_loss, sam_loss
 from dataset import DatasetFromHdf5
-from models.resblock import resblock,conv_bn_relu_res_block
+from models.resblock import resblock
+from models.model import Network
 
 from utils import AverageMeter, initialize_logger, save_checkpoint, record_loss, make_h5_dataset
 
 from config import TRAIN_DATASET_DIR, TRAIN_DATASET_FILES, VALID_DATASET_FILES, LOGS_PATH, init_directories, fusion_techniques, batch_size, end_epoch, init_lr, model_run_title
 
 def main():
-	cudnn.benchmark = True
+	torch.backends.cudnn.benchmark = True
 
 	# Dataset
 	train_data, valid_data = [], []
@@ -71,7 +71,7 @@ def main():
 	log_string = "Epoch [%d], Iter[%d], Time:%.9f, Learning Rate: %.9f, Train Loss: %.9f, Validation Loss: %.9f"
 
 	for fusion in fusion_techniques:
-		model = resblock(conv_bn_relu_res_block, block_num=10, input_channel=4, output_channel=51, fusion=fusion)
+		model = Network(resblock, block_num=10, input_channel=4, output_channel=51, fusion=fusion)
 		optimizer=torch.optim.Adam(model.parameters(), lr=init_lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.01)
 		
 		if torch.cuda.device_count() > 1:
