@@ -3,9 +3,6 @@ from __future__ import division
 import os
 import numpy as np
 
-import torch
-from torch.autograd import Variable
-
 import h5py
 import hdf5storage
 
@@ -13,7 +10,14 @@ import logging
 from glob import glob
 from imageio import imread
 
-from config import MODEL_PATH, LOGS_PATH, var_name
+import torch
+from torch.autograd import Variable
+from torch.utils.mobile_optimizer import optimize_for_mobile
+
+from models.model import Network
+from models.resblock import resblock
+
+from config import MODEL_PATH, LOGS_PATH, MODEL_PATH, checkpoint_file, mobile_model_file, var_name
 
 class AverageMeter(object):
 	"""Computes and stores the average and current value."""
@@ -33,7 +37,7 @@ class AverageMeter(object):
 		self.avg = self.sum/self.count
 
 def average(list):
-    return sum(list)/len(list)
+	return sum(list)/len(list)
 
 def initialize_logger(filename):
 	"""Print the results in the log file."""
@@ -58,7 +62,7 @@ def save_matv73(mat_name, var_name, var):
 
 def record_loss(loss_csv,epoch, iteration, epoch_time, lr, train_loss, test_loss):
 	""" Record many results."""
-	loss_csv.write('{},{},{},{},{},{}\n'.format(epoch, iteration, epoch_time, lr, train_loss, test_loss))
+	loss_csv.write("{},{},{},{},{},{}\n".format(epoch, iteration, epoch_time, lr, train_loss, test_loss))
 	loss_csv.flush()
 	loss_csv.close
 
@@ -119,3 +123,16 @@ def make_h5_dataset(DATASET_DIR, h5_filename):
 	hf.create_dataset("data", dtype=np.float32, data=images)
 	hf.create_dataset("label", dtype=np.float32, data=labels)
 	hf.close()
+
+def makeMobileModel(fusion="concat"):
+	save_point = torch.load(os.path.join(MODEL_PATH, fusion, checkpoint_file))
+	model_param = save_point["state_dict"]
+	model = Network(resblock, block_num=10, input_channel=4, output_channel=51, fusion=fusion)
+	model.load_state_dict(model_param)
+
+	model.eval()
+	input_tensor = torch.rand(1, 4, 512, 512)
+
+	script_model = torch.jit.trace(model, input_tensor)
+	script_model_optimized = optimize_for_mobile(script_model)
+	script_model_optimized.save(os.path.join(LOGS_PATH, mobile_model_file))
