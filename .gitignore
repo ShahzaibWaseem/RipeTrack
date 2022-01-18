@@ -1,4 +1,6 @@
 nohup.out
+*.pth
+*.pt
 checkpoints/
 logs/
 inference/
