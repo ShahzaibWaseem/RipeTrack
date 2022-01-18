@@ -58,15 +58,15 @@ def main():
 	loss_csv = open(os.path.join(LOGS_PATH, "loss.csv"), "w+")
 
 	# Resume
-	# resume_file = ''
+	# resume_file = ""
 	# if resume_file:
 	# 	if os.path.isfile(resume_file):
 	# 		print("=> loading checkpoint '{}'".format(resume_file))
 	# 		checkpoint = torch.load(resume_file)
-	# 		start_epoch = checkpoint['epoch']
-	# 		iteration = checkpoint['iter']
-	# 		model.load_state_dict(checkpoint['state_dict'])
-	# 		optimizer.load_state_dict(checkpoint['optimizer'])
+	# 		start_epoch = checkpoint["epoch"]
+	# 		iteration = checkpoint["iter"]
+	# 		model.load_state_dict(checkpoint["state_dict"])
+	# 		optimizer.load_state_dict(checkpoint["optimizer"])
 
 	log_string = "Epoch [%d], Iter[%d], Time:%.9f, Learning Rate: %.9f, Train Loss: %.9f, Validation Loss: %.9f"
 
@@ -168,11 +168,11 @@ def poly_lr_scheduler(optimizer, init_lr, iteraion, lr_decay_iter=1,
 	lr = init_lr*(1 - iteraion/max_iter)**power
 
 	for param_group in optimizer.param_groups:
-		param_group['lr'] = lr
+		param_group["lr"] = lr
 
 	return lr
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 	init_directories()
 	# make_h5_dataset(TRAIN_DATASET_DIR=os.path.join(TRAIN_DATASET_DIR, "train"), h5_filename="train_apple_halogen_4to51bands_whole.h5")
 	# make_h5_dataset(TRAIN_DATASET_DIR=os.path.join(TRAIN_DATASET_DIR, "valid"), h5_filename="valid_apple_halogen_4to51bands_whole.h5")

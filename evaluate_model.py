@@ -21,7 +21,7 @@ def main():
 
 	for fusion in fusion_techniques:
 		save_point = torch.load(os.path.join(MODEL_PATH, fusion, checkpoint_file))
-		model_param = save_point['state_dict']
+		model_param = save_point["state_dict"]
 		model = Network(resblock, block_num=10, input_channel=4, output_channel=51, fusion=fusion)
 		model.load_state_dict(model_param)
 		model = model.cuda()

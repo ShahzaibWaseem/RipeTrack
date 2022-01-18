@@ -8,13 +8,14 @@ from utils import load_mat
 
 import torch
 from torch.utils.data import Dataset
+from config import var_name
 
 class DatasetFromHdf5(Dataset):
 	def __init__(self, file_path):
 		super(DatasetFromHdf5, self).__init__()
 		hf = h5py.File(file_path)
-		self.data = hf.get('data')
-		self.target = hf.get('label')
+		self.data = hf.get("data")
+		self.target = hf.get("label")
 
 	def __getitem__(self, index):
 		return torch.from_numpy(self.data[index,:,:,:]).float(), torch.from_numpy(self.target[index,:,:,:]).float()
@@ -25,7 +26,7 @@ class DatasetFromHdf5(Dataset):
 class DatasetFromDirectory(Dataset):
 	def __init__(self, root):
 		self.root = root
-		self.var_name = 'rad'
+		self.var_name = var_name
 		self.labels = []
 		self.images = []
 		for filename in glob(os.path.join(self.root, "RGB", "*.png")):
