@@ -32,6 +32,9 @@ class AverageMeter(object):
 		self.count += n
 		self.avg = self.sum/self.count
 
+def average(list):
+    return sum(list)/len(list)
+
 def initialize_logger(filename):
 	"""Print the results in the log file."""
 	logger = logging.getLogger()
