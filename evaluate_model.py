@@ -1,6 +1,7 @@
 from __future__ import division
 
 import os
+import time
 import numpy as np
 
 import torch
@@ -17,7 +18,7 @@ from config import ILLUMINATIONS, TEST_ROOT_DATASET_DIR, TEST_DATASETS, MODEL_PA
 
 def main():
 	logger = initialize_logger(filename="test.log")
-	log_string = "[%s] MRAE=%0.9f, RRMSE=%0.9f, SAM=%0.9f, SID=%0.9f, PSNR=%0.9f, SSIM=%0.9f"
+	log_string = "[%s] Time=%0.9f, MRAE=%0.9f, RRMSE=%0.9f, SAM=%0.9f, SID=%0.9f, PSNR=%0.9f, SSIM=%0.9f"
 
 	for fusion in fusion_techniques:
 		save_point = torch.load(os.path.join(MODEL_PATH, fusion, checkpoint_file))
@@ -38,6 +39,7 @@ def main():
 				INF_PATH = os.path.join(TEST_DATASET_DIR, "inference")
 
 				for img_name in glob(os.path.join(IMG_PATH, "*_dense_demRGB.png")):
+					start_time = time.time()
 					if(illumination == "cfl_led"):
 						mat_file_name = "_".join(img_name.split("/")[-1].split("_")[0:2])
 					else:
@@ -57,9 +59,10 @@ def main():
 					img_res1 = reconstruction(image, model)
 					img_res2 = np.flip(reconstruction(np.flip(image, 2).copy(), model), 1)
 					inf = (img_res1 + img_res2)/2
+					time_taken = time.time() - start_time
 
 					mat_name = "inf_" + mat_file_name + ".mat"
-					mat_dir = os.path.join(INF_PATH, fusion, mat_name)
+					mat_dir = os.path.join(INF_PATH, "resnext", fusion, mat_name)
 					save_matv73(mat_dir, var_name, inf)
 
 					gt_name = mat_file_name + ".mat"
@@ -73,8 +76,8 @@ def main():
 					psnr_error = test_psnr(inf, gt)
 					ssim_error = test_ssim(inf, gt)
 
-					print(log_string % (mat_name, mrae_error, rrmse_error, sam_error, sid_error, psnr_error, ssim_error))
-					logger.info(log_string % (mat_name, mrae_error, rrmse_error, sam_error, sid_error, psnr_error, ssim_error))
+					print(log_string % (mat_name, time_taken, mrae_error, rrmse_error, sam_error, sid_error, psnr_error, ssim_error))
+					logger.info(log_string % (mat_name, time_taken, mrae_error, rrmse_error, sam_error, sid_error, psnr_error, ssim_error))
 
 if __name__ == "__main__":
 	init_directories()
