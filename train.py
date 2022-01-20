@@ -99,6 +99,7 @@ def main():
 			record_loss(loss_csv,epoch, iteration, epoch_time, lr, train_loss, val_loss)
 			print(log_string % (epoch, iteration, epoch_time, lr, train_loss, val_loss))
 			logger.info(log_string % (epoch, iteration, epoch_time, lr, train_loss, val_loss))
+		iteration = 0
 
 # Training
 def train(train_data_loader, model, criterion_mrae, criterion_sam, optimizer, iteration, init_lr, end_epoch):
