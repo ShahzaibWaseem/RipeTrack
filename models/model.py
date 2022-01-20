@@ -34,13 +34,13 @@ class Network(nn.Module):
 											  nn.BatchNorm2d(64),
 											  nn.ReLU())
 
-		self.conv_seq = self.make_layer(block, block_num)
+		self.conv_seq = self.make_layer(block, block_num, 64, 64, stride=1, cardinality=32, base_width=4, widen_factor=1)
 		self.conv = conv3x3(64, 64)
 		self.relu = nn.ReLU(inplace=True)
 
 		if (self.fusion == "concat"):
 			self.output_conv = conv3x3(in_channels=64*2, out_channels=self.out_channels)
-		elif (self.fusion == "multiply" or self.fusion == "add"):
+		elif (self.fusion == "multiply" or self.fusion == "add" or self.fusion == "resnext"):
 			self.output_conv = conv3x3(in_channels=64, out_channels=self.out_channels)
 
 		for m in self.modules():
@@ -48,10 +48,10 @@ class Network(nn.Module):
 				n=m.kernel_size[0]*m.kernel_size[1]*m.out_channels
 				m.weight.data.normal_(0,sqrt(2./n))
 
-	def make_layer(self, block, num_layers):
+	def make_layer(self, block, num_layers, in_channels, out_channels, stride, cardinality, base_width, widen_factor):
 		layers = []
 		for _ in range(num_layers):
-			layers.append(block())
+			layers.append(block(in_channels, out_channels, stride, cardinality, base_width, widen_factor))
 		return nn.Sequential(*layers)
 
 	def split_tensor(self, image, split_size=64):

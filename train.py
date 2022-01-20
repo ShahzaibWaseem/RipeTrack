@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader, ConcatDataset
 
 from loss import mrae_loss, sam_loss
 from dataset import DatasetFromHdf5
-from models.resblock import resblock
+from models.resblock import resblock, ResNeXtBottleneck
 from models.model import Network
 
 from utils import AverageMeter, initialize_logger, save_checkpoint, record_loss, make_h5_dataset
@@ -71,7 +71,7 @@ def main():
 	log_string = "Epoch [%d], Iter[%d], Time:%.9f, Learning Rate: %.9f, Train Loss: %.9f, Validation Loss: %.9f"
 
 	for fusion in fusion_techniques:
-		model = Network(resblock, block_num=10, input_channel=4, output_channel=51, fusion=fusion)
+		model = Network(ResNeXtBottleneck, block_num=10, input_channel=4, output_channel=51, fusion=fusion)
 		optimizer=torch.optim.Adam(model.parameters(), lr=init_lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.01)
 		
 		if torch.cuda.device_count() > 1:
