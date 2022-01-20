@@ -7,7 +7,7 @@ import torch
 
 from loss import test_mrae, test_rrmse, test_msam, test_sid, test_psnr, test_ssim
 from utils import save_matv73, reconstruction, load_mat, initialize_logger
-from models.resblock import resblock
+from models.resblock import resblock, ResNeXtBottleneck
 from models.model import Network
 from torchsummary import summary
 
@@ -23,7 +23,7 @@ def main():
 	for fusion in fusion_techniques:
 		save_point = torch.load(os.path.join(MODEL_PATH, fusion, checkpoint_file))
 		model_param = save_point["state_dict"]
-		model = Network(resblock, block_num=10, input_channel=4, output_channel=51, fusion=fusion)
+		model = Network(ResNeXtBottleneck, block_num=10, input_channel=4, output_channel=51, fusion=fusion)
 		model.load_state_dict(model_param)
 		model = model.cuda()
 		model.eval()
