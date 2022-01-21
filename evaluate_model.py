@@ -14,7 +14,7 @@ from torchsummary import summary
 from glob import glob
 from imageio import imread
 
-from config import ILLUMINATIONS, TEST_ROOT_DATASET_DIR, TEST_DATASETS, MODEL_PATH, var_name, checkpoint_file, fusion_techniques, init_directories
+from config import ILLUMINATIONS, TEST_ROOT_DATASET_DIR, TEST_DATASETS, MODEL_PATH, var_name, model_run_title, checkpoint_file, fusion_techniques, init_directories
 
 def main():
 	logger = initialize_logger(filename="test.log")
@@ -31,6 +31,8 @@ def main():
 
 		for test_dataset in TEST_DATASETS:
 			for illumination in ILLUMINATIONS:
+				print("\n" + model_run_title)
+				logger.info(model_run_title)
 				print("\nFusion: %s\nDataset: %s\nIllumination: %s\nModel: %s\n" % (fusion, test_dataset, illumination, checkpoint_file))
 				logger.info("Fusion: %s\tDataset: %s\tIllumination: %s\tModel: %s\n" % (fusion, test_dataset, illumination, checkpoint_file))
 
