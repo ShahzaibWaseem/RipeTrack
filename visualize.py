@@ -26,7 +26,7 @@ def main():
 
 				print("\nFusion: %s\nDataset: %s\nIllumination: %s\n" % (fusion, test_dataset, illumination))
 
-				for filename in glob(os.path.join(INF_PATH, fusion, "*.mat")):
+				for filename in glob(os.path.join(INF_PATH, "resnext", fusion, "*.mat")):
 					if(illumination == "cfl_led"):
 						gt_filename = "_".join(filename.split("/")[-1].split(".")[0].split("_")[1:3])
 					else:
@@ -70,7 +70,7 @@ def main():
 					axs[0, len(VIEW_BANDS) - 1].text(525, 325, "$HS_{51}$", rotation=-90, **text_font_dict)
 					axs[1, len(VIEW_BANDS) - 1].text(525, 425, "Ground Truth", rotation=-90, **text_font_dict)
 					fig.tight_layout(pad=1, h_pad=-1.5, w_pad=-5)
-					fig.savefig(os.path.join(PLOTS_PATH, fusion, "%s.png" % (gt_filename)), dpi=fig.dpi*2, bbox_inches="tight")
+					fig.savefig(os.path.join(PLOTS_PATH, "resnext", fusion, "%s.png" % (gt_filename)), dpi=fig.dpi*2, bbox_inches="tight")
 					plt.show()
 
 if __name__ == "__main__":
