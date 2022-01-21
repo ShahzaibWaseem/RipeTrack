@@ -23,6 +23,7 @@ TEST_DATASETS = ["chicken", "steak"]
 ILLUMINATIONS = ["h", "cfl_led"]
 
 checkpoint_file = "HS_model_49.pkl"
+mobile_model_file = "model_concat_fruit.pth"
 # checkpoint_file = "HS_model_%d.pkl" % end_epoch
 
 plt_dict = {"mathtext.default": "regular",
