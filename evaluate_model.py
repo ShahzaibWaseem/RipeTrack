@@ -9,6 +9,7 @@ from loss import test_mrae, test_rrmse, test_msam, test_sid, test_psnr, test_ssi
 from utils import save_matv73, reconstruction, load_mat, initialize_logger
 from models.resblock import resblock
 from models.model import Network
+from torchsummary import summary
 
 from glob import glob
 from imageio import imread
@@ -26,6 +27,7 @@ def main():
 		model.load_state_dict(model_param)
 		model = model.cuda()
 		model.eval()
+		print(summary(model, (4, 512, 512)))
 
 		for test_dataset in TEST_DATASETS:
 			for illumination in ILLUMINATIONS:
