@@ -49,13 +49,13 @@ def init_directories():
 			os.makedirs(directory)
 
 	for fusion in fusion_techniques:
-		if not os.path.exists(os.path.join(MODEL_PATH, "resnext", fusion)):
-			os.makedirs(os.path.join(MODEL_PATH, "resnext", fusion))
+		if not os.path.exists(os.path.join(MODEL_PATH, fusion)):
+			os.makedirs(os.path.join(MODEL_PATH, fusion))
 
 	for test_dataset in TEST_DATASETS:
 		for illumination in ILLUMINATIONS:
 			for directory in ["inference", "images"]:
 				for fusion in fusion_techniques:
-					test_dataset_path = os.path.join(TEST_ROOT_DATASET_DIR, "working_%s" % test_dataset, "%s_%s_204ch" % (test_dataset, illumination), "test", directory, "resnext", fusion)
+					test_dataset_path = os.path.join(TEST_ROOT_DATASET_DIR, "working_%s" % test_dataset, "%s_%s_204ch" % (test_dataset, illumination), "test", directory, fusion)
 					if not os.path.exists(test_dataset_path):
 						os.makedirs(test_dataset_path)
