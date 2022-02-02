@@ -24,6 +24,9 @@ ILLUMINATIONS = ["h", "cfl_led"]
 
 checkpoint_file = "HS_model_49.pkl"
 mobile_model_file = "model_concat_fruit.pth"
+onnx_file_name = "model.onnx"
+tf_model_dir = os.path.join("tfmodel")
+tflite_filename = "model.tflite"
 # checkpoint_file = "HS_model_%d.pkl" % end_epoch
 
 plt_dict = {"mathtext.default": "regular",

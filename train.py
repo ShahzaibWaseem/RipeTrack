@@ -13,7 +13,7 @@ from dataset import DatasetFromHdf5
 from models.resblock import resblock, ResNeXtBottleneck
 from models.model import Network
 
-from utils import AverageMeter, initialize_logger, save_checkpoint, record_loss, make_h5_dataset
+from utils import AverageMeter, initialize_logger, save_checkpoint, record_loss, make_h5_dataset, modeltoONNX, ONNXtotf, tf_to_tflite
 
 from config import TRAIN_DATASET_DIR, TRAIN_DATASET_FILES, VALID_DATASET_FILES, LOGS_PATH, init_directories, fusion_techniques, batch_size, end_epoch, init_lr, model_run_title
 
@@ -177,4 +177,7 @@ if __name__ == "__main__":
 	init_directories()
 	# make_h5_dataset(TRAIN_DATASET_DIR=os.path.join(TRAIN_DATASET_DIR, "train"), h5_filename="train_apple_halogen_4to51bands_whole.h5")
 	# make_h5_dataset(TRAIN_DATASET_DIR=os.path.join(TRAIN_DATASET_DIR, "valid"), h5_filename="valid_apple_halogen_4to51bands_whole.h5")
-	main()
+	# main()
+	modeltoONNX()
+	ONNXtotf()
+	# tf_to_tflite()

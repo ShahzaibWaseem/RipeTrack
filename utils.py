@@ -10,14 +10,15 @@ import logging
 from glob import glob
 from imageio import imread
 
+import tensorflow as tf
 import torch
 from torch.autograd import Variable
 from torch.utils.mobile_optimizer import optimize_for_mobile
 
 from models.model import Network
-from models.resblock import resblock
+from models.resblock import resblock, ResNeXtBottleneck
 
-from config import MODEL_PATH, LOGS_PATH, MODEL_PATH, checkpoint_file, mobile_model_file, var_name
+from config import MODEL_PATH, LOGS_PATH, MODEL_PATH, checkpoint_file, mobile_model_file, var_name, onnx_file_name, tf_model_dir, tflite_filename
 
 class AverageMeter(object):
 	"""Computes and stores the average and current value."""
@@ -136,3 +137,29 @@ def makeMobileModel(fusion="concat"):
 	script_model = torch.jit.trace(model, input_tensor)
 	script_model_optimized = optimize_for_mobile(script_model)
 	script_model_optimized.save(os.path.join(LOGS_PATH, mobile_model_file))
+
+def modeltoONNX(fusion="concat"):
+	save_point = torch.load(os.path.join(MODEL_PATH, fusion, checkpoint_file))
+	model_param = save_point["state_dict"]
+	model = Network(ResNeXtBottleneck, block_num=10, input_channel=4, output_channel=51, fusion=fusion)
+	model.load_state_dict(model_param)
+
+	model.eval()
+	input_tensor = torch.rand(1, 4, 512, 512)
+
+	torch.onnx.export(model, input_tensor, os.path.join(LOGS_PATH, onnx_file_name), export_params=True, verbose=True)
+
+def ONNXtotf():
+	pass
+
+def tf_to_tflite():
+	converter = tf.lite.TFLiteConverter.from_saved_model(tf_model_dir)		# path to the SavedModel directory
+	converter.target_spec.supported_ops = [
+		tf.lite.OpsSet.TFLITE_BUILTINS,  	# enable TFLite ops
+		tf.lite.OpsSet.SELECT_TF_OPS  		# enable TF ops
+	]
+	tflite_model = converter.convert()
+
+	# Save the model
+	with open(os.path.join(LOGS_PATH, tflite_filename), "wb") as f:
+		f.write(tflite_model)
