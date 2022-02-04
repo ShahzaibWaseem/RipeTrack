@@ -1,27 +1,33 @@
 import os
 
 TRAIN_DATASET_DIR = os.path.join("..", "data_preparation", "datasets")
-TRAIN_DATASET_FILES = ["train_chicken_halogen_4to51bands.h5",
-					   "train_steak_halogen_4to51bands.h5",
-					   "train_steak_cfl_led_4to51bands.h5"]
-VALID_DATASET_FILES = ["valid_chicken_halogen_4to51bands.h5",
-					   "valid_steak_halogen_4to51bands.h5",
-					   "valid_steak_cfl_led_4to51bands.h5"]
 
+TRAIN_DATASET_FILES = ["train_avocado_halogen_4to51bands.h5",
+					   "train_apple_halogen_4to51bands.h5",
+					   "train_apple_cfl_led_4to51bands.h5",
+					   "train_avocado_cfl_led_4to51bands.h5"]
+VALID_DATASET_FILES = ["valid_avocado_halogen_4to51bands.h5",
+					   "valid_apple_halogen_4to51bands.h5",
+					   "valid_apple_cfl_led_4to51bands.h5",
+					   "valid_avocado_cfl_led_4to51bands.h5"]
 batch_size = 64
 end_epoch = 50
 init_lr = 0.0001
-fusion_techniques = ["concat", "add", "multiply"]
+fusion_techniques = ["add", "concat"]
 
+<<<<<<< Updated upstream
 MODEL_NAME = "resnextGNN"
 DATASET_NAME = "meat"
 model_run_title = "%s %s (%s (halogen + CFL + LED) - SAM MRAE patches)\n"
+=======
+model_run_title = "%s AWAN (fruit (halogen + CFL + LED) - SAM MRAE patches)\n"
+>>>>>>> Stashed changes
 
 MODEL_PATH = os.path.join(".", "checkpoints")
 LOGS_PATH = os.path.join(".", "logs")
 
 TEST_ROOT_DATASET_DIR = os.path.join(os.path.dirname(TRAIN_DATASET_DIR), "working_datasets")
-TEST_DATASETS = ["chicken", "steak"]
+TEST_DATASETS = ["avocado", "apple"]
 ILLUMINATIONS = ["h", "cfl_led"]
 
 checkpoint_file = "HS_model_49.pkl"
