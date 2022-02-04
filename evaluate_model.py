@@ -15,27 +15,29 @@ from torchsummary import summary
 from glob import glob
 from imageio import imread
 
-from config import ILLUMINATIONS, TEST_ROOT_DATASET_DIR, TEST_DATASETS, MODEL_PATH, var_name, model_run_title, checkpoint_file, fusion_techniques, init_directories
+from config import ILLUMINATIONS, TEST_ROOT_DATASET_DIR, TEST_DATASETS, MODEL_PATH, MODEL_NAME, DATASET_NAME, var_name, model_run_title, checkpoint_file, fusion_techniques, init_directories
 
 def main():
 	logger = initialize_logger(filename="test.log")
 	log_string = "[%s] Time=%0.9f, MRAE=%0.9f, RRMSE=%0.9f, SAM=%0.9f, SID=%0.9f, PSNR=%0.9f, SSIM=%0.9f"
+	fileprestring = "%s_%s" % (MODEL_NAME, DATASET_NAME)
 
 	for fusion in fusion_techniques:
-		save_point = torch.load(os.path.join(MODEL_PATH, fusion, checkpoint_file))
+		save_point = torch.load(os.path.join(MODEL_PATH, fusion, checkpoint_file % (fileprestring)))
 		model_param = save_point["state_dict"]
 		model = Network(ResNeXtBottleneck, block_num=10, input_channel=4, output_channel=51, fusion=fusion)
 		model.load_state_dict(model_param)
 		model = model.cuda()
 		model.eval()
-		print(summary(model, (4, 512, 512)))
+		print(summary(model, (4, 512, 512), verbose=2))
 
 		for test_dataset in TEST_DATASETS:
 			for illumination in ILLUMINATIONS:
-				print("\n" + model_run_title)
-				logger.info(model_run_title)
-				print("\nFusion: %s\nDataset: %s\nIllumination: %s\nModel: %s\n" % (fusion, test_dataset, illumination, checkpoint_file))
-				logger.info("Fusion: %s\tDataset: %s\tIllumination: %s\tModel: %s\n" % (fusion, test_dataset, illumination, checkpoint_file))
+				model_run = model_run_title % (fusion, MODEL_NAME, DATASET_NAME)
+				print("\n" + model_run)
+				logger.info(model_run)
+				print("\nFusion: %s\nDataset: %s\nIllumination: %s\nModel: %s\n" % (fusion, test_dataset, illumination, checkpoint_file % fileprestring))
+				logger.info("Fusion: %s\tDataset: %s\tIllumination: %s\tModel: %s\n" % (fusion, test_dataset, illumination, checkpoint_file % fileprestring))
 
 				TEST_DATASET_DIR = os.path.join(TEST_ROOT_DATASET_DIR, "working_%s" % test_dataset, "%s_%s_204ch" % (test_dataset, illumination), "test")
 				GT_PATH = os.path.join(TEST_DATASET_DIR, "mat")
