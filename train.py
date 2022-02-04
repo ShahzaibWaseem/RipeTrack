@@ -5,6 +5,7 @@ import time
 
 import torch
 import torch.nn as nn
+from torchsummary import summary
 from torch.autograd import Variable
 from torch.utils.data import DataLoader, ConcatDataset
 
@@ -68,28 +69,28 @@ def main():
 	# 		model.load_state_dict(checkpoint["state_dict"])
 	# 		optimizer.load_state_dict(checkpoint["optimizer"])
 
-	log_string = "Epoch [%d], Iter[%d], Time:%.9f, Learning Rate: %.9f, Train Loss: %.9f, Validation Loss: %.9f"
+	log_string = "Epoch [%2d], Iter[%4d], Time:%.9f, Learning Rate: %.9f, Train Loss: %.9f (%.9f, %.9f), Validation Loss: %.9f (%.9f, %.9f)"
 	fileprestring = "%s_%s" % (MODEL_NAME, DATASET_NAME)
 
 	for fusion in fusion_techniques:
 		model = Network(ResNeXtBottleneck, block_num=10, input_channel=4, output_channel=51, fusion=fusion)
 		optimizer=torch.optim.Adam(model.parameters(), lr=init_lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.01)
-		
+		print(summary(model, (4, 64, 64), verbose=1))
 		if torch.cuda.device_count() > 1:
 			model = nn.DataParallel(model)
 		if torch.cuda.is_available():
 			model.cuda()
 
 		model_run = model_run_title % (fusion, MODEL_NAME, DATASET_NAME)
-		
+
 		print("\n" + model_run)
 		logger.info(model_run)
 
 		for epoch in range(start_epoch+1, end_epoch):
 			start_time = time.time()
 
-			train_loss, iteration, lr = train(train_data_loader, model, criterion_mrae, criterion_sam, optimizer, iteration, init_lr, end_epoch)
-			val_loss = validate(val_data_loader, model, criterion_mrae, criterion_sam)
+			train_loss, train_loss_mrae, train_loss_sam, iteration, lr = train(train_data_loader, model, criterion_mrae, criterion_sam, optimizer, iteration, init_lr, end_epoch)
+			val_loss, val_loss_mrae, val_loss_sam = validate(val_data_loader, model, criterion_mrae, criterion_sam)
 
 			save_checkpoint(epoch, fileprestring, fusion, iteration, model, optimizer)
 
@@ -97,9 +98,9 @@ def main():
 			epoch_time = end_time - start_time
 
 			# Printing and saving losses
-			record_loss(loss_csv,epoch, iteration, epoch_time, lr, train_loss, val_loss)
-			print(log_string % (epoch, iteration, epoch_time, lr, train_loss, val_loss))
-			logger.info(log_string % (epoch, iteration, epoch_time, lr, train_loss, val_loss))
+			record_loss(loss_csv, epoch, iteration, epoch_time, lr, train_loss, val_loss)
+			print(log_string % (epoch, iteration, epoch_time, lr, train_loss, train_loss_mrae, train_loss_sam, val_loss, val_loss_mrae, val_loss_sam))
+			logger.info(log_string % (epoch, iteration, epoch_time, lr, train_loss, train_loss_mrae, train_loss_sam, val_loss, val_loss_mrae, val_loss_sam))
 		iteration = 0
 
 # Training
@@ -107,6 +108,7 @@ def train(train_data_loader, model, criterion_mrae, criterion_sam, optimizer, it
 	""" Trains the model on the dataloader provided """
 	model.train()
 	losses = AverageMeter()
+	losses_mrae, losses_sam = AverageMeter(), AverageMeter()
 
 	for i, (images, labels) in enumerate(train_data_loader):
 		labels = labels.cuda()
@@ -120,7 +122,9 @@ def train(train_data_loader, model, criterion_mrae, criterion_sam, optimizer, it
 
 		# Forward + Backward + Optimize
 		output = model(images)
-		loss = criterion_mrae(output, labels) + (criterion_sam(output, labels) * 0.1)
+		loss_mrae = criterion_mrae(output, labels)
+		loss_sam = criterion_sam(output, labels)
+		loss = loss_mrae + loss_sam * 0.1
 
 		optimizer.zero_grad()
 		loss.backward()
@@ -129,14 +133,17 @@ def train(train_data_loader, model, criterion_mrae, criterion_sam, optimizer, it
 		optimizer.step()
 		#  record loss
 		losses.update(loss.item())
+		losses_mrae.update(loss_mrae.item())
+		losses_sam.update(loss_sam.item())
 
-	return losses.avg, iteration, lr
+	return losses.avg, losses_mrae.avg, losses_sam.avg, iteration, lr
 
 # Validate
 def validate(val_data_loader, model, criterion_mrae, criterion_sam):
 	""" Validates the model on the dataloader provided """
 	model.eval()
 	losses = AverageMeter()
+	losses_mrae, losses_sam = AverageMeter(), AverageMeter()
 
 	for i, (images, labels) in enumerate(val_data_loader):
 		images = images.cuda()
@@ -147,12 +154,17 @@ def validate(val_data_loader, model, criterion_mrae, criterion_sam):
 
 		# compute output
 		output = model(images)
-		loss = criterion_mrae(output, labels) + (criterion_sam(output, labels) * 0.1)
+		loss_mrae = criterion_mrae(output, labels)
+		loss_sam = criterion_sam(output, labels)
+
+		loss = loss_mrae + loss_sam * 0.1
 
 		#  record loss
 		losses.update(loss.item())
+		losses_mrae.update(loss_mrae.item())
+		losses_sam.update(loss_sam.item())
 
-	return losses.avg
+	return losses.avg, losses_mrae.avg, losses_sam.avg
 
 # Learning rate
 def poly_lr_scheduler(optimizer, init_lr, iteraion, lr_decay_iter=1,
