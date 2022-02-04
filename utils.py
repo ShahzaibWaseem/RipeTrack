@@ -11,6 +11,10 @@ from glob import glob
 from imageio import imread
 
 import tensorflow as tf
+
+import onnx
+import onnx_tf
+
 import torch
 from torch.autograd import Variable
 from torch.utils.mobile_optimizer import optimize_for_mobile
@@ -50,13 +54,13 @@ def initialize_logger(filename):
 	logger.setLevel(logging.INFO)
 	return logger
 
-def save_checkpoint(epoch, fusion, iteration, model, optimizer):
+def save_checkpoint(epoch, file_prestring, fusion, iteration, model, optimizer):
 	"""Save the checkpoint."""
 	state = {"epoch": epoch,
 			 "iter": iteration,
 			 "state_dict": model.state_dict(),
 			 "optimizer": optimizer.state_dict()}
-	torch.save(state, os.path.join(MODEL_PATH, fusion, "HS_model_%d.pkl" % (epoch)))
+	torch.save(state, os.path.join(MODEL_PATH, fusion, "MS_%s_%d.pkl" % (file_prestring, epoch)))
 
 def save_matv73(mat_name, var_name, var):
 	hdf5storage.savemat(mat_name, {var_name: var}, format="7.3", store_python_metadata=True)
@@ -150,13 +154,15 @@ def modeltoONNX(fusion="concat"):
 	torch.onnx.export(model, input_tensor, os.path.join(LOGS_PATH, onnx_file_name), export_params=True, verbose=True)
 
 def ONNXtotf():
-	pass
+	model = onnx.load(os.path.join(LOGS_PATH, onnx_file_name))
+	tf_model = onnx_tf.backend.prepare(model)
+	tf_model.export_graph(tf_model_dir)
 
 def tf_to_tflite():
 	converter = tf.lite.TFLiteConverter.from_saved_model(tf_model_dir)		# path to the SavedModel directory
 	converter.target_spec.supported_ops = [
-		tf.lite.OpsSet.TFLITE_BUILTINS,  	# enable TFLite ops
-		tf.lite.OpsSet.SELECT_TF_OPS  		# enable TF ops
+		tf.lite.OpsSet.TFLITE_BUILTINS,		# enable TFLite ops
+		tf.lite.OpsSet.SELECT_TF_OPS		# enable TF ops
 	]
 	tflite_model = converter.convert()
 
