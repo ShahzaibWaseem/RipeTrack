@@ -6,3 +6,4 @@ logs/
 inference/
 images/
 **/__pycache__/
+tfmodel/
