@@ -15,7 +15,7 @@ from models.model import Network
 
 from utils import AverageMeter, initialize_logger, save_checkpoint, record_loss, make_h5_dataset, modeltoONNX, ONNXtotf, tf_to_tflite
 
-from config import TRAIN_DATASET_DIR, TRAIN_DATASET_FILES, VALID_DATASET_FILES, LOGS_PATH, init_directories, fusion_techniques, batch_size, end_epoch, init_lr, model_run_title
+from config import TRAIN_DATASET_DIR, TRAIN_DATASET_FILES, VALID_DATASET_FILES, LOGS_PATH, MODEL_NAME, DATASET_NAME, init_directories, fusion_techniques, batch_size, end_epoch, init_lr, model_run_title
 
 def main():
 	torch.backends.cudnn.benchmark = True
@@ -69,6 +69,7 @@ def main():
 	# 		optimizer.load_state_dict(checkpoint["optimizer"])
 
 	log_string = "Epoch [%d], Iter[%d], Time:%.9f, Learning Rate: %.9f, Train Loss: %.9f, Validation Loss: %.9f"
+	fileprestring = "%s_%s" % (MODEL_NAME, DATASET_NAME)
 
 	for fusion in fusion_techniques:
 		model = Network(ResNeXtBottleneck, block_num=10, input_channel=4, output_channel=51, fusion=fusion)
@@ -79,7 +80,7 @@ def main():
 		if torch.cuda.is_available():
 			model.cuda()
 
-		model_run = model_run_title % fusion
+		model_run = model_run_title % (fusion, MODEL_NAME, DATASET_NAME)
 		
 		print("\n" + model_run)
 		logger.info(model_run)
@@ -90,7 +91,7 @@ def main():
 			train_loss, iteration, lr = train(train_data_loader, model, criterion_mrae, criterion_sam, optimizer, iteration, init_lr, end_epoch)
 			val_loss = validate(val_data_loader, model, criterion_mrae, criterion_sam)
 
-			save_checkpoint(epoch, fusion, iteration, model, optimizer)
+			save_checkpoint(epoch, fileprestring, fusion, iteration, model, optimizer)
 
 			end_time = time.time()
 			epoch_time = end_time - start_time
@@ -177,7 +178,7 @@ if __name__ == "__main__":
 	init_directories()
 	# make_h5_dataset(TRAIN_DATASET_DIR=os.path.join(TRAIN_DATASET_DIR, "train"), h5_filename="train_apple_halogen_4to51bands_whole.h5")
 	# make_h5_dataset(TRAIN_DATASET_DIR=os.path.join(TRAIN_DATASET_DIR, "valid"), h5_filename="valid_apple_halogen_4to51bands_whole.h5")
-	# main()
-	modeltoONNX()
-	ONNXtotf()
+	main()
+	# modeltoONNX()
+	# ONNXtotf()
 	# tf_to_tflite()

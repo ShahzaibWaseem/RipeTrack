@@ -13,7 +13,9 @@ end_epoch = 50
 init_lr = 0.0001
 fusion_techniques = ["concat", "add", "multiply"]
 
-model_run_title = "%s RESNET + GNN (meat (halogen + CFL + LED) - SAM MRAE patches)\n"
+MODEL_NAME = "resnextGNN"
+DATASET_NAME = "meat"
+model_run_title = "%s %s (%s (halogen + CFL + LED) - SAM MRAE patches)\n"
 
 MODEL_PATH = os.path.join(".", "checkpoints")
 LOGS_PATH = os.path.join(".", "logs")
@@ -23,7 +25,7 @@ TEST_DATASETS = ["chicken", "steak"]
 ILLUMINATIONS = ["h", "cfl_led"]
 
 checkpoint_file = "HS_model_49.pkl"
-mobile_model_file = "model_concat_fruit.pth"
+mobile_model_file = "model_concat_%s.pth" % DATASET_NAME
 onnx_file_name = "model.onnx"
 tf_model_dir = os.path.join("tfmodel")
 tflite_filename = "model.tflite"
@@ -56,6 +58,6 @@ def init_directories():
 		for illumination in ILLUMINATIONS:
 			for directory in ["inference", "images"]:
 				for fusion in fusion_techniques:
-					test_dataset_path = os.path.join(TEST_ROOT_DATASET_DIR, "working_%s" % test_dataset, "%s_%s_204ch" % (test_dataset, illumination), "test", directory, fusion)
+					test_dataset_path = os.path.join(TEST_ROOT_DATASET_DIR, "working_%s" % test_dataset, "%s_%s_204ch" % (test_dataset, illumination), "test", directory, MODEL_NAME, fusion)
 					if not os.path.exists(test_dataset_path):
 						os.makedirs(test_dataset_path)
