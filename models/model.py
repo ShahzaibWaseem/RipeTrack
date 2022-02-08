@@ -2,46 +2,15 @@ from math import sqrt
 
 import torch
 import torch.nn as nn
-
-from models.gnn import GraphNet
 from models.resblock import conv3x3
 
 class Network(nn.Module):
-	def __init__(self, block, block_num, input_channel, output_channel, fusion="concat"):
+	def __init__(self, block, block_num=10, input_channel=4, n_hidden=64, output_channel=51):
 		super(Network, self).__init__()
-
-		self.in_channels = input_channel
-		self.out_channels = output_channel
-		self.fusion = fusion
-		self.input_conv = conv3x3(self.in_channels, out_channels=64)
+		self.input_conv = conv3x3(input_channel, out_channels=n_hidden)
 		self.input_relu = nn.ReLU()
-
-		self.downsampling_block = nn.Sequential(nn.Conv2d(64, 64, 3, stride=2, padding=1),
-												nn.BatchNorm2d(64),
-												nn.ReLU(),
-												nn.Conv2d(64, 64, 3, stride=2, padding=1),
-												nn.BatchNorm2d(64),
-												nn.ReLU())
-
-		self.gnn_block = nn.Sequential(nn.BatchNorm2d(64),
-									   GraphNet(img_size=64, input_channel=64, pred_edge=True),
-									   nn.BatchNorm2d(64))
-
-		self.upsampling_block = nn.Sequential(nn.ConvTranspose2d(64, 64, 3, stride=2, padding=1, output_padding=1),
-											  nn.BatchNorm2d(64),
-											  nn.ReLU(),
-											  nn.ConvTranspose2d(64, 64, 3, stride=2, padding=1, output_padding=1),
-											  nn.BatchNorm2d(64),
-											  nn.ReLU())
-
-		self.conv_seq = self.make_layer(block, block_num, 64, 64, stride=1, cardinality=32, base_width=4, widen_factor=1)
-		self.conv = conv3x3(64, 64)
-		self.relu = nn.ReLU(inplace=True)
-
-		if (self.fusion == "concat"):
-			self.output_conv = conv3x3(in_channels=64*2, out_channels=self.out_channels)
-		elif (self.fusion == "multiply" or self.fusion == "add" or self.fusion == "resnext"):
-			self.output_conv = conv3x3(in_channels=64, out_channels=self.out_channels)
+		self.conv_seq = self.make_layer(block, block_num, n_hidden, n_hidden, stride=1, cardinality=32, base_width=4, widen_factor=1)
+		self.output_conv = conv3x3(in_channels=n_hidden, out_channels=output_channel)
 
 		for m in self.modules():
 			if isinstance(m, nn.Conv2d):
@@ -54,36 +23,13 @@ class Network(nn.Module):
 			layers.append(block(in_channels, out_channels, stride, cardinality, base_width, widen_factor))
 		return nn.Sequential(*layers)
 
-	def split_tensor(self, image, split_size=64):
-		""" splits the tensor if the model is too big for the GPU's VRAM """
-		torch.cuda.empty_cache()
-		size = image.size(2)
-		output = torch.zeros(image.shape, dtype=torch.float32).cuda()
-		for split in range(size//split_size):
-			start, end = split*split_size, (split+1)*split_size
-			output[:, :, start:end, start:end] = self.gnn_block(image[:, :, start:end, start:end])
-		return output
-
 	def forward(self, x):
 		out = self.input_conv(x)
 		out = self.input_relu(out)
 		residual = out
 
-		gnn_out = self.downsampling_block(out)
-		gnn_out = self.gnn_block(gnn_out)
-		gnn_out = self.upsampling_block(gnn_out)
-
 		out = self.conv_seq(out)
-		out = self.conv(out)
+
 		out = torch.add(out, residual)
-		out = self.relu(out)
-
-		if (self.fusion == "concat"):
-			out = torch.cat((out, gnn_out), 1)
-		elif (self.fusion == "add"):
-			out = out + gnn_out
-		elif (self.fusion == "multiply"):
-			out = out * gnn_out
-
 		out = self.output_conv(out)
 		return out
