@@ -16,6 +16,7 @@ init_lr = 0.0001
 fusion_techniques = ["add", "concat"]
 
 MODEL_NAME = "resnext"
+DATASET_NAME = "meat"
 ILLUMINATIONS = ["h", "cfl_led"]
 
 if "h" in ILLUMINATIONS and "cfl_led" in ILLUMINATIONS:
