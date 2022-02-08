@@ -19,7 +19,7 @@ from config import ILLUMINATIONS, TEST_ROOT_DATASET_DIR, TEST_DATASETS, MODEL_PA
 
 def main():
 	logger = initialize_logger(filename="test.log")
-	log_string = "[%s] Time=%0.9f, MRAE=%0.9f, RRMSE=%0.9f, SAM=%0.9f, SID=%0.9f, PSNR=%0.9f, SSIM=%0.9f"
+	log_string = "[%15s] Time=%0.9f, MRAE=%0.9f, RRMSE=%0.9f, SAM=%0.9f, SID=%0.9f, PSNR=%0.9f, SSIM=%0.9f"
 	fileprestring = "%s_%s" % (MODEL_NAME, DATASET_NAME)
 
 	for fusion in fusion_techniques:
@@ -29,7 +29,6 @@ def main():
 		model.load_state_dict(model_param)
 		model = model.cuda()
 		model.eval()
-		print(summary(model, (4, 512, 512), verbose=2))
 
 		for test_dataset in TEST_DATASETS:
 			for illumination in ILLUMINATIONS:
@@ -44,7 +43,7 @@ def main():
 				IMG_PATH = os.path.join(TEST_DATASET_DIR, "cameraRGBN")
 				INF_PATH = os.path.join(TEST_DATASET_DIR, "inference")
 
-				for img_name in glob(os.path.join(IMG_PATH, "*_dense_demRGB.png")):
+				for img_name in sorted(glob(os.path.join(IMG_PATH, "*_dense_demRGB.png"))):
 					start_time = time.time()
 					if(illumination == "cfl_led"):
 						mat_file_name = "_".join(img_name.split("/")[-1].split("_")[0:2])
@@ -68,7 +67,7 @@ def main():
 					time_taken = time.time() - start_time
 
 					mat_name = "inf_" + mat_file_name + ".mat"
-					mat_dir = os.path.join(INF_PATH, "resnext", fusion, mat_name)
+					mat_dir = os.path.join(INF_PATH, MODEL_NAME, fusion, mat_name)
 					save_matv73(mat_dir, var_name, inf)
 
 					gt_name = mat_file_name + ".mat"
