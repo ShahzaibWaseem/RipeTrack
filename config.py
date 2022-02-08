@@ -2,18 +2,15 @@ import os
 
 TRAIN_DATASET_DIR = os.path.join("..", "data_preparation", "datasets")
 
-TRAIN_DATASET_FILES = ["train_avocado_halogen_4to51bands.h5",
-					   "train_apple_halogen_4to51bands.h5",
-					   "train_apple_cfl_led_4to51bands.h5",
-					   "train_avocado_cfl_led_4to51bands.h5"]
-VALID_DATASET_FILES = ["valid_avocado_halogen_4to51bands.h5",
-					   "valid_apple_halogen_4to51bands.h5",
-					   "valid_apple_cfl_led_4to51bands.h5",
-					   "valid_avocado_cfl_led_4to51bands.h5"]
+TRAIN_DATASET_FILES = ["train_chicken_halogen_4to51bands.h5",
+					   "train_steak_halogen_4to51bands.h5",
+					   "train_steak_cfl_led_4to51bands.h5"]
+VALID_DATASET_FILES = ["valid_chicken_halogen_4to51bands.h5",
+					   "valid_steak_halogen_4to51bands.h5",
+					   "valid_steak_cfl_led_4to51bands.h5"]
 batch_size = 64
-end_epoch = 51
+end_epoch = 101
 init_lr = 0.0001
-fusion_techniques = ["add", "concat"]
 
 MODEL_NAME = "resnext"
 DATASET_NAME = "meat"
@@ -32,8 +29,7 @@ MODEL_PATH = os.path.join(".", "checkpoints")
 LOGS_PATH = os.path.join(".", "logs")
 
 TEST_ROOT_DATASET_DIR = os.path.join(os.path.dirname(TRAIN_DATASET_DIR), "working_datasets")
-TEST_DATASETS = ["avocado", "apple"]
-ILLUMINATIONS = ["h", "cfl_led"]
+TEST_DATASETS = ["steak", "chicken"]
 
 checkpoint_fileprestring = "%s_%s" % (MODEL_NAME, DATASET_NAME)
 checkpoint_file = "MS_%s_23.pkl" % checkpoint_fileprestring
@@ -62,13 +58,9 @@ def init_directories():
 		if not os.path.exists(directory):
 			os.makedirs(directory)
 
-	for fusion in fusion_techniques:
-		if not os.path.exists(os.path.join(MODEL_PATH, fusion)):
-			os.makedirs(os.path.join(MODEL_PATH, fusion))
-
 	for test_dataset in TEST_DATASETS:
 		for illumination in ILLUMINATIONS:
 			for directory in ["inference", "images"]:
 				test_dataset_path = os.path.join(TEST_ROOT_DATASET_DIR, "working_%s" % test_dataset, "%s_%s_204ch" % (test_dataset, illumination), "test", directory, MODEL_NAME)
-					if not os.path.exists(test_dataset_path):
-						os.makedirs(test_dataset_path)
+				if not os.path.exists(test_dataset_path):
+					os.makedirs(test_dataset_path)
