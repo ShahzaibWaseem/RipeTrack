@@ -22,7 +22,7 @@ from torch.utils.mobile_optimizer import optimize_for_mobile
 from models.model import Network
 from models.resblock import resblock, ResNeXtBottleneck
 
-from config import MODEL_PATH, LOGS_PATH, MODEL_PATH, checkpoint_file, mobile_model_file, var_name, onnx_file_name, tf_model_dir, tflite_filename
+from config import MODEL_PATH, LOGS_PATH, MODEL_PATH, checkpoint_fileprestring, checkpoint_file, mobile_model_file, var_name, onnx_file_name, tf_model_dir, tflite_filename
 
 class AverageMeter(object):
 	"""Computes and stores the average and current value."""
@@ -54,13 +54,13 @@ def initialize_logger(filename):
 	logger.setLevel(logging.INFO)
 	return logger
 
-def save_checkpoint(epoch, file_prestring, fusion, iteration, model, optimizer):
+def save_checkpoint(epoch, iteration, model, optimizer):
 	"""Save the checkpoint."""
 	state = {"epoch": epoch,
 			 "iter": iteration,
 			 "state_dict": model.state_dict(),
 			 "optimizer": optimizer.state_dict()}
-	torch.save(state, os.path.join(MODEL_PATH, fusion, "MS_%s_%d.pkl" % (file_prestring, epoch)))
+	torch.save(state, os.path.join(MODEL_PATH, "MS_%s_%d.pkl" % (checkpoint_fileprestring, epoch)))
 
 def save_matv73(mat_name, var_name, var):
 	hdf5storage.savemat(mat_name, {var_name: var}, format="7.3", store_python_metadata=True)
