@@ -12,7 +12,10 @@ class GraphNet(nn.Module):
 	def __init__(self, img_size=64, input_channel=4, pred_edge=False):
 		super(GraphNet, self).__init__()
 		self.pred_edge = pred_edge
+		self.input_channel = input_channel
 		self.N = img_size ** 2
+
+		self.recon_layer = nn.Conv1d(4, input_channel, kernel_size=3, stride=1, padding=1, bias=True)
 
 		if pred_edge:
 			col, row = np.meshgrid(np.arange(img_size), np.arange(img_size))
@@ -60,15 +63,39 @@ class GraphNet(nn.Module):
 	def forward(self, x):
 		# print("graph shape", x.shape)
 		B = x.size(0)
-		# C = x.size(1)
+		C = x.size(1)
+		img_size = x.size(2)
 
 		if self.pred_edge:
 			self.A = self.pred_edge_fc(self.coord).squeeze()
 
-		# print(self.A.shape, self.A.unsqueeze(0).expand(B, self.N, -1).shape, x.view(B, self.N, -1).shape)
+		gnn_out = torch.cuda.FloatTensor([B, C, img_size, img_size])
+		adj=self.A.unsqueeze(0).expand(B, -1, -1)
+		inp=x.view(B, -1, C)
+		# print(adj.shape, inp.shape)
 
-		# B is batch size, N is the squared of the spatial space (hence the adjecency matrix)
-		avg_neighbor_features = (torch.bmm(self.A.unsqueeze(0).expand(B, self.N, -1),
-								 x.view(B, self.N, -1)))#.view(B, -1))
+		for channel in range(C):
+			inp_c = inp[:,:,channel].unsqueeze(2)
+			# print("adj, inp", adj.shape, inp_c.shape)
 
-		return avg_neighbor_features.reshape(x.shape)
+			avg_neighbor_features = torch.bmm(adj, inp_c)
+			# print("bmm", avg_neighbor_features.shape)
+			
+			avg_neighbor_features = avg_neighbor_features.view(B, -1)
+			# print("view", avg_neighbor_features.shape)
+
+			avg_neighbor_features = avg_neighbor_features.unsqueeze(1)
+			# print("unsq", avg_neighbor_features.shape)
+			if channel == 0:
+				gnn_out = avg_neighbor_features
+			else:
+				gnn_out = torch.cat((gnn_out, avg_neighbor_features), 1)
+
+		gnn_out = self.recon_layer(gnn_out)
+		#cat
+		# print(gnn_out.shape)
+		# avg_neighbor_features = (torch.bmm(self.A.unsqueeze(0).expand(B, -1, -1),
+		# 						 x.view(B, -1, 1)).view(B, -1))
+
+		# avg_neighbor_features = torch.bmm(self.A, x)
+		return gnn_out.reshape(-1, self.input_channel, img_size, img_size)
