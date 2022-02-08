@@ -9,43 +9,42 @@ from loss import test_mrae, test_rrmse, spectral_angle, spectral_divergence, tes
 import matplotlib
 import matplotlib.pyplot as plt
 
-from config import ILLUMINATIONS, TEST_ROOT_DATASET_DIR, TEST_DATASETS, LOGS_PATH, var_name, text_font_dict, plt_dict, fusion_techniques
+from config import ILLUMINATIONS, TEST_ROOT_DATASET_DIR, TEST_DATASETS, LOGS_PATH, var_name, text_font_dict, plt_dict
 
 def getBandErrors():
 	""" returns a dictionary containing band wise errors for all evaluated results eg: {'concat_avocado_1111': {}} """
 	errors = {}
 	log_string = "[%s.mat] MRAE=%0.9f, RRMSE=%0.9f, SAM=%0.9f, SID=%0.9f, PSNR=%0.9f, SSIM=%0.9f"
 
-	for fusion in fusion_techniques:
-		for test_dataset in TEST_DATASETS:
-			for illumination in ILLUMINATIONS:
-				TEST_DATASET_DIR = os.path.join(TEST_ROOT_DATASET_DIR, "working_%s" % test_dataset, "%s_%s_204ch" % (test_dataset, illumination), "test")
-				GT_PATH = os.path.join(TEST_DATASET_DIR, "mat")
-				INF_PATH = os.path.join(TEST_DATASET_DIR, "inference")
+	for test_dataset in TEST_DATASETS:
+		for illumination in ILLUMINATIONS:
+			TEST_DATASET_DIR = os.path.join(TEST_ROOT_DATASET_DIR, "working_%s" % test_dataset, "%s_%s_204ch" % (test_dataset, illumination), "test")
+			GT_PATH = os.path.join(TEST_DATASET_DIR, "mat")
+			INF_PATH = os.path.join(TEST_DATASET_DIR, "inference")
 
-				print("\nFusion: %s\nDataset: %s\nIllumination: %s\n" % (fusion, test_dataset, illumination))
+			print("\nDataset: %s\nIllumination: %s\n" % (test_dataset, illumination))
 
-				for filename in glob(os.path.join(INF_PATH, fusion, "*.mat")):
-					mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors = [], [], [], [], [], []
-					if(illumination == "cfl_led"):
-						gt_filename = "_".join(filename.split("/")[-1].split(".")[0].split("_")[1:3])
-					else:
-						gt_filename = filename.split("/")[-1].split(".")[0].split("_")[-1]
+			for filename in glob(os.path.join(INF_PATH, "*.mat")):
+				mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors = [], [], [], [], [], []
+				if(illumination == "cfl_led"):
+					gt_filename = "_".join(filename.split("/")[-1].split(".")[0].split("_")[1:3])
+				else:
+					gt_filename = filename.split("/")[-1].split(".")[0].split("_")[-1]
 
-					inf_file = load_mat(filename, var_name)[var_name]
-					gt_file = load_mat(os.path.join(GT_PATH, gt_filename + ".mat"), var_name)[var_name]
-					gt_file = gt_file[:,:,1:204:4]
+				inf_file = load_mat(filename, var_name)[var_name]
+				gt_file = load_mat(os.path.join(GT_PATH, gt_filename + ".mat"), var_name)[var_name]
+				gt_file = gt_file[:,:,1:204:4]
 
-					for band in range(51):
-						mrae_errors.append(float(test_mrae(inf_file[:,:, band], gt_file[:,:, band])))
-						rrmse_errors.append(float(test_rrmse(inf_file[:,:, band], gt_file[:,:, band])))
-						sam_errors.append(float(spectral_angle(inf_file[:,:, band].reshape(-1,)/4095, gt_file[:,:, band].reshape(-1,)/4095)))
-						sid_errors.append(float(spectral_divergence(inf_file[:,:, band].reshape(-1,)/4095, gt_file[:,:, band].reshape(-1,)/4095)))
-						psnr_errors.append(float(test_psnr(inf_file[:,:, band], gt_file[:,:, band])))
-						ssim_errors.append(float(test_ssim(inf_file[:,:, band], gt_file[:,:, band])))
+				for band in range(51):
+					mrae_errors.append(float(test_mrae(inf_file[:,:, band], gt_file[:,:, band])))
+					rrmse_errors.append(float(test_rrmse(inf_file[:,:, band], gt_file[:,:, band])))
+					sam_errors.append(float(spectral_angle(inf_file[:,:, band].reshape(-1,)/4095, gt_file[:,:, band].reshape(-1,)/4095)))
+					sid_errors.append(float(spectral_divergence(inf_file[:,:, band].reshape(-1,)/4095, gt_file[:,:, band].reshape(-1,)/4095)))
+					psnr_errors.append(float(test_psnr(inf_file[:,:, band], gt_file[:,:, band])))
+					ssim_errors.append(float(test_ssim(inf_file[:,:, band], gt_file[:,:, band])))
 
-					print(log_string % (gt_filename, average(mrae_errors), average(rrmse_errors), average(sam_errors), average(sid_errors), average(psnr_errors), average(ssim_errors)))
-					errors.update({fusion + "_" + test_dataset + "_" + gt_filename: {"MRAE": mrae_errors, "RRMSE": rrmse_errors, "SAM": sam_errors, "SID": sid_errors, "PSNR": psnr_errors, "SSIM": ssim_errors}})
+				print(log_string % (gt_filename, average(mrae_errors), average(rrmse_errors), average(sam_errors), average(sid_errors), average(psnr_errors), average(ssim_errors)))
+				errors.update({test_dataset + "_" + gt_filename: {"MRAE": mrae_errors, "RRMSE": rrmse_errors, "SAM": sam_errors, "SID": sid_errors, "PSNR": psnr_errors, "SSIM": ssim_errors}})
 	return errors
 
 def populateNumpyArrays(errors):
