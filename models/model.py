@@ -10,6 +10,8 @@ class Network(nn.Module):
 		self.input_conv = conv3x3(input_channel, out_channels=n_hidden)
 		self.input_relu = nn.ReLU()
 		self.conv_seq = self.make_layer(block, block_num, n_hidden, n_hidden, stride=1, cardinality=32, base_width=4, widen_factor=1)
+		self.conv = conv3x3(n_hidden, n_hidden)
+		self.relu = nn.ReLU(inplace=True)
 		self.output_conv = conv3x3(in_channels=n_hidden, out_channels=output_channel)
 
 		for m in self.modules():
@@ -29,7 +31,9 @@ class Network(nn.Module):
 		residual = out
 
 		out = self.conv_seq(out)
-
+		out = self.conv(out)
 		out = torch.add(out, residual)
+		out = self.relu(out)
+
 		out = self.output_conv(out)
 		return out
