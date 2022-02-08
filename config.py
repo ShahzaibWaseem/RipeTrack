@@ -11,17 +11,21 @@ VALID_DATASET_FILES = ["valid_avocado_halogen_4to51bands.h5",
 					   "valid_apple_cfl_led_4to51bands.h5",
 					   "valid_avocado_cfl_led_4to51bands.h5"]
 batch_size = 64
-end_epoch = 50
+end_epoch = 51
 init_lr = 0.0001
 fusion_techniques = ["add", "concat"]
 
-<<<<<<< Updated upstream
-MODEL_NAME = "resnextGNN"
-DATASET_NAME = "meat"
-model_run_title = "%s %s (%s (halogen + CFL + LED) - SAM MRAE patches)\n"
-=======
-model_run_title = "%s AWAN (fruit (halogen + CFL + LED) - SAM MRAE patches)\n"
->>>>>>> Stashed changes
+MODEL_NAME = "resnext"
+ILLUMINATIONS = ["h", "cfl_led"]
+
+if "h" in ILLUMINATIONS and "cfl_led" in ILLUMINATIONS:
+	illumination_string = "halogen + CFL-LED"
+elif "h" in ILLUMINATIONS:
+	illumination_string = "halogen"
+elif "cfl_led" in ILLUMINATIONS:
+	illumination_string = "CFL-LED"
+
+model_run_title = "Model: %s\tDataset: %s\tIllumination: %s\tLosses: SAM + MRAE\tFull Image or Patches: patches\n" % (MODEL_NAME, DATASET_NAME, illumination_string)
 
 MODEL_PATH = os.path.join(".", "checkpoints")
 LOGS_PATH = os.path.join(".", "logs")
@@ -30,8 +34,9 @@ TEST_ROOT_DATASET_DIR = os.path.join(os.path.dirname(TRAIN_DATASET_DIR), "workin
 TEST_DATASETS = ["avocado", "apple"]
 ILLUMINATIONS = ["h", "cfl_led"]
 
-checkpoint_file = "HS_model_49.pkl"
-mobile_model_file = "model_concat_%s.pth" % DATASET_NAME
+checkpoint_fileprestring = "%s_%s" % (MODEL_NAME, DATASET_NAME)
+checkpoint_file = "MS_%s_23.pkl" % checkpoint_fileprestring
+mobile_model_file = "model_%s.pth" % DATASET_NAME
 onnx_file_name = "model.onnx"
 tf_model_dir = os.path.join("tfmodel")
 tflite_filename = "model.tflite"
@@ -63,7 +68,6 @@ def init_directories():
 	for test_dataset in TEST_DATASETS:
 		for illumination in ILLUMINATIONS:
 			for directory in ["inference", "images"]:
-				for fusion in fusion_techniques:
-					test_dataset_path = os.path.join(TEST_ROOT_DATASET_DIR, "working_%s" % test_dataset, "%s_%s_204ch" % (test_dataset, illumination), "test", directory, MODEL_NAME, fusion)
+				test_dataset_path = os.path.join(TEST_ROOT_DATASET_DIR, "working_%s" % test_dataset, "%s_%s_204ch" % (test_dataset, illumination), "test", directory, MODEL_NAME)
 					if not os.path.exists(test_dataset_path):
 						os.makedirs(test_dataset_path)
