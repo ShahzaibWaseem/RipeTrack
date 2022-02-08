@@ -68,11 +68,11 @@ class GraphNet(nn.Module):
 
 		gnn_out = torch.cuda.FloatTensor([B, C, img_size, img_size])
 		adj=self.A.unsqueeze(0).expand(B, -1, -1)
-		inp=x.view(B, C, -1)
-		# print(inp.shape)
+		inp=x.view(B, -1, C)
+		# print(adj.shape, inp.shape)
 
 		for channel in range(C):
-			inp_c = inp[:,channel,:].unsqueeze(2)
+			inp_c = inp[:,:,channel].unsqueeze(2)
 			# print("adj, inp", adj.shape, inp_c.shape)
 
 			avg_neighbor_features = torch.bmm(adj, inp_c)
