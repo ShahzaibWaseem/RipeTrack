@@ -29,27 +29,32 @@ class DatasetFromDirectory(Dataset):
 		self.var_name = var_name
 		self.labels = []
 		self.images = []
-		for filename in glob(os.path.join(self.root, "RGB", "*.png")):
+
+		for filename in glob(os.path.join(self.root, "*_dense_demRGB.png")):
 			mat_file_name = filename.split("/")[-1].split("_")[0]
 			rgb_img_path = filename
-			nir_img_path = os.path.join(self.root, "NIR", filename.split("/")[-1].replace("RGB", "NIRc"))
+			nir_img_path = os.path.join(self.root, filename.split("/")[-1].replace("RGB", "NIRc"))
 			
 			rgb = imread(rgb_img_path)
 			rgb = rgb/255
+			rgb[:,:, [0, 2]] = rgb[:,:, [2, 0]]		# flipping red and blue channels (shape used for training)
 
 			nir = imread(nir_img_path)
 			nir = nir/255
 
 			image = np.dstack((rgb, nir))
-
-			ground_t = load_mat(os.path.join(self.root, "mat", mat_file_name + ".mat"), self.var_name)
-			ground_t = ground_t[self.var_name][:,:,1:204:4] / 4095
+			image = np.transpose(image, [2, 0, 1])
 
 			self.images.append(image)
-			self.labels.append(ground_t)
+			self.labels.append(os.path.join(os.path.dirname(self.root), "mat", mat_file_name + ".mat"))
+			del rgb, nir
 
 	def __len__(self):
 		return len(self.images)
 
 	def __getitem__(self, index):
-		return self.images[index], self.labels[index]
+		ground_t = load_mat(self.labels[index], self.var_name)
+		ground_t = ground_t[self.var_name][:,:,1:204:4] / 4095
+		ground_t = np.transpose(ground_t, [2, 0, 1])
+
+		return torch.from_numpy(self.images[index]).float(), torch.from_numpy(ground_t).float()

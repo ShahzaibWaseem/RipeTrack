@@ -104,17 +104,20 @@ def make_h5_dataset(DATASET_DIR, h5_filename):
 	labels = []
 	images = []
 
-	for filename in glob(os.path.join(DATASET_DIR, "RGB", "*.png")):
+	for filename in glob(os.path.join(DATASET_DIR, "*_dense_demRGB.png")):
 		mat_file_name = filename.split("/")[-1].split("_")[0]
 		rgb_img_path = filename
-		nir_img_path = os.path.join(DATASET_DIR, "NIR", filename.split("/")[-1].replace("RGB", "NIRc"))
-
-		rgb = imread(rgb_img_path)/255
+		nir_img_path = os.path.join(DATASET_DIR, filename.split("/")[-1].replace("RGB", "NIRc"))
+		print(rgb_img_path)
+		rgb = imread(rgb_img_path)
+		rgb = rgb/255
+		rgb[:,:, [0, 2]] = rgb[:,:, [2, 0]]		# flipping red and blue channels (shape used for training)
+		
 		nir = imread(nir_img_path)/255
 		image = np.dstack((rgb, nir))
 		image = np.transpose(image, [2, 0, 1])
 
-		ground_t = load_mat(os.path.join(DATASET_DIR, "mat", mat_file_name + ".mat"), var_name)
+		ground_t = load_mat(os.path.join(os.path.dirname(DATASET_DIR), "mat", mat_file_name + ".mat"), var_name)
 		ground_t = ground_t[var_name][:, :, 1:204:4]/4095
 		ground_t = np.transpose(ground_t, [2, 0, 1])
 
