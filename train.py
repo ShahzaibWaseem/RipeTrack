@@ -16,7 +16,7 @@ from models.model import Network
 
 from utils import AverageMeter, initialize_logger, save_checkpoint, record_loss, make_h5_dataset, modeltoONNX, ONNXtotf, tf_to_tflite
 
-from config import TRAIN_DATASET_DIR, TRAIN_DATASET_FILES, VALID_DATASET_FILES, LOGS_PATH, MODEL_NAME, DATASET_NAME, init_directories, fusion_techniques, batch_size, end_epoch, init_lr, model_run_title
+from config import TRAIN_DATASET_DIR, TRAIN_DATASET_FILES, VALID_DATASET_FILES, LOGS_PATH, MODEL_NAME, DATASET_NAME, init_directories, batch_size, end_epoch, init_lr, model_run_title
 
 def main():
 	torch.backends.cudnn.benchmark = True
@@ -55,6 +55,7 @@ def main():
 	criterion_mrae = mrae_loss
 	criterion_sam = sam_loss
 
+	# Log files
 	logger = initialize_logger(filename="train.log")
 	loss_csv = open(os.path.join(LOGS_PATH, "loss.csv"), "w+")
 
@@ -69,39 +70,38 @@ def main():
 	# 		model.load_state_dict(checkpoint["state_dict"])
 	# 		optimizer.load_state_dict(checkpoint["optimizer"])
 
-	log_string = "Epoch [%2d], Iter[%4d], Time:%.9f, Learning Rate: %.9f, Train Loss: %.9f (%.9f, %.9f), Validation Loss: %.9f (%.9f, %.9f)"
-	fileprestring = "%s_%s" % (MODEL_NAME, DATASET_NAME)
+	log_string = "Epoch [%3d], Iter[%5d], Time:%.9f, Learning Rate: %.9f, Train Loss: %.9f (%.9f, %.9f), Validation Loss: %.9f (%.9f, %.9f)"
 
-	for fusion in fusion_techniques:
-		model = Network(ResNeXtBottleneck, block_num=10, input_channel=4, output_channel=51, fusion=fusion)
-		optimizer=torch.optim.Adam(model.parameters(), lr=init_lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.01)
-		print(summary(model, (4, 64, 64), verbose=1))
-		if torch.cuda.device_count() > 1:
-			model = nn.DataParallel(model)
-		if torch.cuda.is_available():
-			model.cuda()
+	# make model
+	model = Network(block=ResNeXtBottleneck, block_num=10, input_channel=4, n_hidden=64, output_channel=51)
+	optimizer=torch.optim.Adam(model.parameters(), lr=init_lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.01)
+	print(summary(model, (4, 64, 64), verbose=1))
 
-		model_run = model_run_title % (fusion, MODEL_NAME, DATASET_NAME)
+	# Multi Device Cuda
+	if torch.cuda.device_count() > 1:
+		model = nn.DataParallel(model)
+	if torch.cuda.is_available():
+		model.cuda()
 
-		print("\n" + model_run)
-		logger.info(model_run)
+	print("\n" + model_run_title)
+	logger.info(model_run_title)
 
-		for epoch in range(start_epoch+1, end_epoch):
-			start_time = time.time()
+	for epoch in range(start_epoch+1, end_epoch):
+		start_time = time.time()
 
-			train_loss, train_loss_mrae, train_loss_sam, iteration, lr = train(train_data_loader, model, criterion_mrae, criterion_sam, optimizer, iteration, init_lr, end_epoch)
-			val_loss, val_loss_mrae, val_loss_sam = validate(val_data_loader, model, criterion_mrae, criterion_sam)
+		train_loss, train_loss_mrae, train_loss_sam, iteration, lr = train(train_data_loader, model, criterion_mrae, criterion_sam, optimizer, iteration, init_lr, end_epoch)
+		val_loss, val_loss_mrae, val_loss_sam = validate(val_data_loader, model, criterion_mrae, criterion_sam)
 
-			save_checkpoint(epoch, fileprestring, fusion, iteration, model, optimizer)
+		save_checkpoint(epoch, iteration, model, optimizer)
 
-			end_time = time.time()
-			epoch_time = end_time - start_time
+		end_time = time.time()
+		epoch_time = end_time - start_time
 
-			# Printing and saving losses
-			record_loss(loss_csv, epoch, iteration, epoch_time, lr, train_loss, val_loss)
-			print(log_string % (epoch, iteration, epoch_time, lr, train_loss, train_loss_mrae, train_loss_sam, val_loss, val_loss_mrae, val_loss_sam))
-			logger.info(log_string % (epoch, iteration, epoch_time, lr, train_loss, train_loss_mrae, train_loss_sam, val_loss, val_loss_mrae, val_loss_sam))
-		iteration = 0
+		# Printing and saving losses
+		record_loss(loss_csv, epoch, iteration, epoch_time, lr, train_loss, val_loss)
+		print(log_string % (epoch, iteration, epoch_time, lr, train_loss, train_loss_mrae, train_loss_sam, val_loss, val_loss_mrae, val_loss_sam))
+		logger.info(log_string % (epoch, iteration, epoch_time, lr, train_loss, train_loss_mrae, train_loss_sam, val_loss, val_loss_mrae, val_loss_sam))
+	iteration = 0
 
 # Training
 def train(train_data_loader, model, criterion_mrae, criterion_sam, optimizer, iteration, init_lr, end_epoch):
@@ -110,7 +110,7 @@ def train(train_data_loader, model, criterion_mrae, criterion_sam, optimizer, it
 	losses = AverageMeter()
 	losses_mrae, losses_sam = AverageMeter(), AverageMeter()
 
-	for i, (images, labels) in enumerate(train_data_loader):
+	for _, (images, labels) in enumerate(train_data_loader):
 		labels = labels.cuda()
 		images = images.cuda()
 
@@ -145,9 +145,10 @@ def validate(val_data_loader, model, criterion_mrae, criterion_sam):
 	losses = AverageMeter()
 	losses_mrae, losses_sam = AverageMeter(), AverageMeter()
 
-	for i, (images, labels) in enumerate(val_data_loader):
+	for _, (images, labels) in enumerate(val_data_loader):
 		images = images.cuda()
 		labels = labels.cuda()
+
 		with torch.no_grad():
 			images = torch.autograd.Variable(images)
 			labels = torch.autograd.Variable(labels)
