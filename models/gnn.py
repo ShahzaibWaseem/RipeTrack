@@ -22,12 +22,12 @@ class GraphNet(nn.Module):
 			coord = torch.from_numpy(coord).float()  # 4096, 2
 			coord = torch.cat((coord.unsqueeze(0).repeat(self.N, 1,  1),
 									coord.unsqueeze(1).repeat(1, self.N, 1)), dim=2)
-
 			# coord = torch.abs(coord[:, :, [0, 1]] - coord[:, :, [2, 3]])
-			self.pred_edge_fc = nn.Sequential(nn.Linear(4, 64),
+			self.pred_edge_fc = nn.Sequential(nn.Linear(4, 16),
 											  nn.ReLU(),
-											  nn.Linear(64, 1),
+											  nn.Linear(16, 1),
 											  nn.Tanh())
+			# self.pred_edge_fc = nn.Sequential(nn.Conv2d(4, 64, 3))
 			self.register_buffer('coord', coord)
 		else:
 			# precompute adjacency matrix before training
@@ -60,15 +60,38 @@ class GraphNet(nn.Module):
 	def forward(self, x):
 		# print("graph shape", x.shape)
 		B = x.size(0)
-		# C = x.size(1)
+		img_size = x.size(2)
+		C = x.size(1)
 
 		if self.pred_edge:
 			self.A = self.pred_edge_fc(self.coord).squeeze()
 
-		# print(self.A.shape, self.A.unsqueeze(0).expand(B, self.N, -1).shape, x.view(B, self.N, -1).shape)
+		gnn_out = torch.cuda.FloatTensor([B, C, img_size, img_size])
+		adj=self.A.unsqueeze(0).expand(B, -1, -1)
+		inp=x.view(B, C, -1)
+		# print(inp.shape)
 
-		# B is batch size, N is the squared of the spatial space (hence the adjecency matrix)
-		avg_neighbor_features = (torch.bmm(self.A.unsqueeze(0).expand(B, self.N, -1),
-								 x.view(B, self.N, -1)))#.view(B, -1))
+		for channel in range(C):
+			inp_c = inp[:,channel,:].unsqueeze(2)
+			# print("adj, inp", adj.shape, inp_c.shape)
 
-		return avg_neighbor_features.reshape(x.shape)
+			avg_neighbor_features = torch.bmm(adj, inp_c)
+			# print("bmm", avg_neighbor_features.shape)
+			
+			avg_neighbor_features = avg_neighbor_features.view(B, img_size, img_size)
+			# print("view", avg_neighbor_features.shape)
+
+			avg_neighbor_features = avg_neighbor_features.unsqueeze(1)
+			# print("unsq", avg_neighbor_features.shape)
+			if channel == 0:
+				gnn_out = avg_neighbor_features
+			else:
+				gnn_out = torch.cat((gnn_out, avg_neighbor_features), 1)
+
+		#cat
+		# print(gnn_out.shape)
+		# avg_neighbor_features = (torch.bmm(self.A.unsqueeze(0).expand(B, -1, -1),
+		# 						 x.view(B, -1, 1)).view(B, -1))
+
+		# avg_neighbor_features = torch.bmm(self.A, x)
+		return gnn_out

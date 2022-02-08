@@ -3,20 +3,24 @@ from __future__ import division
 import  os
 import time
 
+from skimage.segmentation import slic
+
 import torch
 import torch.nn as nn
+
+from torchvision.datasets import MNIST
 from torchsummary import summary
 from torch.autograd import Variable
 from torch.utils.data import DataLoader, ConcatDataset
 
 from loss import mrae_loss, sam_loss
-from dataset import DatasetFromHdf5
+from dataset import DatasetFromHdf5, DatasetFromDirectory
 from models.resblock import resblock, ResNeXtBottleneck
 from models.model import Network
 
 from utils import AverageMeter, initialize_logger, save_checkpoint, record_loss, make_h5_dataset, modeltoONNX, ONNXtotf, tf_to_tflite
 
-from config import TRAIN_DATASET_DIR, TRAIN_DATASET_FILES, VALID_DATASET_FILES, LOGS_PATH, MODEL_NAME, DATASET_NAME, init_directories, fusion_techniques, batch_size, end_epoch, init_lr, model_run_title
+from config import ILLUMINATIONS, TRAIN_DATASET_DIR, TEST_ROOT_DATASET_DIR, TRAIN_DATASET_FILES, VALID_DATASET_FILES, TEST_DATASETS, LOGS_PATH, MODEL_NAME, DATASET_NAME, init_directories, fusion_techniques, batch_size, end_epoch, init_lr, model_run_title
 
 def main():
 	torch.backends.cudnn.benchmark = True
@@ -24,31 +28,45 @@ def main():
 	# Dataset
 	train_data, valid_data = [], []
 
-	for datasetFile in TRAIN_DATASET_FILES:
-		h5_filepath = os.path.join(TRAIN_DATASET_DIR, datasetFile)
-		dataset = DatasetFromHdf5(h5_filepath)
-		train_data.append(dataset)
-		print("Length of Training Set (%s):" % datasetFile, len(dataset))
+	# for datasetFile in TRAIN_DATASET_FILES:
+	# 	h5_filepath = os.path.join(TRAIN_DATASET_DIR, datasetFile)
+	# 	dataset = DatasetFromHdf5(h5_filepath)
+	# 	train_data = dataset
+	# 	print("Length of Training Set (%s):" % datasetFile, len(dataset))
 
-	for datasetFile in VALID_DATASET_FILES:
-		h5_filepath = os.path.join(TRAIN_DATASET_DIR, datasetFile)
-		dataset = DatasetFromHdf5(h5_filepath)
-		valid_data.append(dataset)
-		print("Length of Validation Set (%s):" % datasetFile, len(dataset))
+	# for datasetFile in VALID_DATASET_FILES:
+	# 	h5_filepath = os.path.join(TRAIN_DATASET_DIR, datasetFile)
+	# 	dataset = DatasetFromHdf5(h5_filepath)
+	# 	valid_data = dataset
+	# 	print("Length of Validation Set (%s):" % datasetFile, len(dataset))
+
+	for test_dataset in TEST_DATASETS:
+		for illumination in ILLUMINATIONS:
+			dataset_dir = os.path.join(TEST_ROOT_DATASET_DIR, "working_%s" % test_dataset, "%s_%s_204ch" % (test_dataset, illumination), "train", "cameraRGBN")
+			dataset = DatasetFromDirectory(dataset_dir)
+			train_data = dataset
+			print("Length of Training Set (%s):" % test_dataset, len(dataset))
+
+	for test_dataset in TEST_DATASETS:
+		for illumination in ILLUMINATIONS:
+			dataset_dir = os.path.join(TEST_ROOT_DATASET_DIR, "working_%s" % test_dataset, "%s_%s_204ch" % (test_dataset, illumination), "valid", "cameraRGBN")
+			dataset = DatasetFromDirectory(dataset_dir)
+			valid_data = dataset
+			print("Length of Validation Set (%s):" % test_dataset, len(dataset))
 
 	# Data Loader (Input Pipeline)
-	train_data_loader = DataLoader(dataset=ConcatDataset(train_data),
+	train_data_loader = DataLoader(dataset=ConcatDataset([train_data]),
 								   num_workers=1,
 								   batch_size=batch_size,
 								   shuffle=True,
 								   pin_memory=True)
 
-	val_data_loader = DataLoader(dataset=ConcatDataset(valid_data),
-								 num_workers=1,
-								 batch_size=1,
-								 shuffle=False,
-								 pin_memory=True)
-
+	val_data_loader = DataLoader(dataset=ConcatDataset([valid_data]),
+								   num_workers=1,
+								   batch_size=1,
+								   shuffle=True,
+								   pin_memory=True)
+	print("Data Loaded")
 	# Parameters, Loss and Optimizer
 	start_epoch = 0
 	iteration = 0
@@ -74,8 +92,8 @@ def main():
 
 	for fusion in fusion_techniques:
 		model = Network(ResNeXtBottleneck, block_num=10, input_channel=4, output_channel=51, fusion=fusion)
-		optimizer=torch.optim.Adam(model.parameters(), lr=init_lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.01)
-		print(summary(model, (4, 64, 64), verbose=1))
+		optimizer = torch.optim.Adam(model.parameters(), lr=init_lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.01)
+		# print(summary(model, (4, 64, 64), verbose=1))
 		if torch.cuda.device_count() > 1:
 			model = nn.DataParallel(model)
 		if torch.cuda.is_available():
@@ -122,9 +140,13 @@ def train(train_data_loader, model, criterion_mrae, criterion_sam, optimizer, it
 
 		# Forward + Backward + Optimize
 		output = model(images)
-		loss_mrae = criterion_mrae(output, labels)
-		loss_sam = criterion_sam(output, labels)
+		loss_mrae = criterion_mrae(output, labels).cuda()
+		loss_sam = criterion_sam(output, labels).cuda()
+
 		loss = loss_mrae + loss_sam * 0.1
+		loss = loss.cuda()
+
+		# print(i, loss_mrae, loss_sam, loss)
 
 		optimizer.zero_grad()
 		loss.backward()
@@ -154,10 +176,11 @@ def validate(val_data_loader, model, criterion_mrae, criterion_sam):
 
 		# compute output
 		output = model(images)
-		loss_mrae = criterion_mrae(output, labels)
-		loss_sam = criterion_sam(output, labels)
+		loss_mrae = criterion_mrae(output, labels).cuda()
+		loss_sam = criterion_sam(output, labels).cuda()
 
 		loss = loss_mrae + loss_sam * 0.1
+		loss = loss.cuda()
 
 		#  record loss
 		losses.update(loss.item())
@@ -188,8 +211,8 @@ def poly_lr_scheduler(optimizer, init_lr, iteraion, lr_decay_iter=1,
 
 if __name__ == "__main__":
 	init_directories()
-	# make_h5_dataset(TRAIN_DATASET_DIR=os.path.join(TRAIN_DATASET_DIR, "train"), h5_filename="train_apple_halogen_4to51bands_whole.h5")
-	# make_h5_dataset(TRAIN_DATASET_DIR=os.path.join(TRAIN_DATASET_DIR, "valid"), h5_filename="valid_apple_halogen_4to51bands_whole.h5")
+	# make_h5_dataset(DATASET_DIR=os.path.join(os.path.dirname(TRAIN_DATASET_DIR), "working_datasets", "working_avocado", "avocado_h_204ch", "train", "cameraRGBN"), h5_filename="train_avocado_halogen_4to51bands_whole.h5")
+	# make_h5_dataset(DATASET_DIR=os.path.join(os.path.dirname(TRAIN_DATASET_DIR), "working_datasets", "working_avocado", "avocado_h_204ch", "valid", "cameraRGBN"), h5_filename="valid_avocado_halogen_4to51bands_whole.h5")
 	main()
 	# modeltoONNX()
 	# ONNXtotf()
