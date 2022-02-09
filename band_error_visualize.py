@@ -20,7 +20,7 @@ def getBandErrors():
 		for illumination in ILLUMINATIONS:
 			TEST_DATASET_DIR = os.path.join(TEST_ROOT_DATASET_DIR, "working_%s" % test_dataset, "%s_%s_204ch" % (test_dataset, illumination), "test")
 			GT_PATH = os.path.join(TEST_DATASET_DIR, "mat")
-			INF_PATH = os.path.join(TEST_DATASET_DIR, "inference")
+			INF_PATH = os.path.join(TEST_DATASET_DIR, "inference", MODEL_NAME)
 
 			print("\nDataset: %s\nIllumination: %s\n" % (test_dataset, illumination))
 
@@ -118,9 +118,9 @@ if __name__ == "__main__":
 	mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors = meanErrors(errors)
 
 	errors = {}
-	errors.update({"Meat": {"MRAE": mrae_errors.tolist(), "RRMSE": rrmse_errors.tolist(), "SAM": sam_errors.tolist(), "SID": sid_errors.tolist(), "PSNR": psnr_errors.tolist(), "SSIM": ssim_errors.tolist()}})
+	errors.update({"Fruit": {"MRAE": mrae_errors.tolist(), "RRMSE": rrmse_errors.tolist(), "SAM": sam_errors.tolist(), "SID": sid_errors.tolist(), "PSNR": psnr_errors.tolist(), "SSIM": ssim_errors.tolist()}})
 
-	jsonFile = open(os.path.join(LOGS_PATH, "errors_meat.json"), "w")
+	jsonFile = open(os.path.join(LOGS_PATH, "errors_fruit.json"), "w")
 	jsonFile.write(json.dumps(errors, indent=4))
 	jsonFile.close()
 
