@@ -16,7 +16,7 @@ from models.model import Network
 
 from utils import AverageMeter, initialize_logger, save_checkpoint, record_loss, make_h5_dataset, modeltoONNX, ONNXtotf, tf_to_tflite
 
-from config import TRAIN_DATASET_DIR, TRAIN_DATASET_FILES, VALID_DATASET_FILES, LOGS_PATH, MODEL_NAME, DATASET_NAME, init_directories, batch_size, end_epoch, init_lr, model_run_title
+from config import TRAIN_DATASET_DIR, TRAIN_DATASET_FILES, VALID_DATASET_FILES, LOGS_PATH, MODEL_NAME, DATASET_NAME, init_directories, checkpoint_file, batch_size, end_epoch, init_lr, model_run_title
 
 def main():
 	torch.backends.cudnn.benchmark = True
@@ -59,8 +59,15 @@ def main():
 	logger = initialize_logger(filename="train.log")
 	loss_csv = open(os.path.join(LOGS_PATH, "loss.csv"), "w+")
 
-	# Resume
-	# resume_file = ""
+	log_string = "Epoch [%3d], Iter[%5d], Time:%.9f, Learning Rate: %.9f, Train Loss: %.9f (%.9f, %.9f), Validation Loss: %.9f (%.9f, %.9f)"
+
+	# make model
+	model = Network(block=ResNeXtBottleneck, block_num=10, input_channel=4, n_hidden=64, output_channel=51)
+	optimizer=torch.optim.Adam(model.parameters(), lr=init_lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.01)
+	print(summary(model, (4, 64, 64), verbose=1))
+
+	# # Resume
+	# resume_file = checkpoint_file
 	# if resume_file:
 	# 	if os.path.isfile(resume_file):
 	# 		print("=> loading checkpoint '{}'".format(resume_file))
@@ -69,13 +76,6 @@ def main():
 	# 		iteration = checkpoint["iter"]
 	# 		model.load_state_dict(checkpoint["state_dict"])
 	# 		optimizer.load_state_dict(checkpoint["optimizer"])
-
-	log_string = "Epoch [%3d], Iter[%5d], Time:%.9f, Learning Rate: %.9f, Train Loss: %.9f (%.9f, %.9f), Validation Loss: %.9f (%.9f, %.9f)"
-
-	# make model
-	model = Network(block=ResNeXtBottleneck, block_num=10, input_channel=4, n_hidden=64, output_channel=51)
-	optimizer=torch.optim.Adam(model.parameters(), lr=init_lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.01)
-	print(summary(model, (4, 64, 64), verbose=1))
 
 	# Multi Device Cuda
 	if torch.cuda.device_count() > 1:
