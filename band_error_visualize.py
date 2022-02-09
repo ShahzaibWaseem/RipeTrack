@@ -9,12 +9,12 @@ from loss import test_mrae, test_rrmse, spectral_angle, spectral_divergence, tes
 import matplotlib
 import matplotlib.pyplot as plt
 
-from config import ILLUMINATIONS, TEST_ROOT_DATASET_DIR, TEST_DATASETS, LOGS_PATH, var_name, text_font_dict, plt_dict
+from config import ILLUMINATIONS, MODEL_NAME, TEST_ROOT_DATASET_DIR, TEST_DATASETS, LOGS_PATH, var_name, text_font_dict, plt_dict
 
 def getBandErrors():
 	""" returns a dictionary containing band wise errors for all evaluated results eg: {'concat_avocado_1111': {}} """
 	errors = {}
-	log_string = "[%s.mat] MRAE=%0.9f, RRMSE=%0.9f, SAM=%0.9f, SID=%0.9f, PSNR=%0.9f, SSIM=%0.9f"
+	log_string = "[%7s.mat] MRAE=%0.9f, RRMSE=%0.9f, SAM=%0.9f, SID=%0.9f, PSNR=%0.9f, SSIM=%0.9f"
 
 	for test_dataset in TEST_DATASETS:
 		for illumination in ILLUMINATIONS:
@@ -24,7 +24,7 @@ def getBandErrors():
 
 			print("\nDataset: %s\nIllumination: %s\n" % (test_dataset, illumination))
 
-			for filename in glob(os.path.join(INF_PATH, "*.mat")):
+			for filename in sorted(glob(os.path.join(INF_PATH, "*.mat"))):
 				mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors = [], [], [], [], [], []
 				if(illumination == "cfl_led"):
 					gt_filename = "_".join(filename.split("/")[-1].split(".")[0].split("_")[1:3])
@@ -113,15 +113,16 @@ def plotBandErrors(mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_error
 	plt.savefig(os.path.join(LOGS_PATH, filename), bbox_inches="tight")
 
 if __name__ == "__main__":
-	# errors = getBandErrors()
-	# mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors = meanErrors(errors)
+	errors = getBandErrors()
+	print(errors.keys())
+	mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors = meanErrors(errors)
 
-	# errors = {}
-	# errors.update({"Meat": {"MRAE": mrae_errors.tolist(), "RRMSE": rrmse_errors.tolist(), "SAM": sam_errors.tolist(), "SID": sid_errors.tolist(), "PSNR": psnr_errors.tolist(), "SSIM": ssim_errors.tolist()}})
+	errors = {}
+	errors.update({"Meat": {"MRAE": mrae_errors.tolist(), "RRMSE": rrmse_errors.tolist(), "SAM": sam_errors.tolist(), "SID": sid_errors.tolist(), "PSNR": psnr_errors.tolist(), "SSIM": ssim_errors.tolist()}})
 
-	# jsonFile = open(os.path.join(LOGS_PATH, "errors_material.json"), "w")
-	# jsonFile.write(json.dumps(errors, indent=4))
-	# jsonFile.close()
+	jsonFile = open(os.path.join(LOGS_PATH, "errors_meat.json"), "w")
+	jsonFile.write(json.dumps(errors, indent=4))
+	jsonFile.close()
 
-	mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors = readDataFromFile(json_file="error.json")
-	plotBandErrors(mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors)
+	# mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors = readDataFromFile(json_file="error.json")
+	# plotBandErrors(mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors)

@@ -23,7 +23,7 @@ def main():
 
 			print("\nDataset: %s\nIllumination: %s\n" % (test_dataset, illumination))
 
-			for filename in glob(os.path.join(INF_PATH, "resnext", "*.mat")):
+			for filename in sorted(glob(os.path.join(INF_PATH, "resnext", "*.mat"))):
 				if(illumination == "cfl_led"):
 					gt_filename = "_".join(filename.split("/")[-1].split(".")[0].split("_")[1:3])
 				else:
