@@ -20,7 +20,7 @@ def getBandErrors():
 		for illumination in ILLUMINATIONS:
 			TEST_DATASET_DIR = os.path.join(TEST_ROOT_DATASET_DIR, "working_%s" % test_dataset, "%s_%s_204ch" % (test_dataset, illumination), "test")
 			GT_PATH = os.path.join(TEST_DATASET_DIR, "mat")
-			INF_PATH = os.path.join(TEST_DATASET_DIR, "inference", MODEL_NAME)
+			INF_PATH = os.path.join("..", "AWAN", "test", "inference", "AWAN_4to51_%s_%s" % (test_dataset, illumination))
 
 			print("\nDataset: %s\nIllumination: %s\n" % (test_dataset, illumination))
 
@@ -78,21 +78,24 @@ def readDataFromFile(json_file):
 	mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors = populateNumpyArrays(errors)
 	return mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors
 
-def plotSingleMetric(error, ax, ylim, xlabel, ylabel="Wavelength (nm)", legend_loc="upper right"):
+def plotSingleMetric(error, ax, ylim, ylabel, xlabel="Wavelength (nm)", legend_loc="upper right"):
 	""" plots error metrics on axis """
 	x=range(400, 1001, 12)
 	xlim=[400, 1000]
 
-	ax.plot(x, error[:, 0], "k:", linewidth=2, label="Material")
-	ax.plot(x, error[:, 1], "r-", linewidth=2, label="Meat")
-	ax.plot(x, error[:, 2], "b--", linewidth=2, label="Fruit")
+	ax.plot(x, error[:, 0], "k-", linewidth=2, label="HSCNN - Meat")
+	ax.plot(x, error[:, 1], "k--", linewidth=2, label="HSCNN - Fruit")
+	ax.plot(x, error[:, 2], "b-", linewidth=2, label="AWAN - Meat")
+	ax.plot(x, error[:, 3], "b--", linewidth=2, label="AWAN - Fruit")
+	ax.plot(x, error[:, 4], "r-", linewidth=2, label="MobiSpectral - Meat")
+	ax.plot(x, error[:, 5], "r--", linewidth=2, label="MobiSpectral - Fruit")
 	ax.legend(loc=legend_loc)
 	ax.set_ylabel(ylabel)
 	ax.set_xlabel(xlabel)
 	ax.set_xlim(xlim)
 	ax.set_ylim(ylim)
 
-def plotBandErrors(mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors, filename="errors.png"):
+def plotBandErrors(mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors, filename="errors.pdf"):
 	""" creates a matplotlib for all error metrics """
 	plt.rcParams.update(plt_dict)
 	matplotlib.rc("font", **text_font_dict)
@@ -100,29 +103,29 @@ def plotBandErrors(mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_error
 	plt.rcParams["axes.spines.right"] = False
 	plt.rcParams["axes.spines.top"] = False
 
-	_, axs = plt.subplots(nrows=3, ncols=2, figsize=(15, 15))
+	_, axs = plt.subplots(nrows=2, ncols=3, figsize=(25, 15))
 
-	plotSingleMetric(mrae_errors, axs[0][0], ylim=[0, 0.8], xlabel="MRAE")
-	plotSingleMetric(rrmse_errors, axs[0][1], ylim=[0, 0.8], xlabel="RRMSE")
-	plotSingleMetric(sam_errors, axs[1][0], ylim=[0, 0.8], xlabel="SAM")
-	plotSingleMetric(sid_errors, axs[1][1], ylim=[0, 0.2], xlabel="SID")
-	plotSingleMetric(psnr_errors, axs[2][0], ylim=[20, 80], xlabel="PSNR", legend_loc="upper center")
-	plotSingleMetric(ssim_errors, axs[2][1], ylim=[0.5, 1], xlabel="SSIM", legend_loc="lower right")
+	plotSingleMetric(mrae_errors, axs[0][0], ylim=[0, 0.4], ylabel="MRAE")
+	plotSingleMetric(rrmse_errors, axs[0][1], ylim=[0, 0.4], ylabel="RRMSE")
+	plotSingleMetric(sam_errors, axs[0][2], ylim=[0, 0.5], ylabel="SAM")
+	plotSingleMetric(sid_errors, axs[1][0], ylim=[0, 0.175], ylabel="SID")
+	plotSingleMetric(psnr_errors, axs[1][1], ylim=[20, 65], ylabel="PSNR", legend_loc="upper center")
+	plotSingleMetric(ssim_errors, axs[1][2], ylim=[0.8, 1], ylabel="SSIM", legend_loc="lower right")
 
 	plt.tight_layout()
 	plt.savefig(os.path.join(LOGS_PATH, filename), bbox_inches="tight")
 
 if __name__ == "__main__":
-	errors = getBandErrors()
-	print(errors.keys())
-	mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors = meanErrors(errors)
+	# errors = getBandErrors()
+	# print(errors.keys())
+	# mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors = meanErrors(errors)
 
-	errors = {}
-	errors.update({"Fruit": {"MRAE": mrae_errors.tolist(), "RRMSE": rrmse_errors.tolist(), "SAM": sam_errors.tolist(), "SID": sid_errors.tolist(), "PSNR": psnr_errors.tolist(), "SSIM": ssim_errors.tolist()}})
+	# errors = {}
+	# errors.update({"AWAN - Fruit": {"MRAE": mrae_errors.tolist(), "RRMSE": rrmse_errors.tolist(), "SAM": sam_errors.tolist(), "SID": sid_errors.tolist(), "PSNR": psnr_errors.tolist(), "SSIM": ssim_errors.tolist()}})
 
-	jsonFile = open(os.path.join(LOGS_PATH, "errors_fruit.json"), "w")
-	jsonFile.write(json.dumps(errors, indent=4))
-	jsonFile.close()
+	# jsonFile = open(os.path.join(LOGS_PATH, "errors_fruit.json"), "w")
+	# jsonFile.write(json.dumps(errors, indent=4))
+	# jsonFile.close()
 
-	# mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors = readDataFromFile(json_file="error.json")
-	# plotBandErrors(mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors)
+	mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors = readDataFromFile(json_file="errors.json")
+	plotBandErrors(mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors)
