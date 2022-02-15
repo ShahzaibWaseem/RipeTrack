@@ -133,9 +133,9 @@ def make_h5_dataset(DATASET_DIR, h5_filename):
 	hf.close()
 
 def makeMobileModel(fusion="concat"):
-	save_point = torch.load(os.path.join(MODEL_PATH, fusion, checkpoint_file))
+	save_point = torch.load(os.path.join(MODEL_PATH, checkpoint_file))
 	model_param = save_point["state_dict"]
-	model = Network(resblock, block_num=10, input_channel=4, output_channel=51, fusion=fusion)
+	model = Network(block=ResNeXtBottleneck, block_num=10, input_channel=4, n_hidden=64, output_channel=51)
 	model.load_state_dict(model_param)
 
 	model.eval()
@@ -148,7 +148,7 @@ def makeMobileModel(fusion="concat"):
 def modeltoONNX(fusion="concat"):
 	save_point = torch.load(os.path.join(MODEL_PATH, fusion, checkpoint_file))
 	model_param = save_point["state_dict"]
-	model = Network(ResNeXtBottleneck, block_num=10, input_channel=4, output_channel=51, fusion=fusion)
+	model = Network(block=ResNeXtBottleneck, block_num=10, input_channel=4, n_hidden=64, output_channel=51)
 	model.load_state_dict(model_param)
 
 	model.eval()
