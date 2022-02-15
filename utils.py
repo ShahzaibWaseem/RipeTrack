@@ -132,7 +132,7 @@ def make_h5_dataset(DATASET_DIR, h5_filename):
 	hf.create_dataset("label", dtype=np.float32, data=labels)
 	hf.close()
 
-def makeMobileModel(fusion="concat"):
+def makeMobileModel():
 	save_point = torch.load(os.path.join(MODEL_PATH, checkpoint_file))
 	model_param = save_point["state_dict"]
 	model = Network(block=ResNeXtBottleneck, block_num=10, input_channel=4, n_hidden=64, output_channel=51)
@@ -145,8 +145,8 @@ def makeMobileModel(fusion="concat"):
 	script_model_optimized = optimize_for_mobile(script_model)
 	script_model_optimized.save(os.path.join(LOGS_PATH, mobile_model_file))
 
-def modeltoONNX(fusion="concat"):
-	save_point = torch.load(os.path.join(MODEL_PATH, fusion, checkpoint_file))
+def modeltoONNX():
+	save_point = torch.load(os.path.join(MODEL_PATH, checkpoint_file))
 	model_param = save_point["state_dict"]
 	model = Network(block=ResNeXtBottleneck, block_num=10, input_channel=4, n_hidden=64, output_channel=51)
 	model.load_state_dict(model_param)
