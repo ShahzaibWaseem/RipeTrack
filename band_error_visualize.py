@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from config import ILLUMINATIONS, MODEL_NAME, TEST_ROOT_DATASET_DIR, TEST_DATASETS, LOGS_PATH, var_name, text_font_dict, plt_dict
 
 def getBandErrors():
-	""" returns a dictionary containing band wise errors for all evaluated results eg: {'concat_avocado_1111': {}} """
+	""" returns a dictionary containing band wise errors for all evaluated results eg: {'avocado_1111': {}} """
 	errors = {}
 	log_string = "[%7s.mat] MRAE=%0.9f, RRMSE=%0.9f, SAM=%0.9f, SID=%0.9f, PSNR=%0.9f, SSIM=%0.9f"
 
@@ -78,17 +78,14 @@ def readDataFromFile(json_file):
 	mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors = populateNumpyArrays(errors)
 	return mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors
 
-def plotSingleMetric(error, ax, ylim, ylabel, xlabel="Wavelength (nm)", legend_loc="upper right"):
+def plotSingleMetric(error, row, ax, ylim, ylabel, xlabel="Wavelength (nm)", legend_loc="upper right"):
 	""" plots error metrics on axis """
 	x=range(400, 1001, 12)
 	xlim=[400, 1000]
 
-	ax.plot(x, error[:, 0], "k-", linewidth=2, label="HSCNN - Meat")
-	ax.plot(x, error[:, 1], "k--", linewidth=2, label="HSCNN - Fruit")
-	ax.plot(x, error[:, 2], "b-", linewidth=2, label="AWAN - Meat")
-	ax.plot(x, error[:, 3], "b--", linewidth=2, label="AWAN - Fruit")
-	ax.plot(x, error[:, 4], "r-", linewidth=2, label="MobiSpectral - Meat")
-	ax.plot(x, error[:, 5], "r--", linewidth=2, label="MobiSpectral - Fruit")
+	ax.plot(x, error[:, row + 0], "k-", linewidth=2, label="HSCNN")
+	ax.plot(x, error[:, row + 2], "b-", linewidth=2, label="AWAN")
+	ax.plot(x, error[:, row + 4], "r-", linewidth=2, label="MobiSpectral")
 	ax.legend(loc=legend_loc)
 	ax.set_ylabel(ylabel)
 	ax.set_xlabel(xlabel)
@@ -102,15 +99,18 @@ def plotBandErrors(mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_error
 	plt.rcParams["axes.grid"] = True
 	plt.rcParams["axes.spines.right"] = False
 	plt.rcParams["axes.spines.top"] = False
+	rows = len(["Meat", "Fruit"])
 
-	_, axs = plt.subplots(nrows=2, ncols=3, figsize=(25, 15))
+	_, axs = plt.subplots(nrows=rows, ncols=6, figsize=(45, 15))
 
-	plotSingleMetric(mrae_errors, axs[0][0], ylim=[0, 0.4], ylabel="MRAE")
-	plotSingleMetric(rrmse_errors, axs[0][1], ylim=[0, 0.4], ylabel="RRMSE")
-	plotSingleMetric(sam_errors, axs[0][2], ylim=[0, 0.5], ylabel="SAM")
-	plotSingleMetric(sid_errors, axs[1][0], ylim=[0, 0.175], ylabel="SID")
-	plotSingleMetric(psnr_errors, axs[1][1], ylim=[20, 65], ylabel="PSNR", legend_loc="upper center")
-	plotSingleMetric(ssim_errors, axs[1][2], ylim=[0.8, 1], ylabel="SSIM", legend_loc="lower right")
+	for row in range(rows):
+		plotSingleMetric(mrae_errors, row, axs[row][0], ylim=[0, 0.5], ylabel="MRAE")
+		plotSingleMetric(rrmse_errors, row, axs[row][1], ylim=[0, 0.4], ylabel="RRMSE")
+		plotSingleMetric(sam_errors, row, axs[row][2], ylim=[0, 0.5], ylabel="SAM")
+		plotSingleMetric(sid_errors, row, axs[row][3], ylim=[0, 0.2], ylabel="SID")
+		plotSingleMetric(psnr_errors, row, axs[row][4], ylim=[20, 65], ylabel="PSNR", legend_loc="upper center")
+		plotSingleMetric(ssim_errors, row, axs[row][5], ylim=[0.8, 1], ylabel="SSIM", legend_loc="lower right")
+		axs[row][0].text(200, 0.205, "Meat" if row == 0 else "Fruit", rotation=90, weight="bold", size=36)
 
 	plt.tight_layout()
 	plt.savefig(os.path.join(LOGS_PATH, filename), bbox_inches="tight")
@@ -121,7 +121,7 @@ if __name__ == "__main__":
 	# mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors = meanErrors(errors)
 
 	# errors = {}
-	# errors.update({"AWAN - Fruit": {"MRAE": mrae_errors.tolist(), "RRMSE": rrmse_errors.tolist(), "SAM": sam_errors.tolist(), "SID": sid_errors.tolist(), "PSNR": psnr_errors.tolist(), "SSIM": ssim_errors.tolist()}})
+	# errors.update({"AWAN - Fruit - CFL-LED": {"MRAE": mrae_errors.tolist(), "RRMSE": rrmse_errors.tolist(), "SAM": sam_errors.tolist(), "SID": sid_errors.tolist(), "PSNR": psnr_errors.tolist(), "SSIM": ssim_errors.tolist()}})
 
 	# jsonFile = open(os.path.join(LOGS_PATH, "errors_fruit.json"), "w")
 	# jsonFile.write(json.dumps(errors, indent=4))
