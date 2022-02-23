@@ -38,6 +38,19 @@ def sam_loss(tensor_pred, tensor_gt):
 		)
 	return loss
 
+def sid_loss(tensor_pred, tensor_gt):
+	""" Computes the Spectral Information Divergence Loss (PyTorch - Training Loss) """
+	EPS = 1e-3
+	output = torch.clamp(tensor_pred, 0, 1)
+	a1 = output * torch.log10((output + EPS) / (tensor_gt + EPS))
+	a2 = tensor_gt * torch.log10((tensor_gt + EPS) / (output + EPS))
+
+	a1_sum = a1.sum(dim=3).sum(dim=2)
+	a2_sum = a2.sum(dim=3).sum(dim=2)
+
+	sid = torch.mean(torch.abs(a1_sum + a2_sum))
+	return sid
+
 def mse(img_pred, img_gt):
 	""" Calculate the mean square error (NumPy - used in test_psnr())"""
 	error = (img_pred - img_gt)
