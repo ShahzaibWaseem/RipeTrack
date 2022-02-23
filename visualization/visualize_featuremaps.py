@@ -1,4 +1,6 @@
-import os
+import os, sys
+sys.path.append(os.path.join(".."))
+
 import numpy as np
 import torch
 
@@ -23,13 +25,13 @@ def visualize_features():
 
 	save_point = torch.load(os.path.join(MODEL_PATH, checkpoint_file))
 	model_param = save_point["state_dict"]
-	model = Network(ResNeXtBottleneck, block_num=10, input_channel=4, output_channel=51, fusion="concat")
+	model = Network(block=ResNeXtBottleneck, block_num=10, input_channel=4, n_hidden=64, output_channel=51)
 	model.load_state_dict(model_param)
 	model = model.cuda()
 	model.eval()
 	# print(summary(model, (4, 512, 512)))
 
-	model.gnn_block[0].register_forward_hook(get_activation("gnn_block"))
+	model.conv_seq[0].register_forward_hook(get_activation("conv_seq"))
 
 	rgb = imread(os.path.join(IMG_PATH, "1461_f_dense_demRGB.png"))/255
 	rgb[:,:, [0, 2]] = rgb[:,:, [2, 0]]		# flipping red and blue channels (shape used for training)
@@ -41,9 +43,9 @@ def visualize_features():
 	image = np.expand_dims(np.transpose(image, [2, 1, 0]), axis=0).copy()	# fixing the dimensions [Channel should be first in torch]
 
 	output = model(torch.autograd.Variable(torch.from_numpy(image).float()).cuda())
-	print(activation["gnn_block"].shape)
+	print(activation["conv_seq"].shape)
 	
-	act = activation["gnn_block"].squeeze()
+	act = activation["conv_seq"].squeeze()
 	print(act.shape)
 
 	fig, axs = plt.subplots(act.size(0)//8, act.size(0)//8)
@@ -55,4 +57,5 @@ def visualize_features():
 	plt.show()
 
 if __name__ == "__main__":
+	os.chdir("..")
 	visualize_features()

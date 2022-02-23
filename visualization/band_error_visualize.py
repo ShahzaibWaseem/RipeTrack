@@ -1,4 +1,6 @@
-import os
+import os, sys
+sys.path.append(os.path.join(".."))
+
 import json
 import numpy as np
 from glob import glob
@@ -116,6 +118,8 @@ def plotBandErrors(mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_error
 	plt.savefig(os.path.join(LOGS_PATH, filename), bbox_inches="tight")
 
 if __name__ == "__main__":
+	os.chdir("..")
+
 	# errors = getBandErrors()
 	# print(errors.keys())
 	# mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors = meanErrors(errors)
