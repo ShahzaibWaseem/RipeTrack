@@ -9,12 +9,12 @@ from torchsummary import summary
 from torch.autograd import Variable
 from torch.utils.data import DataLoader, ConcatDataset
 
-from loss import mrae_loss, sam_loss
+from loss import mrae_loss, sam_loss, sid_loss
 from dataset import DatasetFromHdf5
 from models.resblock import resblock, ResNeXtBottleneck
 from models.model import Network
 
-from utils import AverageMeter, initialize_logger, save_checkpoint, record_loss, make_h5_dataset, modeltoONNX, ONNXtotf, tf_to_tflite
+from utils import AverageMeter, initialize_logger, save_checkpoint, record_loss, makeMobileModel, make_h5_dataset, modeltoONNX, ONNXtotf, tf_to_tflite
 
 from config import TRAIN_DATASET_DIR, TRAIN_DATASET_FILES, VALID_DATASET_FILES, LOGS_PATH, MODEL_NAME, DATASET_NAME, init_directories, checkpoint_file, batch_size, end_epoch, init_lr, model_run_title
 
@@ -54,17 +54,20 @@ def main():
 	iteration = 0
 	criterion_mrae = mrae_loss
 	criterion_sam = sam_loss
+	criterion_sid = sid_loss
+
+	criterions = (criterion_mrae, criterion_sam, criterion_sid)
 
 	# Log files
 	logger = initialize_logger(filename="train.log")
 	loss_csv = open(os.path.join(LOGS_PATH, "loss.csv"), "w+")
 
-	log_string = "Epoch [%3d], Iter[%5d], Time:%.9f, Learning Rate: %.9f, Train Loss: %.9f (%.9f, %.9f), Validation Loss: %.9f (%.9f, %.9f)"
+	log_string = "Epoch [%3d], Iter[%5d], Time:%.9f, Learning Rate: %.9f, Train Loss: %.9f (%.9f, %.9f, %.9f), Validation Loss: %.9f (%.9f, %.9f, %.9f)"
 
 	# make model
 	model = Network(block=ResNeXtBottleneck, block_num=10, input_channel=4, n_hidden=64, output_channel=51)
 	optimizer=torch.optim.Adam(model.parameters(), lr=init_lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.01)
-	print(summary(model, (4, 64, 64), verbose=1))
+	# print(summary(model, (4, 64, 64), verbose=1))
 
 	# # Resume
 	# resume_file = checkpoint_file
@@ -89,8 +92,11 @@ def main():
 	for epoch in range(start_epoch+1, end_epoch):
 		start_time = time.time()
 
-		train_loss, train_loss_mrae, train_loss_sam, iteration, lr = train(train_data_loader, model, criterion_mrae, criterion_sam, optimizer, iteration, init_lr, end_epoch)
-		val_loss, val_loss_mrae, val_loss_sam = validate(val_data_loader, model, criterion_mrae, criterion_sam)
+		train_loss, train_losses_ind, iteration, lr = train(train_data_loader, model, criterions, optimizer, iteration, init_lr, end_epoch)
+		val_loss, val_losses_ind = validate(val_data_loader, model, criterions)
+
+		train_loss_mrae, train_loss_sam, train_loss_sid = train_losses_ind
+		val_loss_mrae, val_loss_sam, val_loss_sid = val_losses_ind
 
 		save_checkpoint(epoch, iteration, model, optimizer)
 
@@ -99,16 +105,21 @@ def main():
 
 		# Printing and saving losses
 		record_loss(loss_csv, epoch, iteration, epoch_time, lr, train_loss, val_loss)
-		print(log_string % (epoch, iteration, epoch_time, lr, train_loss, train_loss_mrae, train_loss_sam, val_loss, val_loss_mrae, val_loss_sam))
-		logger.info(log_string % (epoch, iteration, epoch_time, lr, train_loss, train_loss_mrae, train_loss_sam, val_loss, val_loss_mrae, val_loss_sam))
+		log_string_filled = log_string % (epoch, iteration, epoch_time, lr,
+							train_loss, train_loss_mrae, train_loss_sam, train_loss_sid,
+							val_loss, val_loss_mrae, val_loss_sam, val_loss_sid)
+
+		print(log_string_filled)
+		logger.info(log_string_filled)
 	iteration = 0
 
 # Training
-def train(train_data_loader, model, criterion_mrae, criterion_sam, optimizer, iteration, init_lr, end_epoch):
+def train(train_data_loader, model, criterions, optimizer, iteration, init_lr, end_epoch):
 	""" Trains the model on the dataloader provided """
 	model.train()
 	losses = AverageMeter()
-	losses_mrae, losses_sam = AverageMeter(), AverageMeter()
+	criterion_mrae, criterion_sam, criterion_sid = criterions
+	losses_mrae, losses_sam, losses_sid = AverageMeter(), AverageMeter(), AverageMeter()
 
 	for _, (images, labels) in enumerate(train_data_loader):
 		labels = labels.cuda()
@@ -122,9 +133,12 @@ def train(train_data_loader, model, criterion_mrae, criterion_sam, optimizer, it
 
 		# Forward + Backward + Optimize
 		output = model(images)
+
 		loss_mrae = criterion_mrae(output, labels)
-		loss_sam = criterion_sam(output, labels)
-		loss = loss_mrae + loss_sam * 0.1
+		loss_sam = criterion_sam(output, labels) * 0.1
+		loss_sid = criterion_sid(output, labels) * 0.0001
+
+		loss = loss_mrae + loss_sam + loss_sid
 
 		optimizer.zero_grad()
 		loss.backward()
@@ -135,15 +149,17 @@ def train(train_data_loader, model, criterion_mrae, criterion_sam, optimizer, it
 		losses.update(loss.item())
 		losses_mrae.update(loss_mrae.item())
 		losses_sam.update(loss_sam.item())
+		losses_sid.update(loss_sid.item())
 
-	return losses.avg, losses_mrae.avg, losses_sam.avg, iteration, lr
+	return losses.avg, losses_mrae.avg, losses_sam.avg, losses_sid.avg, iteration, lr
 
 # Validate
-def validate(val_data_loader, model, criterion_mrae, criterion_sam):
+def validate(val_data_loader, model, criterions):
 	""" Validates the model on the dataloader provided """
 	model.eval()
 	losses = AverageMeter()
-	losses_mrae, losses_sam = AverageMeter(), AverageMeter()
+	criterion_mrae, criterion_sam, criterion_sid = criterions
+	losses_mrae, losses_sam, losses_sid = AverageMeter(), AverageMeter(), AverageMeter()
 
 	for _, (images, labels) in enumerate(val_data_loader):
 		images = images.cuda()
@@ -155,17 +171,20 @@ def validate(val_data_loader, model, criterion_mrae, criterion_sam):
 
 		# compute output
 		output = model(images)
-		loss_mrae = criterion_mrae(output, labels)
-		loss_sam = criterion_sam(output, labels)
 
-		loss = loss_mrae + loss_sam * 0.1
+		loss_mrae = criterion_mrae(output, labels)
+		loss_sam = criterion_sam(output, labels) * 0.1
+		loss_sid = criterion_sid(output, labels) * 0.00005
+
+		loss = loss_mrae + loss_sam + loss_sid
 
 		#  record loss
 		losses.update(loss.item())
 		losses_mrae.update(loss_mrae.item())
 		losses_sam.update(loss_sam.item())
+		losses_sid.update(loss_sid.item())
 
-	return losses.avg, losses_mrae.avg, losses_sam.avg
+	return losses.avg, losses_mrae.avg, losses_sam.avg, losses_sid.avg
 
 # Learning rate
 def poly_lr_scheduler(optimizer, init_lr, iteraion, lr_decay_iter=1,
@@ -189,6 +208,7 @@ def poly_lr_scheduler(optimizer, init_lr, iteraion, lr_decay_iter=1,
 
 if __name__ == "__main__":
 	init_directories()
+	# makeMobileModel()
 	# make_h5_dataset(TRAIN_DATASET_DIR=os.path.join(TRAIN_DATASET_DIR, "train"), h5_filename="train_apple_halogen_4to51bands_whole.h5")
 	# make_h5_dataset(TRAIN_DATASET_DIR=os.path.join(TRAIN_DATASET_DIR, "valid"), h5_filename="valid_apple_halogen_4to51bands_whole.h5")
 	main()
