@@ -151,7 +151,7 @@ def train(train_data_loader, model, criterions, optimizer, iteration, init_lr, e
 		losses_sam.update(loss_sam.item())
 		losses_sid.update(loss_sid.item())
 
-	return losses.avg, losses_mrae.avg, losses_sam.avg, losses_sid.avg, iteration, lr
+	return losses.avg, (losses_mrae.avg, losses_sam.avg, losses_sid.avg), iteration, lr
 
 # Validate
 def validate(val_data_loader, model, criterions):
@@ -184,7 +184,7 @@ def validate(val_data_loader, model, criterions):
 		losses_sam.update(loss_sam.item())
 		losses_sid.update(loss_sid.item())
 
-	return losses.avg, losses_mrae.avg, losses_sam.avg, losses_sid.avg
+	return losses.avg, (losses_mrae.avg, losses_sam.avg, losses_sid.avg)
 
 # Learning rate
 def poly_lr_scheduler(optimizer, init_lr, iteraion, lr_decay_iter=1,
