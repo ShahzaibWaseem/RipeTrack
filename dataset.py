@@ -9,7 +9,7 @@ from utils import load_mat
 
 import torch
 from torch.utils.data import Dataset
-from config import var_name
+from config import var_name, BAND_SPACING, RGBN_BANDS
 
 class DatasetFromHdf5(Dataset):
 	def __init__(self, file_path):
@@ -122,8 +122,8 @@ class DatasetDirectoryProductPairing(Dataset):
 		else:
 			idx = index
 		mat_name = self.labels[idx[1]]["mat_path"]
-		hypercube = load_mat(mat_name, self.var_name)
-		hypercube = hypercube[self.var_name][:,:,1:204:17]
+		hypercube = load_mat(mat_name, self.var_name)[self.var_name]
+		hypercube = hypercube[:, :, ::BAND_SPACING]
 		hypercube = np.transpose(hypercube, [2, 0, 1])
 
 		# getting the desired patch from the hypercube
