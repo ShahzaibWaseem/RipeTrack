@@ -42,7 +42,7 @@ class DatasetDirectoryProductPairing(Dataset):
 	images, labels = {}, {}
 	# hypercube_mem = {"mat_path": "", "mat": np.array([])}
 	# counter1, counter = 0, 0
-	def __init__(self, root, dataset_name=None, training=True, train_with_patches=True, permute_data=True, patch_size=64, discard_edges=True):
+	def __init__(self, root, dataset_name=None, train_with_patches=True, permute_data=True, patch_size=64, discard_edges=True):
 		self.PATCH_SIZE = patch_size
 		self.root = root
 		self.var_name = var_name
@@ -56,7 +56,7 @@ class DatasetDirectoryProductPairing(Dataset):
 				nir_filename = os.path.join(directory, rgb_filename.split("/")[-1].replace("RGB", "NIR"))
 				image_mem = self.read_image(rgb_filename, nir_filename)
 
-				if training and train_with_patches:
+				if train_with_patches:
 					patches = self.image_to_patches(image_mem, self.PATCH_SIZE, discard_edges)
 					for patch in patches:
 						self.images[im_id] = patch
@@ -69,7 +69,7 @@ class DatasetDirectoryProductPairing(Dataset):
 		im_id = 0
 		for directory in glob(os.path.join(self.root, "working_{}".format(dataset_name), "*")):
 			for mat_filename in glob(os.path.join(directory, "*.mat")):
-				if training and train_with_patches:
+				if train_with_patches:
 					for i in range(self.IMAGE_SIZE // self.PATCH_SIZE):
 						for j in range(self.IMAGE_SIZE // self.PATCH_SIZE):
 							self.labels[im_id] = {"mat_path": mat_filename, "idx": (i, j)}
