@@ -1,3 +1,4 @@
+import itertools
 import os
 import numpy as np
 
@@ -22,6 +23,123 @@ class DatasetFromHdf5(Dataset):
 
 	def __len__(self):
 		return len(self.images)
+
+class DatasetDirectoryProductPairing(Dataset):
+	# Expects the directory structure to be:
+	# root/
+	# 	category1/		(oats, flour, etc.)
+	# 		label1/		(gluten)
+	# 			01_RGB.jpg
+	# 			01_NIR.jpg
+	# 			...
+	# 		label2/		(glutenfree)
+	# 			01_RGB.jpg
+	# 			01_NIR.jpg
+	# 			...
+	# 	...
+	IMAGE_SIZE = 512
+
+	images, labels = {}, {}
+	# hypercube_mem = {"mat_path": "", "mat": np.array([])}
+	# counter1, counter = 0, 0
+	def __init__(self, root, dataset_name=None, training=True, train_with_patches=True, permute_data=True, patch_size=64, discard_edges=True):
+		self.PATCH_SIZE = patch_size
+		self.root = root
+		self.var_name = var_name
+		self.permute_data = permute_data
+
+		image_mem = np.array([])
+
+		im_id = 0
+		for directory in glob(os.path.join(self.root, "RGBNIRImages", dataset_name, "*")):
+			for rgb_filename in glob(os.path.join(directory, "*_RGB.jpg")):
+				nir_filename = os.path.join(directory, rgb_filename.split("/")[-1].replace("RGB", "NIR"))
+				image_mem = self.read_image(rgb_filename, nir_filename)
+
+				if training and train_with_patches:
+					patches = self.image_to_patches(image_mem, self.PATCH_SIZE, discard_edges)
+					for patch in patches:
+						self.images[im_id] = patch
+						im_id += 1
+					del patches
+				else:
+					self.images[im_id] = image_mem
+					im_id += 1
+
+		im_id = 0
+		for directory in glob(os.path.join(self.root, "working_{}".format(dataset_name), "*")):
+			for mat_filename in glob(os.path.join(directory, "*.mat")):
+				if training and train_with_patches:
+					for i in range(self.IMAGE_SIZE // self.PATCH_SIZE):
+						for j in range(self.IMAGE_SIZE // self.PATCH_SIZE):
+							self.labels[im_id] = {"mat_path": mat_filename, "idx": (i, j)}
+							im_id += 1
+				else:
+					self.labels[im_id] = mat_filename
+					im_id += 1
+
+		if train_with_patches:
+			print("Number of RGB Images (Patches): {}".format(len(self.images)))
+			print("Number of Hypercubes (Patches): {}".format(len(self.labels)))
+
+		# pair each rgb-nir patch with each hypercube patch
+		if permute_data:
+			self.permuted_idx = list(itertools.product(self.images.keys(), self.labels.keys()))
+
+	def image_to_patches(self, image, patch_size, discard_edges=True):
+		""" 
+		Splits the image into patches and returns a list of patches
+
+			image: (RGB-NIR or Hypercube) numpy array of shape (channel, row, col)
+			discard_edges: if True, discard the four corners of the image
+		"""
+		patches = []
+		for i in range(0, image.shape[1] - patch_size + 1, patch_size):
+			for j in range(0, image.shape[2] - patch_size + 1, patch_size):
+				if discard_edges and (i == 0 or i == image.shape[0] - patch_size or j == 0 or j == image.shape[1] - patch_size):
+					continue
+				patches.append(image[:, i:i+patch_size, j:j+patch_size])
+		return patches
+
+	def read_image(self, rgb_filename, nir_filename):
+		""" Reads the two images and stack them together while maintaining the order or BGR-NIR """
+		rgb = imread(rgb_filename)
+		rgb = rgb/255
+		rgb[:,:, [0, 2]] = rgb[:,:, [2, 0]]		# flipping red and blue channels (shape used for training)
+
+		nir = imread(nir_filename)[:,:, 0]
+		nir = nir/255
+
+		image = np.dstack((rgb, nir))
+		image = np.transpose(image, [2, 0, 1])
+		del rgb, nir
+
+		return image
+
+	def fetch_image_label(self, index):
+		if self.permute_data:
+			idx = self.permuted_idx[index]
+		else:
+			idx = index
+		mat_name = self.labels[idx[1]]["mat_path"]
+		hypercube = load_mat(mat_name, self.var_name)
+		hypercube = hypercube[self.var_name][:,:,1:204:17]
+		hypercube = np.transpose(hypercube, [2, 0, 1])
+
+		# getting the desired patch from the hypercube
+		i, j = self.labels[idx[1]]["idx"]
+		hypercube = hypercube[:, i:i+self.PATCH_SIZE, j:j+self.PATCH_SIZE]
+		return self.images[idx[0]], hypercube
+
+	def __len__(self):
+		if self.permute_data:
+			return len(self.permuted_idx)
+		else:
+			return len(self.images)
+
+	def __getitem__(self, index):
+		image, hypercube = self.fetch_image_label(index)
+		return torch.from_numpy(image).float(), torch.from_numpy(hypercube).float()
 
 class DatasetFromDirectory(Dataset):
 	def __init__(self, root):
