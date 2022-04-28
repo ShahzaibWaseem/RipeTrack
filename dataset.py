@@ -67,10 +67,8 @@ class DatasetDirectoryProductPairing(Dataset):
 	# 			...
 	# 	...
 	IMAGE_SIZE = 512
-
 	images, labels = {}, {}
-	# hypercube_mem = {"mat_path": "", "mat": np.array([])}
-	# counter1, counter = 0, 0
+
 	def __init__(self, root, dataset_name=None, train_with_patches=True, permute_data=True, patch_size=64, discard_edges=True):
 		self.PATCH_SIZE = patch_size
 		self.root = root
