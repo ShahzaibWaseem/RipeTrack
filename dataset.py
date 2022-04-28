@@ -69,12 +69,21 @@ class DatasetDirectoryProductPairing(Dataset):
 	IMAGE_SIZE = 512
 	images, labels = {}, {}
 
-	def __init__(self, root, dataset_name=None, train_with_patches=True, permute_data=True, patch_size=64, lazy_read=False, discard_edges=True):
+	def __init__(self, root, dataset_name=None, product_pairing=True, lazy_read=False, train_with_patches=True, patch_size=64, discard_edges=True):
+		"""
+		root:				root directory of the dataset
+		dataset_name:		name of the dataset, used to scan over directories (e.g. "oats", "flour", etc.)
+		product_pairing:	if True, the each RGB-NIR pair is paired with each hypercube
+		lazy_read:			if True, hypercubes are loaded lazily (only when needed)
+		train_with_patches:	if True, the RGBN images are split into patches
+		patch_size:			size of the patches
+		discard_edges:		if True, discard the four corner patches
+		"""
 		self.PATCH_SIZE = patch_size
 		self.root = root
 		self.var_name = var_name
 		self.lazy_read = lazy_read
-		self.permute_data = permute_data
+		self.product_pairing = product_pairing
 
 		im_id, rgbn_counter = 0, 0
 		for directory in glob(os.path.join(self.root, "RGBNIRImages", dataset_name, "*")):
@@ -115,7 +124,7 @@ class DatasetDirectoryProductPairing(Dataset):
 					im_id += 1
 
 		# pair each rgb-nir patch with each hypercube patch
-		if permute_data:
+		if product_pairing:
 			self.permuted_idx = list(itertools.product(self.images.keys(), self.labels.keys()))
 
 		print("Number of RGBN Files:\t\t{}\nNumber of Hypercubes:\t\t{}".format(rgbn_counter, hypercube_counter))
@@ -123,6 +132,7 @@ class DatasetDirectoryProductPairing(Dataset):
 			print("Number of RGB Images (Patches):\t{}\nNumber of Hypercubes (Patches):\t{}".format(len(self.images), len(self.labels)))
 
 	def fetch_image_label(self, index):
+		""" Reads the image and label from the index (lazily or not) and/or product pairs """
 		if self.permute_data:
 			idx = self.permuted_idx[index]
 		else:
