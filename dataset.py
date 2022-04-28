@@ -75,27 +75,27 @@ class DatasetDirectoryProductPairing(Dataset):
 		self.var_name = var_name
 		self.permute_data = permute_data
 
-		image_mem = np.array([])
-
-		im_id = 0
+		im_id, rgbn_counter = 0, 0
 		for directory in glob(os.path.join(self.root, "RGBNIRImages", dataset_name, "*")):
 			for rgb_filename in glob(os.path.join(directory, "*_RGB.jpg")):
 				nir_filename = os.path.join(directory, rgb_filename.split("/")[-1].replace("RGB", "NIR"))
-				image_mem = self.read_image(rgb_filename, nir_filename)
+				image = self.read_image(rgb_filename, nir_filename)
+				rgbn_counter += 1
 
 				if train_with_patches:
-					patches = image_to_patches(image_mem, self.PATCH_SIZE, discard_edges)
+					patches = image_to_patches(image, self.PATCH_SIZE, discard_edges)
 					for patch in patches:
 						self.images[im_id] = patch
 						im_id += 1
 					del patches
 				else:
-					self.images[im_id] = image_mem
+					self.images[im_id] = image
 					im_id += 1
 
-		im_id = 0
+		im_id, hypercube_counter = 0, 0
 		for directory in glob(os.path.join(self.root, "working_{}".format(dataset_name), "*")):
 			for mat_filename in glob(os.path.join(directory, "*.mat")):
+				hypercube_counter += 1
 				if train_with_patches:
 					for i in range(self.IMAGE_SIZE // self.PATCH_SIZE):
 						for j in range(self.IMAGE_SIZE // self.PATCH_SIZE):
@@ -105,13 +105,13 @@ class DatasetDirectoryProductPairing(Dataset):
 					self.labels[im_id] = mat_filename
 					im_id += 1
 
-		if train_with_patches:
-			print("Number of RGB Images (Patches): {}".format(len(self.images)))
-			print("Number of Hypercubes (Patches): {}".format(len(self.labels)))
-
 		# pair each rgb-nir patch with each hypercube patch
 		if permute_data:
 			self.permuted_idx = list(itertools.product(self.images.keys(), self.labels.keys()))
+
+		print("Number of RGBN Files:\t\t{}\nNumber of Hypercubes:\t\t{}".format(rgbn_counter, hypercube_counter))
+		if train_with_patches:
+			print("Number of RGB Images (Patches):\t{}\nNumber of Hypercubes (Patches):\t{}".format(len(self.images), len(self.labels)))
 
 	def fetch_image_label(self, index):
 		if self.permute_data:
