@@ -24,6 +24,35 @@ class DatasetFromHdf5(Dataset):
 	def __len__(self):
 		return len(self.images)
 
+def image_to_patches(image, patch_size, discard_edges=True):
+	""" 
+	Splits the image into patches and returns a list of patches
+		image: (RGB-NIR or Hypercube) numpy array of shape (channel, row, col)
+		discard_edges: if True, discard the four corners of the image
+	"""
+	patches = []
+	for i in range(0, image.shape[1] - patch_size + 1, patch_size):
+		for j in range(0, image.shape[2] - patch_size + 1, patch_size):
+			if discard_edges and (i == 0 or i == image.shape[0] - patch_size or j == 0 or j == image.shape[1] - patch_size):
+				continue
+			patches.append(image[:, i:i+patch_size, j:j+patch_size])
+	return patches
+
+def read_image(rgb_filename, nir_filename):
+	""" Reads the two images and stack them together while maintaining the order or BGR-NIR """
+	rgb = imread(rgb_filename)
+	rgb = rgb/255
+	rgb[:,:, [0, 2]] = rgb[:,:, [2, 0]]		# flipping red and blue channels (shape used for training)
+
+	nir = imread(nir_filename)[:,:, 0]
+	nir = nir/255
+
+	image = np.dstack((rgb, nir))
+	image = np.transpose(image, [2, 0, 1])
+	del rgb, nir
+
+	return image
+
 class DatasetDirectoryProductPairing(Dataset):
 	# Expects the directory structure to be:
 	# root/
@@ -57,7 +86,7 @@ class DatasetDirectoryProductPairing(Dataset):
 				image_mem = self.read_image(rgb_filename, nir_filename)
 
 				if train_with_patches:
-					patches = self.image_to_patches(image_mem, self.PATCH_SIZE, discard_edges)
+					patches = image_to_patches(image_mem, self.PATCH_SIZE, discard_edges)
 					for patch in patches:
 						self.images[im_id] = patch
 						im_id += 1
@@ -85,36 +114,6 @@ class DatasetDirectoryProductPairing(Dataset):
 		# pair each rgb-nir patch with each hypercube patch
 		if permute_data:
 			self.permuted_idx = list(itertools.product(self.images.keys(), self.labels.keys()))
-
-	def image_to_patches(self, image, patch_size, discard_edges=True):
-		""" 
-		Splits the image into patches and returns a list of patches
-
-			image: (RGB-NIR or Hypercube) numpy array of shape (channel, row, col)
-			discard_edges: if True, discard the four corners of the image
-		"""
-		patches = []
-		for i in range(0, image.shape[1] - patch_size + 1, patch_size):
-			for j in range(0, image.shape[2] - patch_size + 1, patch_size):
-				if discard_edges and (i == 0 or i == image.shape[0] - patch_size or j == 0 or j == image.shape[1] - patch_size):
-					continue
-				patches.append(image[:, i:i+patch_size, j:j+patch_size])
-		return patches
-
-	def read_image(self, rgb_filename, nir_filename):
-		""" Reads the two images and stack them together while maintaining the order or BGR-NIR """
-		rgb = imread(rgb_filename)
-		rgb = rgb/255
-		rgb[:,:, [0, 2]] = rgb[:,:, [2, 0]]		# flipping red and blue channels (shape used for training)
-
-		nir = imread(nir_filename)[:,:, 0]
-		nir = nir/255
-
-		image = np.dstack((rgb, nir))
-		image = np.transpose(image, [2, 0, 1])
-		del rgb, nir
-
-		return image
 
 	def fetch_image_label(self, index):
 		if self.permute_data:
