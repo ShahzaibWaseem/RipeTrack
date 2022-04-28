@@ -69,10 +69,11 @@ class DatasetDirectoryProductPairing(Dataset):
 	IMAGE_SIZE = 512
 	images, labels = {}, {}
 
-	def __init__(self, root, dataset_name=None, train_with_patches=True, permute_data=True, patch_size=64, discard_edges=True):
+	def __init__(self, root, dataset_name=None, train_with_patches=True, permute_data=True, patch_size=64, lazy_read=False, discard_edges=True):
 		self.PATCH_SIZE = patch_size
 		self.root = root
 		self.var_name = var_name
+		self.lazy_read = lazy_read
 		self.permute_data = permute_data
 
 		im_id, rgbn_counter = 0, 0
@@ -95,11 +96,19 @@ class DatasetDirectoryProductPairing(Dataset):
 		im_id, hypercube_counter = 0, 0
 		for directory in glob(os.path.join(self.root, "working_{}".format(dataset_name), "*")):
 			for mat_filename in glob(os.path.join(directory, "*.mat")):
+				if not lazy_read:
+					hypercube = load_mat(mat_filename, self.var_name)[self.var_name]
+					hypercube = hypercube[:, :, ::BAND_SPACING]
+					hypercube = np.transpose(hypercube, [2, 0, 1])
+
 				hypercube_counter += 1
 				if train_with_patches:
 					for i in range(self.IMAGE_SIZE // self.PATCH_SIZE):
 						for j in range(self.IMAGE_SIZE // self.PATCH_SIZE):
-							self.labels[im_id] = {"mat_path": mat_filename, "idx": (i, j)}
+							if lazy_read:
+								self.labels[im_id] = {"mat_path": mat_filename, "idx": (i, j)}
+							else:
+								self.labels[im_id] = hypercube[:, i:i+self.PATCH_SIZE, j:j+self.PATCH_SIZE]
 							im_id += 1
 				else:
 					self.labels[im_id] = mat_filename
@@ -117,16 +126,22 @@ class DatasetDirectoryProductPairing(Dataset):
 		if self.permute_data:
 			idx = self.permuted_idx[index]
 		else:
-			idx = index
-		mat_name = self.labels[idx[1]]["mat_path"]
-		hypercube = load_mat(mat_name, self.var_name)[self.var_name]
-		hypercube = hypercube[:, :, ::BAND_SPACING]
-		hypercube = np.transpose(hypercube, [2, 0, 1])
+			idx = (index, index)
 
-		# getting the desired patch from the hypercube
-		i, j = self.labels[idx[1]]["idx"]
-		hypercube = hypercube[:, i:i+self.PATCH_SIZE, j:j+self.PATCH_SIZE]
-		return self.images[idx[0]], hypercube
+		if self.lazy_read:
+			mat_name = self.labels[idx[1]]["mat_path"]
+			hypercube = load_mat(mat_name, self.var_name)[self.var_name]
+			hypercube = hypercube[:, :, ::BAND_SPACING]
+			hypercube = np.transpose(hypercube, [2, 0, 1])
+
+			# getting the desired patch from the hypercube
+			i, j = self.labels[idx[1]]["idx"]
+			hypercube = hypercube[:, i:i+self.PATCH_SIZE, j:j+self.PATCH_SIZE]
+		else:
+			image = self.images[idx[0]]
+			hypercube = self.labels[idx[1]]
+
+		return image, hypercube
 
 	def __len__(self):
 		if self.permute_data:
