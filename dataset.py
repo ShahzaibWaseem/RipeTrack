@@ -42,9 +42,9 @@ def read_image(rgb_filename, nir_filename):
 	""" Reads the two images and stack them together while maintaining the order or BGR-NIR """
 	rgb = imread(rgb_filename)
 	rgb = rgb/255
-	rgb[:,:, [0, 2]] = rgb[:,:, [2, 0]]		# flipping red and blue channels (shape used for training)
+	rgb[:,:, [0, 2]] = rgb[:,:, [2, 0]]	# flipping red and blue channels (shape used for training)
 
-	nir = imread(nir_filename)[:,:, 0]
+	nir = imread(nir_filename)[:,:, 0]	# because NIR from the phone is saved as three repeated channels 
 	nir = nir/255
 
 	image = np.dstack((rgb, nir))
