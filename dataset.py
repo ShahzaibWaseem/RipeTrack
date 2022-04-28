@@ -1,5 +1,5 @@
-import itertools
 import os
+import itertools
 import numpy as np
 
 import h5py
