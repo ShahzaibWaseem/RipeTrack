@@ -2,48 +2,63 @@ from __future__ import division
 
 import  os
 import time
+from tqdm import tqdm
 
 import torch
 import torch.nn as nn
 from torchsummary import summary
 from torch.autograd import Variable
-from torch.utils.data import DataLoader, ConcatDataset
+from torch.utils.data import DataLoader, ConcatDataset, random_split
 
 from loss import mrae_loss, sam_loss, sid_loss
-from dataset import DatasetFromHdf5
+from dataset import DatasetFromDirectory, DatasetFromHdf5
 from models.resblock import resblock, ResNeXtBottleneck
 from models.model import Network
 
 from utils import AverageMeter, initialize_logger, save_checkpoint, record_loss, makeMobileModel, make_h5_dataset, modeltoONNX, ONNXtotf, tf_to_tflite
-
-from config import TRAIN_DATASET_DIR, TRAIN_DATASET_FILES, VALID_DATASET_FILES, LOGS_PATH, MODEL_NAME, DATASET_NAME, init_directories, checkpoint_file, batch_size, end_epoch, init_lr, model_run_title
+from config import TRAIN_DATASET_DIR, TRAIN_DATASET_FILES, VALID_DATASET_FILES, LOGS_PATH, MODEL_NAME, DATASET_NAME, OUTPUT_BANDS, PATCH_SIZE, init_directories, checkpoint_file, batch_size, end_epoch, init_lr, model_run_title
 
 def main():
 	torch.backends.cudnn.benchmark = True
 
 	# Dataset
 	train_data, valid_data = [], []
+	dataset = DatasetFromDirectory(root=os.path.join(os.path.dirname(TRAIN_DATASET_DIR), "working_datasets"),
+								   dataset_name="oats",
+								   product_pairing=True,
+								   lazy_read=False,
+								   rgbn_from_cube = False,
+								   train_with_patches=True,
+								   patch_size=PATCH_SIZE,
+								   discard_edges=True)
 
-	for datasetFile in TRAIN_DATASET_FILES:
-		h5_filepath = os.path.join(TRAIN_DATASET_DIR, datasetFile)
-		dataset = DatasetFromHdf5(h5_filepath)
-		train_data.append(dataset)
-		print("Length of Training Set (%s):" % datasetFile, len(dataset))
+	trainset_size = 0.8
+	print("Dataset size:\t\t\t{}".format(len(dataset)))
 
-	for datasetFile in VALID_DATASET_FILES:
-		h5_filepath = os.path.join(TRAIN_DATASET_DIR, datasetFile)
-		dataset = DatasetFromHdf5(h5_filepath)
-		valid_data.append(dataset)
-		print("Length of Validation Set (%s):" % datasetFile, len(dataset))
+	train_data, valid_data = random_split(dataset, [int(trainset_size*len(dataset)), len(dataset) - int(len(dataset)*trainset_size)])
+	print("Length of Training Set ({}%):\t{}".format(round(trainset_size * 100), len(train_data)))
+	print("Length of Validation Set ({}%):\t{}".format(round((1-trainset_size) * 100), len(valid_data)))
+
+	# for datasetFile in TRAIN_DATASET_FILES:
+	# 	h5_filepath = os.path.join(TRAIN_DATASET_DIR, datasetFile)
+	# 	dataset = DatasetFromHdf5(h5_filepath)
+	# 	train_data.append(dataset)
+	# 	print("Length of Training Set (%s):" % datasetFile, len(dataset))
+
+	# for datasetFile in VALID_DATASET_FILES:
+	# 	h5_filepath = os.path.join(TRAIN_DATASET_DIR, datasetFile)
+	# 	dataset = DatasetFromHdf5(h5_filepath)
+	# 	valid_data.append(dataset)
+	# 	print("Length of Validation Set (%s):" % datasetFile, len(dataset))
 
 	# Data Loader (Input Pipeline)
-	train_data_loader = DataLoader(dataset=ConcatDataset(train_data),
+	train_data_loader = DataLoader(dataset=train_data,
 								   num_workers=1,
 								   batch_size=batch_size,
-								   shuffle=True,
+								   shuffle=False,
 								   pin_memory=True)
 
-	val_data_loader = DataLoader(dataset=ConcatDataset(valid_data),
+	val_data_loader = DataLoader(dataset=valid_data,
 								 num_workers=1,
 								 batch_size=1,
 								 shuffle=False,
@@ -65,7 +80,7 @@ def main():
 	log_string = "Epoch [%3d], Iter[%5d], Time:%.9f, Learning Rate: %.9f, Train Loss: %.9f (%.9f, %.9f, %.9f), Validation Loss: %.9f (%.9f, %.9f, %.9f)"
 
 	# make model
-	model = Network(block=ResNeXtBottleneck, block_num=10, input_channel=4, n_hidden=64, output_channel=51)
+	model = Network(block=ResNeXtBottleneck, block_num=10, input_channel=4, n_hidden=64, output_channel=OUTPUT_BANDS)
 	optimizer=torch.optim.Adam(model.parameters(), lr=init_lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.01)
 	# print(summary(model, (4, 64, 64), verbose=1))
 
@@ -113,7 +128,6 @@ def main():
 		logger.info(log_string_filled)
 	iteration = 0
 
-# Training
 def train(train_data_loader, model, criterions, optimizer, iteration, init_lr, end_epoch):
 	""" Trains the model on the dataloader provided """
 	model.train()
@@ -121,7 +135,7 @@ def train(train_data_loader, model, criterions, optimizer, iteration, init_lr, e
 	criterion_mrae, criterion_sam, criterion_sid = criterions
 	losses_mrae, losses_sam, losses_sid = AverageMeter(), AverageMeter(), AverageMeter()
 
-	for _, (images, labels) in enumerate(train_data_loader):
+	for images, labels in tqdm(train_data_loader, desc="Training", total=len(train_data_loader)):
 		labels = labels.cuda()
 		images = images.cuda()
 
@@ -153,7 +167,6 @@ def train(train_data_loader, model, criterions, optimizer, iteration, init_lr, e
 
 	return losses.avg, (losses_mrae.avg, losses_sam.avg, losses_sid.avg), iteration, lr
 
-# Validate
 def validate(val_data_loader, model, criterions):
 	""" Validates the model on the dataloader provided """
 	model.eval()
@@ -161,7 +174,7 @@ def validate(val_data_loader, model, criterions):
 	criterion_mrae, criterion_sam, criterion_sid = criterions
 	losses_mrae, losses_sam, losses_sid = AverageMeter(), AverageMeter(), AverageMeter()
 
-	for _, (images, labels) in enumerate(val_data_loader):
+	for images, labels in tqdm(val_data_loader, desc="Validation", total=len(val_data_loader)):
 		images = images.cuda()
 		labels = labels.cuda()
 
@@ -186,15 +199,15 @@ def validate(val_data_loader, model, criterions):
 
 	return losses.avg, (losses_mrae.avg, losses_sam.avg, losses_sid.avg)
 
-# Learning rate
 def poly_lr_scheduler(optimizer, init_lr, iteraion, lr_decay_iter=1,
 					  max_iter=100, power=0.9):
-	"""Polynomial decay of learning rate
-		:param init_lr is base learning rate
-		:param iter is a current iteration
-		:param lr_decay_iter how frequently decay occurs, default is 1
-		:param max_iter is number of maximum iterations
-		:param power is a polymomial power
+	"""
+	Polynomial decay of learning rate
+		init_lr:		base learning rate
+		iter:			current iteration
+		lr_decay_iter:	how frequently decay occurs, default is 1
+		max_iter:		number of maximum iterations
+		power:			polymomial power
 	"""
 	if iteraion % lr_decay_iter or iteraion > max_iter:
 		return optimizer
