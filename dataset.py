@@ -87,12 +87,12 @@ class DatasetFromDirectory(Dataset):
 		self.lazy_read = lazy_read
 		self.product_pairing = product_pairing
 
+		im_id, rgbn_counter = 0, 0
 		if not rgbn_from_cube:
-			im_id, rgbn_counter = 0, 0
 			for directory in glob(os.path.join(self.root, "RGBNIRImages", dataset_name, "*")):
 				for rgb_filename in glob(os.path.join(directory, "*_RGB.jpg")):
 					nir_filename = os.path.join(directory, rgb_filename.split("/")[-1].replace("RGB", "NIR"))
-					image = self.read_image(rgb_filename, nir_filename)
+					image = read_image(rgb_filename, nir_filename)
 					rgbn_counter += 1
 
 					if train_with_patches:
@@ -135,13 +135,13 @@ class DatasetFromDirectory(Dataset):
 		if product_pairing:
 			self.permuted_idx = list(itertools.product(self.images.keys(), self.labels.keys()))
 
-		print("Number of RGBN Files:\t\t{}\nNumber of Hypercubes:\t\t{}".format(rgbn_counter, hypercube_counter))
+		print("Number of RGBN Files:\t\t{}\nNumber of Hypercubes:\t\t{}".format(rgbn_counter if not rgbn_from_cube else hypercube_counter, hypercube_counter))
 		if train_with_patches:
 			print("Number of RGB Images (Patches):\t{}\nNumber of Hypercubes (Patches):\t{}".format(len(self.images), len(self.labels)))
 
 	def fetch_image_label(self, index):
 		""" Reads the image and label from the index (lazily or not) and/or product pairs """
-		if self.permute_data:
+		if self.product_pairing:
 			idx = self.permuted_idx[index]
 		else:
 			idx = (index, index)
@@ -170,7 +170,7 @@ class DatasetFromDirectory(Dataset):
 		return image, hypercube
 
 	def __len__(self):
-		if self.permute_data:
+		if self.product_pairing:
 			return len(self.permuted_idx)
 		else:
 			return len(self.images)
