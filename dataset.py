@@ -27,8 +27,8 @@ class DatasetFromHdf5(Dataset):
 def image_to_patches(image, patch_size, discard_edges=True):
 	""" 
 	Splits the image into patches and returns a list of patches
-		image: (RGB-NIR or Hypercube) numpy array of shape (channel, row, col)
-		discard_edges: if True, discard the four corners of the image
+		image:			RGB-NIR or Hypercube. numpy array of shape (channel, row, col)
+		discard_edges:	if True, discard the four corners of the image
 	"""
 	patches = []
 	for i in range(0, image.shape[1] - patch_size + 1, patch_size):
@@ -71,14 +71,15 @@ class DatasetFromDirectory(Dataset):
 
 	def __init__(self, root, dataset_name=None, product_pairing=True, lazy_read=False, rgbn_from_cube = True, train_with_patches=True, patch_size=64, discard_edges=True):
 		"""
-		root:				root directory of the dataset
-		dataset_name:		name of the dataset, used to scan over directories (e.g. "oats", "flour", etc.)
-		product_pairing:	if True, the each RGB-NIR pair is paired with each hypercube
-		lazy_read:			if True, hypercubes are loaded lazily (only when needed)
-		rgbn_from_cube:		if True, the RGB-NIR pair is extracted from the hypercube
-		train_with_patches:	if True, the RGBN images are split into patches
-		patch_size:			size of the patches
-		discard_edges:		if True, discard the four corner patches
+		Dataloader for the dataset.
+			root:				root directory of the dataset
+			dataset_name:		name of the dataset, used to scan over directories (e.g. "oats", "flour", etc.)
+			product_pairing:	if True, the each RGB-NIR pair is paired with each hypercube
+			lazy_read:			if True, hypercubes are loaded lazily (only when needed)
+			rgbn_from_cube:		if True, the RGB-NIR pair is extracted from the hypercube
+			train_with_patches:	if True, the RGBN images are split into patches
+			patch_size:			size of the patches
+			discard_edges:		if True, discard the four corner patches
 		"""
 		self.PATCH_SIZE = patch_size
 		self.root = root
