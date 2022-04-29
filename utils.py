@@ -86,14 +86,16 @@ def get_reconstruction(input, num_split, dimension, model):
 			output = torch.cat((output, output_split[i]), dim=dimension)
 	return output
 
-def reconstruction(rgb, model):
+def reconstruction(rgb, model, normalize=False):
 	"""Output the final reconstructed hyperspectral images."""
 	img_res = get_reconstruction(torch.from_numpy(rgb).float(), 1, 3, model)
-	img_res = img_res.cpu().numpy()*4095
+	img_res = img_res.cpu().numpy()
 	img_res = np.transpose(np.squeeze(img_res))
-	img_res_limits = np.minimum(img_res,4095)
-	img_res_limits = np.maximum(img_res_limits,0)
-	return img_res_limits
+	if normalize:
+		img_res = img_res / 4095
+		img_res = np.minimum(img_res, 4095)
+		img_res = np.maximum(img_res, 0)
+	return img_res
 
 def load_mat(mat_name, var_name):
 	""" Helper function to load mat files (used in making h5 dataset) """
