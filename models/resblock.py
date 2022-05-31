@@ -2,17 +2,16 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-def conv3x3(in_channels, out_channels):
-	return nn.Conv2d(in_channels, out_channels, kernel_size=3,
-					 stride=1, padding=1, bias=True)
+def convolution_3(in_channels, out_channels):
+	return nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=True)
 
 class resblock(nn.Module):
 	def __init__(self):
 		super(resblock, self).__init__()
-		self.conv1 = conv3x3(64, 64)
+		self.conv1 = convolution_3(64, 64)
 		self.bn1 = nn.BatchNorm2d(64)
 		self.relu = nn.ReLU(inplace=True)
-		self.conv2 = conv3x3(64, 64)
+		self.conv2 = convolution_3(64, 64)
 		self.bn2 = nn.BatchNorm2d(64)
 
 	def forward(self, x):
@@ -22,7 +21,7 @@ class resblock(nn.Module):
 		out = self.relu(out)
 		out = self.conv2(out)
 		out = self.bn2(out)
-		out = torch.mul(out,0.1)
+		out = torch.mul(out, 0.1)
 		out = torch.add(out,residual)
 		return out
 
@@ -31,8 +30,7 @@ class ResNeXtBottleneck(nn.Module):
 	RexNeXt bottleneck type C (https://github.com/facebookresearch/ResNeXt/blob/master/models/resnext.lua)
 	"""
 	def __init__(self, in_channels, out_channels, stride, cardinality, base_width, widen_factor):
-		""" Constructor
-		Args:
+		"""
 			in_channels: input channel dimensionality
 			out_channels: output channel dimensionality
 			stride: conv stride. Replaces pooling layer.

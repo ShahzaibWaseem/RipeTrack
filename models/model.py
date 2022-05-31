@@ -2,17 +2,17 @@ from math import sqrt
 
 import torch
 import torch.nn as nn
-from models.resblock import conv3x3
+from models.resblock import convolution_3
 
 class Network(nn.Module):
 	def __init__(self, block, block_num=10, input_channel=4, n_hidden=64, output_channel=51):
 		super(Network, self).__init__()
-		self.input_conv = conv3x3(input_channel, out_channels=n_hidden)
+		self.input_conv = convolution_3(input_channel, out_channels=n_hidden)
 		self.input_relu = nn.ReLU()
 		self.conv_seq = self.make_layer(block, block_num, n_hidden, n_hidden, stride=1, cardinality=32, base_width=4, widen_factor=1)
-		self.conv = conv3x3(n_hidden, n_hidden)
+		self.conv = convolution_3(n_hidden, n_hidden)
 		self.relu = nn.ReLU(inplace=True)
-		self.output_conv = conv3x3(in_channels=n_hidden, out_channels=output_channel)
+		self.output_conv = convolution_3(in_channels=n_hidden, out_channels=output_channel)
 
 		for m in self.modules():
 			if isinstance(m, nn.Conv2d):
