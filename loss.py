@@ -4,6 +4,8 @@ from __future__ import division
 import numpy as np
 from skimage.metrics import structural_similarity
 
+from config import OUTPUT_BANDS
+
 import torch
 
 def mrae_loss(tensor_pred, tensor_gt):
@@ -50,6 +52,11 @@ def sid_loss(tensor_pred, tensor_gt):
 
 	sid = torch.mean(torch.abs(a1_sum + a2_sum))
 	return sid
+
+def weighted_loss(tensor_pred, tensor_gt):
+	""" Computes the weighted loss (PyTorch - Training Loss) """
+	weights = torch.zeros_like(tensor_pred)
+	return torch.sum(weights * torch.abs(tensor_pred - tensor_gt))
 
 def mse(img_pred, img_gt):
 	""" Calculate the mean square error (NumPy - used in test_psnr())"""
