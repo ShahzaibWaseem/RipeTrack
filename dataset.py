@@ -9,17 +9,17 @@ from utils import load_mat
 
 import torch
 from torch.utils.data import Dataset
-from config import var_name, BAND_SPACING, RGBN_BANDS
+from config import BAND_SPACING, RGBN_BANDS
 
 class DatasetFromHdf5(Dataset):
 	def __init__(self, file_path):
 		super(DatasetFromHdf5, self).__init__()
 		hf = h5py.File(file_path)
 		self.images = hf.get("data")
-		self.ground_t = hf.get("label")
+		self.hypercubes = hf.get("label")
 
 	def __getitem__(self, index):
-		return torch.from_numpy(self.images[index,:,:,:]).float(), torch.from_numpy(self.ground_t[index,:,:,:]).float()
+		return torch.from_numpy(self.images[index,:,:,:]).float(), torch.from_numpy(self.hypercubes[index,:,:,:]).float()
 
 	def __len__(self):
 		return len(self.images)
@@ -69,7 +69,7 @@ class DatasetFromDirectory(Dataset):
 	IMAGE_SIZE = 512
 	images, labels = {}, {}
 
-	def __init__(self, root, dataset_name=None, product_pairing=True, lazy_read=False, rgbn_from_cube = True, train_with_patches=True, patch_size=64, discard_edges=True):
+	def __init__(self, root, dataset_name=None, product_pairing=True, lazy_read=False, rgbn_from_cube=True, train_with_patches=True, patch_size=64, discard_edges=True):
 		"""
 		Dataloader for the dataset.
 			root:				root directory of the dataset
@@ -83,7 +83,6 @@ class DatasetFromDirectory(Dataset):
 		"""
 		self.PATCH_SIZE = patch_size
 		self.root = root
-		self.var_name = var_name
 		self.rgbn_from_cube = rgbn_from_cube
 		self.lazy_read = lazy_read
 		self.product_pairing = product_pairing
@@ -110,7 +109,7 @@ class DatasetFromDirectory(Dataset):
 		for directory in glob(os.path.join(self.root, "working_{}".format(dataset_name), "*")):
 			for mat_filename in glob(os.path.join(directory, "*.mat")):
 				if not lazy_read:
-					hypercube = load_mat(mat_filename, self.var_name)[self.var_name]
+					hypercube = load_mat(mat_filename)
 					if rgbn_from_cube:
 						image = hypercube[:, :, RGBN_BANDS]
 						image = np.transpose(image, [2, 0, 1])
@@ -149,7 +148,7 @@ class DatasetFromDirectory(Dataset):
 
 		if self.lazy_read:
 			mat_name = self.labels[idx[1]]["mat_path"]
-			hypercube = load_mat(mat_name, self.var_name)[self.var_name]
+			hypercube = load_mat(mat_name)
 			if self.rgbn_from_cube:
 				image = hypercube[:, :, RGBN_BANDS]
 				image = np.transpose(image, [2, 0, 1])

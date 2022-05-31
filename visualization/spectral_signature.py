@@ -10,19 +10,19 @@ import matplotlib
 from matplotlib.patches import Circle
 
 from utils import load_mat
-from config import TEST_ROOT_DATASET_DIR, var_name, text_font_dict
+from config import TEST_ROOT_DATASET_DIR, text_font_dict
 
 def main():
 	rgb_img = imread(os.path.join(os.path.dirname(TEST_ROOT_DATASET_DIR), "1458.png"))
 	# rgb_img = np.array(rgb_img).T
 
-	gt_img = load_mat(os.path.join(TEST_ROOT_DATASET_DIR, "working_avocado", "avocado_h_204ch", "test", "mat", "1458.mat"), var_name)[var_name]
+	gt_img = load_mat(os.path.join(TEST_ROOT_DATASET_DIR, "working_avocado", "avocado_h_204ch", "test", "mat", "1458.mat"))
 	gt_img = gt_img[:, :, 1:204:4] / 4096
 
-	inf_img = load_mat(os.path.join(TEST_ROOT_DATASET_DIR, "working_avocado", "avocado_h_204ch", "test", "inference", "resnext", "inf_1458.mat"), var_name)[var_name] / 4096
+	inf_img = load_mat(os.path.join(TEST_ROOT_DATASET_DIR, "working_avocado", "avocado_h_204ch", "test", "inference", "resnext", "inf_1458.mat")) / 4096
 
-	# hscnn_inf = load_mat(os.path.join("..", "HSCNN-R", "test", "inference", "HSCNN_4to51_steak_h", "inf_1885.mat"), var_name)[var_name] / 4096
-	# awan_inf = load_mat(os.path.join("..", "AWAN", "test", "inference", "AWAN_4to51_steak_h", "inf_1885.mat"), var_name)[var_name] / 4096
+	# hscnn_inf = load_mat(os.path.join("..", "HSCNN-R", "test", "inference", "HSCNN_4to51_steak_h", "inf_1885.mat")) / 4096
+	# awan_inf = load_mat(os.path.join("..", "AWAN", "test", "inference", "AWAN_4to51_steak_h", "inf_1885.mat")) / 4096
 
 	fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(25, 10))
 	x=range(400, 1001, 12)

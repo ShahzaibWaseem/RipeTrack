@@ -11,7 +11,7 @@ from loss import test_mrae, test_rrmse, spectral_angle, spectral_divergence, tes
 import matplotlib
 import matplotlib.pyplot as plt
 
-from config import ILLUMINATIONS, MODEL_NAME, TEST_ROOT_DATASET_DIR, TEST_DATASETS, LOGS_PATH, var_name, text_font_dict, plt_dict
+from config import ILLUMINATIONS, MODEL_NAME, TEST_ROOT_DATASET_DIR, TEST_DATASETS, LOGS_PATH, text_font_dict, plt_dict
 
 def getBandErrors():
 	""" returns a dictionary containing band wise errors for all evaluated results eg: {'avocado_1111': {}} """
@@ -33,8 +33,8 @@ def getBandErrors():
 				else:
 					gt_filename = filename.split("/")[-1].split(".")[0].split("_")[-1]
 
-				inf_file = load_mat(filename, var_name)[var_name]
-				gt_file = load_mat(os.path.join(GT_PATH, gt_filename + ".mat"), var_name)[var_name]
+				inf_file = load_mat(filename)
+				gt_file = load_mat(os.path.join(GT_PATH, gt_filename + ".mat"))
 				gt_file = gt_file[:,:,1:204:4]
 
 				for band in range(51):

@@ -11,7 +11,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-from config import ILLUMINATIONS, MODEL_NAME, TEST_ROOT_DATASET_DIR, TEST_DATASETS, VIEW_BANDS, ACTUAL_BANDS, var_name, text_font_dict, title_font_dict, plt_dict, init_directories
+from config import ILLUMINATIONS, MODEL_NAME, TEST_ROOT_DATASET_DIR, TEST_DATASETS, VIEW_BANDS, ACTUAL_BANDS, text_font_dict, title_font_dict, plt_dict, init_directories
 
 def main():
 	for test_dataset in TEST_DATASETS:
@@ -21,7 +21,7 @@ def main():
 			GT_PATH = os.path.join(TEST_DATASET_DIR, "mat")
 			PLOTS_PATH = os.path.join(TEST_DATASET_DIR, "images")
 			INF_PATH = os.path.join(TEST_DATASET_DIR, "inference")
-			cfl_file = load_mat(os.path.join(TEST_ROOT_DATASET_DIR, "working_%s" % test_dataset, "%s_nh_204ch" % test_dataset, "1924.mat"), var_name)[var_name]
+			cfl_file = load_mat(os.path.join(TEST_ROOT_DATASET_DIR, "working_%s" % test_dataset, "%s_nh_204ch" % test_dataset, "1924.mat"))
 			cfl_file = cfl_file[:,:,1:204:4]
 
 			print("\nDataset: %s\nIllumination: %s\n" % (test_dataset, illumination))
@@ -34,8 +34,8 @@ def main():
 
 				print(gt_filename + ".mat")
 					
-				inf_file = load_mat(filename, var_name)[var_name]
-				gt_file = load_mat(os.path.join(GT_PATH, gt_filename + ".mat"), var_name)[var_name]
+				inf_file = load_mat(filename)
+				gt_file = load_mat(os.path.join(GT_PATH, gt_filename + ".mat"))
 				gt_file = gt_file[:,:,1:204:4]
 
 				fig, axs = plt.subplots(nrows=3, ncols=len(VIEW_BANDS), figsize=(15, 11))

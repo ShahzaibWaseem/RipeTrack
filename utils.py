@@ -62,8 +62,8 @@ def save_checkpoint(epoch, iteration, model, optimizer):
 			 "optimizer": optimizer.state_dict()}
 	torch.save(state, os.path.join(MODEL_PATH, "MS_%s_%d.pkl" % (checkpoint_fileprestring, epoch)))
 
-def save_matv73(mat_name, var_name, var):
-	hdf5storage.savemat(mat_name, {var_name: var}, format="7.3", store_python_metadata=True)
+def save_matv73(mat_filename, hypercube):
+	hdf5storage.savemat(mat_filename, {var_name: hypercube}, format="7.3", store_python_metadata=True)
 
 def record_loss(loss_csv,epoch, iteration, epoch_time, lr, train_loss, test_loss):
 	""" Record many results."""
@@ -97,10 +97,10 @@ def reconstruction(rgb, model, normalize=False):
 		img_res = np.maximum(img_res, 0)
 	return img_res
 
-def load_mat(mat_name, var_name):
+def load_mat(mat_name):
 	""" Helper function to load mat files (used in making h5 dataset) """
 	data = hdf5storage.loadmat(mat_name, variable_names=[var_name])
-	return data
+	return data[var_name]
 
 def make_h5_dataset(DATASET_DIR, h5_filename):
 	labels = []
@@ -119,8 +119,8 @@ def make_h5_dataset(DATASET_DIR, h5_filename):
 		image = np.dstack((rgb, nir))
 		image = np.transpose(image, [2, 0, 1])
 
-		ground_t = load_mat(os.path.join(os.path.dirname(DATASET_DIR), "mat", mat_file_name + ".mat"), var_name)
-		ground_t = ground_t[var_name][:, :, 1:204:4]/4095
+		ground_t = load_mat(os.path.join(os.path.dirname(DATASET_DIR), "mat", mat_file_name + ".mat"))
+		ground_t = ground_t[:, :, 1:204:4]/4095
 		ground_t = np.transpose(ground_t, [2, 0, 1])
 
 		images.append(image)
