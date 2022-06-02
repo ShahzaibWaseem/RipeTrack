@@ -60,11 +60,8 @@ def inference(model, rgbn_from_cube=True):
 				image = np.expand_dims(image, axis=0)
 
 				hypercube = hypercube[:, :, ::BAND_SPACING]
-				# hypercube = np.transpose(hypercube, [2, 0, 1])
 
-				hypercube_pred = (reconstruction(image, model) + np.flip(reconstruction(np.flip(image, 2).copy(), model), 1)) / 2
-				# hypercube_pred = model(torch.from_numpy(np.expand_dims(image, axis=0)).float().cuda()).cpu().detach().numpy().squeeze(0)
-				# hypercube_pred = np.transpose(hypercube_pred, [2, 0, 1])
+				hypercube_pred = (reconstruction(image, model) + np.flip(reconstruction(np.flip(image, 2).copy(), model), 1))
 				end_time = time.time() - start_time
 
 				inf_mat_name = os.path.join(TEST_DATASET_DIR, label, "inference", "inf_" + mat_filename)
