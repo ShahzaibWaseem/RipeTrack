@@ -86,7 +86,7 @@ class DatasetFromDirectory(Dataset):
 	IMAGE_SIZE = 512
 	images, labels = {}, {}
 
-	def __init__(self, root, dataset_name=None, product_pairing=True, lazy_read=False, rgbn_from_cube=True, train_with_patches=True, patch_size=64, discard_edges=True):
+	def __init__(self, root, dataset_name=None, patch_size=64, lazy_read=False, rgbn_from_cube=True, product_pairing=True, train_with_patches=True, discard_edges=True):
 		"""
 		Dataloader for the dataset.
 			root:				root directory of the dataset
@@ -98,10 +98,10 @@ class DatasetFromDirectory(Dataset):
 			patch_size:			size of the patches
 			discard_edges:		if True, discard the four corner patches
 		"""
-		self.PATCH_SIZE = patch_size
 		self.root = root
-		self.rgbn_from_cube = rgbn_from_cube
+		self.PATCH_SIZE = patch_size
 		self.lazy_read = lazy_read
+		self.rgbn_from_cube = rgbn_from_cube
 		self.product_pairing = product_pairing
 
 		im_id, rgbn_counter = 0, 0

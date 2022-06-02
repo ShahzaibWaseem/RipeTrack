@@ -25,11 +25,11 @@ def main():
 	train_data, valid_data = [], []
 	dataset = DatasetFromDirectory(root=os.path.join(os.path.dirname(TRAIN_DATASET_DIR), "working_datasets"),
 								   dataset_name="organic",
-								   product_pairing=False,
-								   lazy_read=False,
-								   rgbn_from_cube = True,
-								   train_with_patches=True,
 								   patch_size=PATCH_SIZE,
+								   lazy_read=False,
+								   rgbn_from_cube=True,
+								   product_pairing=False,
+								   train_with_patches=True,
 								   discard_edges=True)
 
 	trainset_size = 0.8
