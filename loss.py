@@ -11,8 +11,8 @@ from config import NORMALIZATION_FACTOR
 def mrae_loss(tensor_pred, tensor_gt):
 	""" Computes the Mean Relative Absolute Error Loss (PyTorch - Training Loss) """
 	error = torch.abs(tensor_pred-tensor_gt)/tensor_gt
-	rrmse = torch.mean(error.view(-1))
-	return rrmse
+	mrae = torch.mean(error.view(-1))
+	return mrae
 
 def sam_loss(tensor_pred, tensor_gt):
 	""" Computes the Spectral Angle Mapper Loss (PyTorch - Training Loss) """
@@ -78,8 +78,8 @@ def test_mrae(img_pred, img_gt):
 	""" Calculate the relative Mean Relative Absolute Error (NumPy - Test Error) """
 	error = img_pred - img_gt
 	error_relative = error/img_gt
-	rrmse = np.mean(np.abs(error_relative))
-	return rrmse
+	mrae = np.mean(np.abs(error_relative))
+	return mrae
 
 def test_rrmse(img_pred, img_gt):
 	""" Calculate the relative Root Mean Square Error (NumPy - Test Error) """
