@@ -24,30 +24,16 @@ class DatasetFromHdf5(Dataset):
 	def __len__(self):
 		return len(self.images)
 
-def image_to_patches(image, patch_size, discard_edges=True):
-	""" 
-	Splits the image into patches and returns a list of patches
-		image:			RGB-NIR or Hypercube. numpy array of shape (channel, row, col)
-		discard_edges:	if True, discard the four corners of the image
-	"""
-	patches = []
-	for i in range(0, image.shape[1] - patch_size + 1, patch_size):
-		for j in range(0, image.shape[2] - patch_size + 1, patch_size):
-			if discard_edges and (i == 0 or i == image.shape[0] - patch_size or j == 0 or j == image.shape[1] - patch_size):
-				continue
-			patches.append(image[:, i:i+patch_size, j:j+patch_size])
-	return patches
-
 def read_image(rgb_filename, nir_filename):
-	""" Reads the two images and stack them together while maintaining the order or BGR-NIR """
+	""" Reads the two images and stack them together while maintaining the order BGR-NIR """
 	rgb = imread(rgb_filename)
-	rgb = rgb/255
 	rgb[:,:, [0, 2]] = rgb[:,:, [2, 0]]	# flipping red and blue channels (shape used for training)
 
-	nir = imread(nir_filename)[:,:, 0]	# because NIR from the phone is saved as three repeated channels 
-	nir = nir/255
+	nir = imread(nir_filename)
+	# because NIR from the phone is saved as three repeated channels
+	nir = nir[:,:, 0] if nir.ndim == 3 else np.expand_dims(nir, axis=-1)
 
-	image = np.dstack((rgb, nir))
+	image = np.dstack((rgb, nir))/255.0
 	image = np.transpose(image, [2, 0, 1])
 	del rgb, nir
 
@@ -86,7 +72,7 @@ class DatasetFromDirectory(Dataset):
 	IMAGE_SIZE = 512
 	images, labels = {}, {}
 
-	def __init__(self, root, dataset_name=None, patch_size=64, lazy_read=False, rgbn_from_cube=True, product_pairing=True, train_with_patches=True, discard_edges=True):
+	def __init__(self, root, dataset_name=None, patch_size=64, lazy_read=False, rgbn_from_cube=True, product_pairing=True, train_with_patches=True, transform=None):
 		"""
 		Dataloader for the dataset.
 			root:				root directory of the dataset
@@ -103,28 +89,28 @@ class DatasetFromDirectory(Dataset):
 		self.lazy_read = lazy_read
 		self.rgbn_from_cube = rgbn_from_cube
 		self.product_pairing = product_pairing
+		self.transform = transform
 
 		im_id, rgbn_counter = 0, 0
 		if not rgbn_from_cube:
-			for directory in glob(os.path.join(self.root, "RGBNIRImages", dataset_name, "*")):
-				for rgb_filename in glob(os.path.join(directory, "*_RGB.jpg")):
+			for directory in sorted(glob(os.path.join(self.root, "RGBNIRImages", "working_{}".format(dataset_name), "*"))):
+				for rgb_filename in sorted(glob(os.path.join(directory, "*_RGB.png"))):
 					nir_filename = os.path.join(directory, rgb_filename.split("/")[-1].replace("RGB", "NIR"))
 					image = read_image(rgb_filename, nir_filename)
 					rgbn_counter += 1
 
 					if train_with_patches:
-						patches = image_to_patches(image, self.PATCH_SIZE, discard_edges)
-						for patch in patches:
-							self.images[im_id] = patch
-							im_id += 1
-						del patches
+						for i in range(self.IMAGE_SIZE // self.PATCH_SIZE):
+							for j in range(self.IMAGE_SIZE // self.PATCH_SIZE):
+								self.images[im_id] = image[:, i*self.PATCH_SIZE:(i+1)*self.PATCH_SIZE, j*self.PATCH_SIZE:(j+1)*self.PATCH_SIZE]
+								im_id += 1
 					else:
 						self.images[im_id] = image
 						im_id += 1
 
 		im_id, hypercube_counter = 0, 0
-		for directory in glob(os.path.join(self.root, "working_{}".format(dataset_name), "*")):
-			for mat_filename in glob(os.path.join(directory, "*.mat")):
+		for directory in sorted(glob(os.path.join(self.root, "working_{}".format(dataset_name), "*"))):
+			for mat_filename in sorted(glob(os.path.join(directory, "*.mat"))):
 				if not lazy_read:
 					hypercube = load_mat(mat_filename)
 					if rgbn_from_cube:
@@ -140,10 +126,10 @@ class DatasetFromDirectory(Dataset):
 							if lazy_read:
 								self.labels[im_id] = {"mat_path": mat_filename, "idx": (i, j)}
 							else:
-								self.labels[im_id] = hypercube[:, i:i+self.PATCH_SIZE, j:j+self.PATCH_SIZE]
+								self.labels[im_id] = hypercube[:, i*self.PATCH_SIZE:(i+1)*self.PATCH_SIZE, j*self.PATCH_SIZE:(j+1)*self.PATCH_SIZE]
 								if rgbn_from_cube:
-									self.images[im_id] = image[:, i:i+self.PATCH_SIZE, j:j+self.PATCH_SIZE]
-							im_id += 1
+									self.images[im_id] = image[:, i*self.PATCH_SIZE:(i+1)*self.PATCH_SIZE, j*self.PATCH_SIZE:(j+1)*self.PATCH_SIZE]
+							im_id += 1					
 				else:
 					self.labels[im_id] = mat_filename
 					im_id += 1
@@ -176,10 +162,10 @@ class DatasetFromDirectory(Dataset):
 
 			# getting the desired patch from the hypercube
 			i, j = self.labels[idx[1]]["idx"]
-			hypercube = hypercube[:, i:i+self.PATCH_SIZE, j:j+self.PATCH_SIZE]
+			hypercube = hypercube[:, i*self.PATCH_SIZE:(i+1)*self.PATCH_SIZE, j*self.PATCH_SIZE:(j+1)*self.PATCH_SIZE]
 
 			if self.rgbn_from_cube:
-				image = image[:, i:i+self.PATCH_SIZE, j:j+self.PATCH_SIZE]
+				image = image[:, i*self.PATCH_SIZE:(i+1)*self.PATCH_SIZE, j*self.PATCH_SIZE:(j+1)*self.PATCH_SIZE]
 		else:
 			image = self.images[idx[0]]
 			hypercube = self.labels[idx[1]]
@@ -194,4 +180,6 @@ class DatasetFromDirectory(Dataset):
 
 	def __getitem__(self, index):
 		image, hypercube = self.fetch_image_label(index)
-		return torch.from_numpy(image).float(), torch.from_numpy(hypercube).float()
+		image = torch.from_numpy(image).float()
+		hypercube = torch.from_numpy(hypercube).float()
+		return image, hypercube
