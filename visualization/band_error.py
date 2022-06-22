@@ -11,7 +11,7 @@ from loss import test_mrae, test_rrmse, spectral_angle, spectral_divergence, tes
 import matplotlib
 import matplotlib.pyplot as plt
 
-from config import ILLUMINATIONS, MODEL_NAME, TEST_ROOT_DATASET_DIR, TEST_DATASETS, LOGS_PATH, text_font_dict, plt_dict
+from config import BAND_SPACING, ILLUMINATIONS, MODEL_NAME, NORMALIZATION_FACTOR, TEST_ROOT_DATASET_DIR, TEST_DATASETS, LOGS_PATH, text_font_dict, plt_dict
 
 def getBandErrors():
 	""" returns a dictionary containing band wise errors for all evaluated results eg: {'avocado_1111': {}} """
@@ -35,13 +35,13 @@ def getBandErrors():
 
 				inf_file = load_mat(filename)
 				gt_file = load_mat(os.path.join(GT_PATH, gt_filename + ".mat"))
-				gt_file = gt_file[:,:,1:204:4]
+				gt_file = gt_file[:,:, ::BAND_SPACING]
 
 				for band in range(51):
 					mrae_errors.append(float(test_mrae(inf_file[:,:, band], gt_file[:,:, band])))
 					rrmse_errors.append(float(test_rrmse(inf_file[:,:, band], gt_file[:,:, band])))
-					sam_errors.append(float(spectral_angle(inf_file[:,:, band].reshape(-1,)/4095, gt_file[:,:, band].reshape(-1,)/4095)))
-					sid_errors.append(float(spectral_divergence(inf_file[:,:, band].reshape(-1,)/4095, gt_file[:,:, band].reshape(-1,)/4095)))
+					sam_errors.append(float(spectral_angle(inf_file[:,:, band].reshape(-1,)/NORMALIZATION_FACTOR, gt_file[:,:, band].reshape(-1,)/NORMALIZATION_FACTOR)))
+					sid_errors.append(float(spectral_divergence(inf_file[:,:, band].reshape(-1,)/NORMALIZATION_FACTOR, gt_file[:,:, band].reshape(-1,)/NORMALIZATION_FACTOR)))
 					psnr_errors.append(float(test_psnr(inf_file[:,:, band], gt_file[:,:, band])))
 					ssim_errors.append(float(test_ssim(inf_file[:,:, band], gt_file[:,:, band])))
 

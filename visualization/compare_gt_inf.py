@@ -11,18 +11,18 @@ import matplotlib
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-from config import ILLUMINATIONS, MODEL_NAME, TEST_ROOT_DATASET_DIR, TEST_DATASETS, VIEW_BANDS, ACTUAL_BANDS, text_font_dict, title_font_dict, plt_dict, init_directories
+from config import BAND_SPACING, ILLUMINATIONS, MODEL_NAME, TEST_ROOT_DATASET_DIR, TEST_DATASETS, VIEW_BANDS, ACTUAL_BANDS, text_font_dict, title_font_dict, plt_dict, init_directories
 
 def main():
 	for test_dataset in TEST_DATASETS:
 		for illumination in ILLUMINATIONS:
 			TEST_DATASET_DIR = os.path.join(TEST_ROOT_DATASET_DIR, "working_%s" % test_dataset, "%s_%s_204ch" % (test_dataset, illumination), "test")
-				
+
 			GT_PATH = os.path.join(TEST_DATASET_DIR, "mat")
 			PLOTS_PATH = os.path.join(TEST_DATASET_DIR, "images")
 			INF_PATH = os.path.join(TEST_DATASET_DIR, "inference")
 			cfl_file = load_mat(os.path.join(TEST_ROOT_DATASET_DIR, "working_%s" % test_dataset, "%s_nh_204ch" % test_dataset, "1924.mat"))
-			cfl_file = cfl_file[:,:,1:204:4]
+			cfl_file = cfl_file[:,:, ::BAND_SPACING]
 
 			print("\nDataset: %s\nIllumination: %s\n" % (test_dataset, illumination))
 
@@ -33,13 +33,13 @@ def main():
 					gt_filename = filename.split("/")[-1].split(".")[0].split("_")[-1]
 
 				print(gt_filename + ".mat")
-					
+
 				inf_file = load_mat(filename)
 				gt_file = load_mat(os.path.join(GT_PATH, gt_filename + ".mat"))
-				gt_file = gt_file[:,:,1:204:4]
+				gt_file = gt_file[:,:, ::BAND_SPACING]
 
 				fig, axs = plt.subplots(nrows=3, ncols=len(VIEW_BANDS), figsize=(15, 11))
-					
+
 				for j in range(axs.shape[1]):
 					# Reconstructed Hypercube (gamma adjustment)
 					img = inf_file[:,:,VIEW_BANDS[j]].reshape(512, 512)

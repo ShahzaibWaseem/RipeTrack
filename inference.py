@@ -14,7 +14,9 @@ from models.resblock import ResNeXtBottleneck
 from dataset import read_image
 from utils import save_matv73, reconstruction, load_mat, initialize_logger
 from loss import test_mrae, test_rrmse, test_msam, test_sid, test_psnr, test_ssim
-from config import ILLUMINATIONS, TEST_ROOT_DATASET_DIR, TEST_DATASETS, MODEL_PATH, MODEL_NAME, BAND_SPACING, RGBN_BANDS, OUTPUT_BANDS, model_run_title, checkpoint_file, init_directories
+from config import ILLUMINATIONS, TEST_ROOT_DATASET_DIR, TEST_DATASETS, MODEL_PATH, MODEL_NAME, DATASET_NAME, BAND_SPACING, RGBN_BANDS, NUMBER_OF_BANDS, model_run_title, checkpoint_file, init_directories
+
+import matplotlib.pyplot as plt
 
 def calculate_metrics(img_pred, img_gt):
 	mrae = test_mrae(img_pred, img_gt)
@@ -26,22 +28,23 @@ def calculate_metrics(img_pred, img_gt):
 	return mrae, rrmse, msam, sid, psnr, ssim
 
 def inference(model, rgbn_from_cube=True):
+	eps = 1e-5
 	logger = initialize_logger(filename="test.log")
 	log_string = "[%15s] Time: %0.9f, MRAE: %0.9f, RRMSE: %0.9f, SAM: %0.9f, SID: %0.9f, PSNR: %0.9f, SSIM: %0.9f"
+	TEST_DATASET_DIR = os.path.join(TEST_ROOT_DATASET_DIR, "working_%s" % DATASET_NAME)
 
 	for test_dataset in TEST_DATASETS:
 		for illumination in ILLUMINATIONS:
 			print("\n" + model_run_title)
 			logger.info(model_run_title)
-			print("\nDataset: %s\nIllumination: %s\nModel: %s\n" % (test_dataset, illumination, checkpoint_file))
-			logger.info("Dataset: %s\tIllumination: %s\tModel: %s\n" % (test_dataset, illumination, checkpoint_file))
+			print("\nDataset: %s\nIllumination: %s\nModel: %s\n" % (DATASET_NAME, illumination, checkpoint_file))
+			logger.info("Dataset: %s\tIllumination: %s\tModel: %s\n" % (DATASET_NAME, illumination, checkpoint_file))
 
-			TEST_DATASET_DIR = os.path.join(TEST_ROOT_DATASET_DIR, "working_%s" % test_dataset)
-			# GT_PATH =
-			IMG_PATH = os.path.join(TEST_DATASET_DIR, "image") if not rgbn_from_cube else None
-			INF_PATH = os.path.join(TEST_DATASET_DIR, "inference")
+			GT_PATH = os.path.join(TEST_DATASET_DIR, "working_%s_204ch" % test_dataset)
+			IMG_PATH = os.path.join(os.path.dirname(TEST_DATASET_DIR), "RGBNIRImages", "working_%s" % DATASET_NAME, "working_%s_204ch" % test_dataset) if not rgbn_from_cube else None
+			INF_PATH = os.path.join(GT_PATH, "inference")
 
-			for mat_filepath in sorted(glob(os.path.join(TEST_DATASET_DIR, "working_organic_204ch", "*.mat")) + glob(os.path.join(TEST_DATASET_DIR, "working_nonorganic_204ch", "*.mat"))):
+			for mat_filepath in sorted(glob(os.path.join(TEST_DATASET_DIR, "working_%s_204ch" % test_dataset, "*.mat"))):
 				start_time = time.time()
 				label = mat_filepath.split("/")[-2]
 
@@ -50,24 +53,30 @@ def inference(model, rgbn_from_cube=True):
 							   else mat_filepath.split("/")[-1].split("_")[0]
 
 				if not rgbn_from_cube:
-					rgb_filename = mat_filename + ".png"
-					nir_filename = rgb_filename.replace("RGB", "NIR")
-
-					image = read_image(rgb_filename, nir_filename)
+					rgb_filename = mat_filename.split(".")[0] + "_RGB.png"
+					nir_filename = mat_filename.split(".")[0] + "_NIR.png"
+					rgb_filepath = os.path.join(IMG_PATH, rgb_filename)
+					nir_filepath = os.path.join(IMG_PATH, nir_filename)
+					image = read_image(rgb_filepath, nir_filepath)
 				else:
 					image = hypercube[:, :, RGBN_BANDS]
 					image = np.transpose(image, [2, 0, 1])
-				image = np.expand_dims(image, axis=0)
-
+				image = torch.from_numpy(np.expand_dims(image, axis=0)).float().cuda()
 				hypercube = hypercube[:, :, ::BAND_SPACING]
 
-				hypercube_pred = (reconstruction(image, model) + np.flip(reconstruction(np.flip(image, 2).copy(), model), 1))
+				# hypercube_pred = (reconstruction(image, model) + np.flip(reconstruction(np.flip(image, 2).copy(), model), 1))
+				hypercube_pred = model(image)
+				hypercube_pred = np.transpose(hypercube_pred.squeeze(0).cpu().detach().numpy(), [1, 2, 0])
+
 				end_time = time.time() - start_time
+
+				if not os.path.exists(INF_PATH):
+					os.makedirs(INF_PATH)
 
 				inf_mat_name = os.path.join(TEST_DATASET_DIR, label, "inference", "inf_" + mat_filename)
 				save_matv73(inf_mat_name, hypercube_pred)
 
-				mrae, rrmse, msam, sid, psnr, ssim = calculate_metrics(hypercube_pred+1, hypercube+1)
+				mrae, rrmse, msam, sid, psnr, ssim = calculate_metrics(hypercube_pred+eps, hypercube+eps)
 
 				print(log_string % (mat_filename, end_time, mrae, rrmse, msam, sid, psnr, ssim))
 				logger.info(log_string % (mat_filename, end_time, mrae, rrmse, msam, sid, psnr, ssim))
@@ -75,12 +84,12 @@ def inference(model, rgbn_from_cube=True):
 def main():
 	save_point = torch.load(os.path.join(MODEL_PATH, checkpoint_file))
 	model_param = save_point["state_dict"]
-	model = Network(ResNeXtBottleneck, block_num=10, input_channel=4, n_hidden=64, output_channel=OUTPUT_BANDS)
+	model = Network(ResNeXtBottleneck, block_num=10, input_channel=4, n_hidden=64, output_channel=NUMBER_OF_BANDS)
 	model.load_state_dict(model_param)
 	model = model.cuda()
 	model.eval()
 	print(summary(model=model, input_data=(4, 512, 512)))
-	inference(model, rgbn_from_cube=True)
+	inference(model, rgbn_from_cube=False)
 
 if __name__ == "__main__":
 	# init_directories()

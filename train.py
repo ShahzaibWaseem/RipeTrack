@@ -16,21 +16,19 @@ from models.resblock import resblock, ResNeXtBottleneck
 from models.model import Network
 
 from utils import AverageMeter, initialize_logger, save_checkpoint, record_loss, makeMobileModel, make_h5_dataset, modeltoONNX, ONNXtotf, tf_to_tflite
-from config import TRAIN_DATASET_DIR, TRAIN_DATASET_FILES, VALID_DATASET_FILES, LOGS_PATH, MODEL_NAME, DATASET_NAME, OUTPUT_BANDS, PATCH_SIZE, init_directories, checkpoint_file, batch_size, end_epoch, init_lr, model_run_title
+from config import TRAIN_DATASET_DIR, TRAIN_DATASET_FILES, VALID_DATASET_FILES, LOGS_PATH, MODEL_NAME, DATASET_NAME, NUMBER_OF_BANDS, PATCH_SIZE, init_directories, checkpoint_file, batch_size, end_epoch, init_lr, model_run_title
 
 def main():
 	torch.backends.cudnn.benchmark = True
 
 	# Dataset
-	train_data, valid_data = [], []
 	dataset = DatasetFromDirectory(root=os.path.join(os.path.dirname(TRAIN_DATASET_DIR), "working_datasets"),
 								   dataset_name="organic",
 								   patch_size=PATCH_SIZE,
 								   lazy_read=False,
-								   rgbn_from_cube=True,
+								   rgbn_from_cube=False,
 								   product_pairing=False,
-								   train_with_patches=True,
-								   discard_edges=True)
+								   train_with_patches=True)
 
 	trainset_size = 0.8
 	print("Dataset size:\t\t\t{}".format(len(dataset)))
@@ -39,6 +37,7 @@ def main():
 	print("Length of Training Set ({}%):\t{}".format(round(trainset_size * 100), len(train_data)))
 	print("Length of Validation Set ({}%):\t{}".format(round((1-trainset_size) * 100), len(valid_data)))
 
+	# train_data, valid_data = [], []
 	# for datasetFile in TRAIN_DATASET_FILES:
 	# 	h5_filepath = os.path.join(TRAIN_DATASET_DIR, datasetFile)
 	# 	dataset = DatasetFromHdf5(h5_filepath)
@@ -81,7 +80,7 @@ def main():
 	log_string = "Epoch [%3d], Iter[%5d], Time: %.9f, Learning Rate: %.9f, Train Loss: %.9f (%.9f, %.9f, %.9f), Validation Loss: %.9f (%.9f, %.9f, %.9f)"
 
 	# make model
-	model = Network(block=ResNeXtBottleneck, block_num=10, input_channel=4, n_hidden=64, output_channel=OUTPUT_BANDS)
+	model = Network(block=ResNeXtBottleneck, block_num=10, input_channel=4, n_hidden=64, output_channel=NUMBER_OF_BANDS)
 	optimizer=torch.optim.Adam(model.parameters(), lr=init_lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.01)
 	# print(summary(model, (4, 64, 64), verbose=1))
 
@@ -188,7 +187,7 @@ def validate(val_data_loader, model, criterions):
 
 		loss_mrae = criterion_mrae(output, labels)
 		loss_sam = criterion_sam(output, labels) * 0.1
-		loss_sid = criterion_sid(output, labels) * 0.00005
+		loss_sid = criterion_sid(output, labels) * 0.0001
 		# loss_weighted = criterion_weighted(output, labels)
 
 		loss = loss_mrae + loss_sam + loss_sid
@@ -222,7 +221,7 @@ def poly_lr_scheduler(optimizer, init_lr, iteraion, lr_decay_iter=1, max_iter=10
 	return lr
 
 if __name__ == "__main__":
-	init_directories()
+	# init_directories()
 	# makeMobileModel()
 	# make_h5_dataset(TRAIN_DATASET_DIR=os.path.join(TRAIN_DATASET_DIR, "train"), h5_filename="train_apple_halogen_4to51bands_whole.h5")
 	# make_h5_dataset(TRAIN_DATASET_DIR=os.path.join(TRAIN_DATASET_DIR, "valid"), h5_filename="valid_apple_halogen_4to51bands_whole.h5")

@@ -22,7 +22,7 @@ from torch.utils.mobile_optimizer import optimize_for_mobile
 from models.model import Network
 from models.resblock import resblock, ResNeXtBottleneck
 
-from config import MODEL_PATH, LOGS_PATH, MODEL_PATH, checkpoint_fileprestring, checkpoint_file, mobile_model_file, var_name, onnx_file_name, tf_model_dir, tflite_filename
+from config import BAND_SPACING, MODEL_PATH, LOGS_PATH, MODEL_PATH, NORMALIZATION_FACTOR, NUMBER_OF_BANDS, checkpoint_fileprestring, checkpoint_file, mobile_model_file, var_name, onnx_file_name, tf_model_dir, tflite_filename
 
 class AverageMeter(object):
 	"""Computes and stores the average and current value."""
@@ -88,19 +88,19 @@ def get_reconstruction(input, num_split, dimension, model):
 
 def reconstruction(rgb, model, normalize=False):
 	"""Output the final reconstructed hyperspectral images."""
-	img_res = get_reconstruction(torch.from_numpy(rgb).float(), 1, 3, model)
+	img_res = get_reconstruction(rgb.float(), 1, 3, model)
 	img_res = img_res.cpu().numpy()
 	img_res = np.transpose(np.squeeze(img_res))
 	if normalize:
-		img_res = img_res / 4095
-		img_res = np.minimum(img_res, 4095)
+		img_res = img_res / NORMALIZATION_FACTOR
+		img_res = np.minimum(img_res, NORMALIZATION_FACTOR)
 		img_res = np.maximum(img_res, 0)
 	return img_res
 
 def load_mat(mat_name):
 	""" Helper function to load mat files (used in making h5 dataset) """
 	data = hdf5storage.loadmat(mat_name, variable_names=[var_name])
-	return data[var_name]
+	return data[var_name] / NORMALIZATION_FACTOR
 
 def make_h5_dataset(DATASET_DIR, h5_filename):
 	labels = []
@@ -112,15 +112,17 @@ def make_h5_dataset(DATASET_DIR, h5_filename):
 		nir_img_path = os.path.join(DATASET_DIR, filename.split("/")[-1].replace("RGB", "NIRc"))
 		print(rgb_img_path)
 		rgb = imread(rgb_img_path)
-		rgb = rgb/255
-		rgb[:,:, [0, 2]] = rgb[:,:, [2, 0]]		# flipping red and blue channels (shape used for training)
-		
-		nir = imread(nir_img_path)/255
-		image = np.dstack((rgb, nir))
+		rgb[:,:, [0, 2]] = rgb[:,:, [2, 0]]	# flipping red and blue channels (shape used for training)
+
+		nir = imread(nir_img_path)
+		# because NIR from the phone is saved as three repeated channels
+		nir = nir[:,:, 0] if nir.ndim == 3 else np.expand_dims(nir, axis=-1)
+
+		image = np.dstack((rgb, nir))/255.0
 		image = np.transpose(image, [2, 0, 1])
 
 		ground_t = load_mat(os.path.join(os.path.dirname(DATASET_DIR), "mat", mat_file_name + ".mat"))
-		ground_t = ground_t[:, :, 1:204:4]/4095
+		ground_t = ground_t[:, :, ::BAND_SPACING]
 		ground_t = np.transpose(ground_t, [2, 0, 1])
 
 		images.append(image)
@@ -137,7 +139,7 @@ def make_h5_dataset(DATASET_DIR, h5_filename):
 def makeMobileModel():
 	save_point = torch.load(os.path.join(MODEL_PATH, checkpoint_file))
 	model_param = save_point["state_dict"]
-	model = Network(block=ResNeXtBottleneck, block_num=10, input_channel=4, n_hidden=64, output_channel=51)
+	model = Network(block=ResNeXtBottleneck, block_num=10, input_channel=4, n_hidden=64, output_channel=NUMBER_OF_BANDS)
 	model.load_state_dict(model_param)
 
 	model.eval()
@@ -150,7 +152,7 @@ def makeMobileModel():
 def modeltoONNX():
 	save_point = torch.load(os.path.join(MODEL_PATH, checkpoint_file))
 	model_param = save_point["state_dict"]
-	model = Network(block=ResNeXtBottleneck, block_num=10, input_channel=4, n_hidden=64, output_channel=51)
+	model = Network(block=ResNeXtBottleneck, block_num=10, input_channel=4, n_hidden=64, output_channel=NUMBER_OF_BANDS)
 	model.load_state_dict(model_param)
 
 	model.eval()
