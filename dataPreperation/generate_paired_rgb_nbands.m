@@ -43,7 +43,7 @@ for i = 1 : size(label, 1)
 	hs_label = cell2mat(a_temp);
 	hs_label = hs_label/(2^12 - 1);
 
-	rgb_name = [ rgb_dir "REFLECTANCE_" label(order(i)).name(1 : end - 4) ".png"];
+	rgb_name = [rgb_dir "REFLECTANCE_" label(order(i)).name(1 : end - 4) ".png"];
 
 	rgb_data_uint = imread(rgb_name);
 	rgb_data = im2double(rgb_data_uint);

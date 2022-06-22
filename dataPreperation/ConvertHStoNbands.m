@@ -1,10 +1,10 @@
 function ConvertHStoNbands(local_HS_data, local_HS_label, local_size_data, local_size_label, label_dimension, data_dimension, local_stride, chunksz, local_amount_hd5_image, filename)
-	%% global variable to determine the numbers of images included by each hdf5 file
+	% global variable to determine the numbers of images included by each hdf5 file
 	global FILE_COUNT;
 	global TOTALCT;
 	global CREATED_FLAG;
 
-	%% initialization
+	% initialization
 	data = zeros(local_size_data, local_size_data, data_dimension, 1);
 	label = zeros(local_size_data, local_size_data, label_dimension, 1);
 	padding = abs(local_size_data - local_size_label) / 2;
@@ -18,7 +18,7 @@ function ConvertHStoNbands(local_HS_data, local_HS_label, local_size_data, local
 		TOTALCT = 0;
 	end
 
-	%% loading all the .mat will need a for loop
+	% loading all the .mat will need a for loop
 	[img_width, img_height, img_channel] = size(local_HS_label);					% the choosed label and data are same size
 
 	for x = 1 : local_stride : img_width - local_size_data + 1
@@ -40,7 +40,7 @@ function ConvertHStoNbands(local_HS_data, local_HS_label, local_size_data, local
 	clear subim_input;
 	clear subim_label;
 
-	%% writing to HDF5
+	% writing to HDF5
 	for batchno = 1 : floor(count / chunksz)
 		last_read = (batchno - 1) * chunksz;
 		batchdata = data(:, :, :, last_read + 1 : last_read + chunksz);
@@ -53,3 +53,4 @@ function ConvertHStoNbands(local_HS_data, local_HS_label, local_size_data, local
 	end
 
 	h5disp(filename);
+end
