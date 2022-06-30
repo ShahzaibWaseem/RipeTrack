@@ -1,3 +1,5 @@
+from math import sqrt
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -54,6 +56,15 @@ class ResNeXtBottleneck(nn.Module):
 									 nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=stride, padding=0,
 											   bias=False))
 			self.shortcut.add_module("shortcut_bn", nn.BatchNorm2d(out_channels))
+
+		self.apply(self._init_weights)
+
+	def _init_weights(self, module):
+		if(isinstance(module, nn.Conv2d)):
+			nn.init.xavier_uniform_(module.weight)
+		elif isinstance(module, nn.BatchNorm2d):
+			module.bias.data.zero_()
+			module.weight.data.fill_(1.0)
 
 	def forward(self, x):
 		bottleneck = self.conv_reduce.forward(x)
