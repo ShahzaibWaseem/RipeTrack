@@ -11,6 +11,7 @@ from torchsummary import summary
 from models.model import Network
 from models.resblock import ResNeXtBottleneck
 
+from train import get_required_transforms
 from dataset import read_image
 from utils import save_matv73, reconstruction, load_mat, initialize_logger
 from loss import test_mrae, test_rrmse, test_msam, test_sid, test_psnr, test_ssim
@@ -28,6 +29,7 @@ def calculate_metrics(img_pred, img_gt):
 	return mrae, rrmse, msam, sid, psnr, ssim
 
 def inference(model, rgbn_from_cube=True):
+	input_transform, label_transform = get_required_transforms()
 	eps = 1e-5
 	logger = initialize_logger(filename="test.log")
 	log_string = "[%15s] Time: %0.9f, MRAE: %0.9f, RRMSE: %0.9f, SAM: %0.9f, SID: %0.9f, PSNR: %0.9f, SSIM: %0.9f"
@@ -61,12 +63,28 @@ def inference(model, rgbn_from_cube=True):
 				else:
 					image = hypercube[:, :, RGBN_BANDS]
 					image = np.transpose(image, [2, 0, 1])
-				image = torch.from_numpy(np.expand_dims(image, axis=0)).float().cuda()
+
+				image = torch.from_numpy(np.expand_dims(image, axis=0)).float()
+				image = input_transform(image).cuda()
+
 				hypercube = hypercube[:, :, ::BAND_SPACING]
+				hypercube = np.transpose(hypercube, [2, 0, 1])
+				hypercube = torch.from_numpy(hypercube).float()
+				hypercube = label_transform(hypercube)
+				hypercube = np.transpose(hypercube.numpy(), [1, 2, 0])
 
 				# hypercube_pred = (reconstruction(image, model) + np.flip(reconstruction(np.flip(image, 2).copy(), model), 1))
 				hypercube_pred = model(image)
 				hypercube_pred = np.transpose(hypercube_pred.squeeze(0).cpu().detach().numpy(), [1, 2, 0])
+
+				# fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(10, 5))
+				# ax1.imshow(np.transpose(image.detach().cpu().numpy().squeeze(0), [1, 2, 0])[:, :, :3])
+				# ax1.set_title("Input")
+				# ax2.imshow(hypercube[:, :, 50])
+				# ax2.set_title("Ground Truth")
+				# ax3.imshow(hypercube_pred[:, :, 50])
+				# ax3.set_title("Output")
+				# plt.show()
 
 				end_time = time.time() - start_time
 
