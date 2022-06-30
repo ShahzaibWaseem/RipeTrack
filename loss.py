@@ -10,12 +10,13 @@ from config import NORMALIZATION_FACTOR
 
 def mrae_loss(tensor_pred, tensor_gt):
 	""" Computes the Mean Relative Absolute Error Loss (PyTorch - Training Loss) """
-	error = torch.abs(tensor_pred-tensor_gt)/tensor_gt
+	error = torch.abs((tensor_pred-tensor_gt)/tensor_gt)
 	mrae = torch.mean(error.view(-1))
 	return mrae
 
 def sam_loss(tensor_pred, tensor_gt):
 	""" Computes the Spectral Angle Mapper Loss (PyTorch - Training Loss) """
+	EPS = 1e-7
 	# inner product
 	dot = torch.sum(tensor_pred * tensor_gt, dim=1).view(-1)
 	# norm calculations
@@ -28,7 +29,7 @@ def sam_loss(tensor_pred, tensor_gt):
 	norm_product = (norm_original.mul(norm_reconstructed)).pow(-1)
 	argument = dot.mul(norm_product)
 	# for avoiding arccos(1)
-	acos = torch.acos(torch.clamp(argument, min=-1+1e-7, max=1-1e-7))
+	acos = torch.acos(torch.clamp(argument, min=-1+EPS, max=1-EPS))
 	loss = torch.mean(acos)
 
 	if torch.isnan(loss):
