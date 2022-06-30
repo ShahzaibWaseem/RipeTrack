@@ -10,6 +10,9 @@ from utils import load_mat
 import torch
 from torch.utils.data import Dataset
 from config import BAND_SPACING, RGBN_BANDS
+import matplotlib
+matplotlib.use("TkAgg")
+import matplotlib.pyplot as plt
 
 class DatasetFromHdf5(Dataset):
 	def __init__(self, file_path):
@@ -42,19 +45,27 @@ def read_image(rgb_filename, nir_filename):
 def get_normalization_parameters(dataloader):
 	""" Give Dataloader and recieve the mean and std of the dataset.
 		Note: Make sure that the dataloader is Tensordataset and its not already normalized. """
-	channels_sum, channels_squared_sum, num_batches = 0, 0, 0
-	for data, _ in dataloader:
+	image_channels_sum, image_channels_squared_sum = 0, 0
+	label_channels_sum, label_channels_squared_sum, num_batches = 0, 0, 0
+
+	for image, label in dataloader:
 		# Mean over batch, height and width, but not over the channels
-		channels_sum += torch.mean(data, dim=[0, 2, 3])
-		channels_squared_sum += torch.mean(data**2, dim=[0, 2, 3])
+		image_channels_sum += torch.mean(image, dim=[0, 2, 3])
+		image_channels_squared_sum += torch.mean(image**2, dim=[0, 2, 3])
+
+		label_channels_sum += torch.mean(label, dim=[0, 2, 3])
+		label_channels_squared_sum += torch.mean(label**2, dim=[0, 2, 3])
+
 		num_batches += 1
 
-	mean = channels_sum / num_batches
+	image_mean = image_channels_sum / num_batches
+	label_mean = label_channels_sum / num_batches
 
 	# std = sqrt(E[X^2] - (E[X])^2)
-	std = (channels_squared_sum / num_batches - mean ** 2) ** 0.5
+	image_std = (image_channels_squared_sum / num_batches - image_mean ** 2) ** 0.5
+	label_std = (label_channels_squared_sum / num_batches - label_mean ** 2) ** 0.5
 
-	return mean, std
+	return (image_mean, image_std), (label_mean, label_std)
 
 class DatasetFromDirectory(Dataset):
 	# Expects the directory structure to be:
@@ -72,7 +83,7 @@ class DatasetFromDirectory(Dataset):
 	IMAGE_SIZE = 512
 	images, labels = {}, {}
 
-	def __init__(self, root, dataset_name=None, patch_size=64, lazy_read=False, rgbn_from_cube=True, product_pairing=True, train_with_patches=True, transform=None):
+	def __init__(self, root, dataset_name=None, patch_size=64, lazy_read=False, rgbn_from_cube=True, product_pairing=True, train_with_patches=True, verbose=True, transform=(None, None), value_range=(0, 1)):
 		"""
 		Dataloader for the dataset.
 			root:				root directory of the dataset
@@ -83,13 +94,18 @@ class DatasetFromDirectory(Dataset):
 			train_with_patches:	if True, the RGBN images are split into patches
 			patch_size:			size of the patches
 			discard_edges:		if True, discard the four corner patches
+			verbose:			if True, print the statistics of the dataset
+			transform:			two transforms for RGB-NIR and Hypercubes from the dataset
+			value_range:		range of the values in the dataset ([0, 1]: MinMaxScaler)
 		"""
+		self.EPS = 1e-8
 		self.root = root
 		self.PATCH_SIZE = patch_size
 		self.lazy_read = lazy_read
 		self.rgbn_from_cube = rgbn_from_cube
 		self.product_pairing = product_pairing
-		self.transform = transform
+		self.input_transform, self.label_transform = transform
+		self.value_range = value_range
 
 		im_id, rgbn_counter = 0, 0
 		if not rgbn_from_cube:
@@ -137,10 +153,10 @@ class DatasetFromDirectory(Dataset):
 		# pair each rgb-nir patch with each hypercube patch
 		if product_pairing:
 			self.permuted_idx = list(itertools.product(self.images.keys(), self.labels.keys()))
-
-		print("Number of RGBN Files:\t\t{}\nNumber of Hypercubes:\t\t{}".format(rgbn_counter if not rgbn_from_cube else hypercube_counter, hypercube_counter))
-		if train_with_patches:
-			print("Number of RGB Images (Patches):\t{}\nNumber of Hypercubes (Patches):\t{}".format(len(self.images), len(self.labels)))
+		if verbose:
+			print("Number of RGBN Files:\t\t{}\nNumber of Hypercubes:\t\t{}".format(rgbn_counter if not rgbn_from_cube else hypercube_counter, hypercube_counter))
+			if train_with_patches:
+				print("Number of RGB Images (Patches):\t{}\nNumber of Hypercubes (Patches):\t{}".format(len(self.images), len(self.labels)))
 
 	def fetch_image_label(self, index):
 		""" Reads the image and label from the index (lazily or not) and/or product pairs """
@@ -177,9 +193,38 @@ class DatasetFromDirectory(Dataset):
 			return len(self.permuted_idx)
 		else:
 			return len(self.images)
+		
+	def scale_image(self, image, range=(0, 1)):
+		""" Scales the image to the desired range """
+		dist = image.max(dim=1, keepdim=True)[0] - image.min(dim=1, keepdim=True)[0]
+		dist[dist == 0.] = 1.
+		scale = 1.0 / dist
+		image.mul_(scale).sub_(image.min(dim=1, keepdim=True)[0])
+		image.mul_(range[1] - range[0]).add_(range[0])
+		return image
 
 	def __getitem__(self, index):
 		image, hypercube = self.fetch_image_label(index)
 		image = torch.from_numpy(image).float()
 		hypercube = torch.from_numpy(hypercube).float()
+
+		if not (self.input_transform == None and self.label_transform == None):
+			image = self.input_transform(image)
+			hypercube = self.label_transform(hypercube)
+		
+		if not (self.value_range == None):
+			image = self.scale_image(image, self.value_range) + self.EPS
+			hypercube = self.scale_image(hypercube, self.value_range) + self.EPS
+
+		# print(image.shape, hypercube.shape)
+		# fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
+		# ax1.imshow(np.transpose(image.numpy(), [1, 2, 0])[:, :, :3])
+		# ax1.set_title("Input")
+		# ax2.imshow(hypercube[50, :, :].numpy())
+		# ax2.set_title("Ground Truth")
+		# plt.show()
+
+		# print("Hypercube: %.5f - %.5f, Image: %.5f - %.5f" % (torch.min(hypercube).item(), torch.max(hypercube).item(), torch.min(image).item(), torch.max(image).item()))
+		# print(torch.any(torch.isnan(hypercube)), torch.any(torch.isnan(image)))
+
 		return image, hypercube
