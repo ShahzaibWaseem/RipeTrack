@@ -8,27 +8,78 @@ import torch
 import torch.nn as nn
 from torchsummary import summary
 from torch.autograd import Variable
+from torchvision import transforms
 from torch.utils.data import DataLoader, ConcatDataset, random_split
 
 from loss import mrae_loss, sam_loss, sid_loss, weighted_loss
-from dataset import DatasetFromDirectory, DatasetFromHdf5
+from dataset import DatasetFromDirectory, DatasetFromHdf5, get_normalization_parameters
 from models.resblock import resblock, ResNeXtBottleneck
 from models.model import Network
 
 from utils import AverageMeter, initialize_logger, save_checkpoint, record_loss, makeMobileModel, make_h5_dataset, modeltoONNX, ONNXtotf, tf_to_tflite
-from config import TRAIN_DATASET_DIR, TRAIN_DATASET_FILES, VALID_DATASET_FILES, LOGS_PATH, MODEL_NAME, DATASET_NAME, NUMBER_OF_BANDS, PATCH_SIZE, init_directories, checkpoint_file, batch_size, end_epoch, init_lr, model_run_title
+from config import TEST_ROOT_DATASET_DIR, TRAIN_DATASET_DIR, TRAIN_DATASET_FILES, VALID_DATASET_FILES, LOGS_PATH, MODEL_NAME, DATASET_NAME, NUMBER_OF_BANDS, PATCH_SIZE, init_directories, checkpoint_file, batch_size, end_epoch, init_lr, model_run_title
 
-def main():
-	torch.backends.cudnn.benchmark = True
+# torch.autograd.set_detect_anomaly(True)
 
+def get_required_transforms():
+	""" Returns the two transforms for the RGB-NIR image input and Hypercube label.
+		Note: The `dataset` recieved is already Tensor data.
+		This function gets the dataset specified in the `config.py` file. """
 	# Dataset
-	dataset = DatasetFromDirectory(root=os.path.join(os.path.dirname(TRAIN_DATASET_DIR), "working_datasets"),
-								   dataset_name="organic",
+	dataset = DatasetFromDirectory(root=TEST_ROOT_DATASET_DIR,
+								   dataset_name=DATASET_NAME,
 								   patch_size=PATCH_SIZE,
 								   lazy_read=False,
 								   rgbn_from_cube=False,
 								   product_pairing=False,
-								   train_with_patches=True)
+								   train_with_patches=True,
+								   verbose=False,
+								   value_range=None)
+
+	temp_data_loader = DataLoader(dataset=dataset,
+								  num_workers=1,
+								  batch_size=batch_size,
+								  shuffle=False,
+								  pin_memory=True)
+
+	print(75*"-" + "\nDataset Normalization\n" + 75*"-")
+
+	(image_mean, image_std), (label_mean, label_std) = get_normalization_parameters(temp_data_loader)
+	print("RGB-NIR Images (Input) Size:\t", image_mean.size(dim=0))
+	print("The Mean of the dataset is in the range:\t\t%f - %f"
+		  % (torch.min(image_mean).item(), torch.max(image_mean).item()))
+	print("The Standard Deviation of the dataset is in the range:\t%f - %f"
+		  % (torch.min(image_std).item(), torch.max(image_std).item()))
+
+	print("\nHypercube (Label) Size:\t\t", label_mean.size(dim=0))
+	print("The Mean of the dataset is in the range:\t\t%f - %f"
+		  % (torch.min(label_mean).item(), torch.max(label_mean).item()))
+	print("The Standard Deviation of the dataset is in the range:\t%f - %f"
+		  % (torch.min(label_std).item(), torch.max(label_std).item()))
+	print(75*"-")
+
+	del dataset, temp_data_loader
+
+	# Data is already tensor, so just normalize it
+	input_transform = transforms.Compose([transforms.Normalize(mean=image_mean, std=image_std)])
+	label_transform = transforms.Compose([transforms.Normalize(mean=label_mean, std=label_std)])
+
+	return input_transform, label_transform
+
+def main():
+	torch.backends.cudnn.benchmark = True
+
+	input_transform, label_transform = get_required_transforms()
+	dataset = DatasetFromDirectory(root=TEST_ROOT_DATASET_DIR,
+								   dataset_name=DATASET_NAME,
+								   patch_size=PATCH_SIZE,
+								   lazy_read=False,
+								   rgbn_from_cube=False,
+								   product_pairing=False,
+								   train_with_patches=True,
+								   verbose=True,
+								   transform=(input_transform, label_transform),
+								   value_range=None)
 
 	trainset_size = 0.8
 	print("Dataset size:\t\t\t{}".format(len(dataset)))
@@ -81,7 +132,7 @@ def main():
 
 	# make model
 	model = Network(block=ResNeXtBottleneck, block_num=10, input_channel=4, n_hidden=64, output_channel=NUMBER_OF_BANDS)
-	optimizer=torch.optim.Adam(model.parameters(), lr=init_lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.01)
+	optimizer = torch.optim.Adam(model.parameters(), lr=init_lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.0001)
 	# print(summary(model, (4, 64, 64), verbose=1))
 
 	# # Resume
@@ -107,7 +158,7 @@ def main():
 	for epoch in range(start_epoch+1, end_epoch):
 		start_time = time.time()
 
-		train_loss, train_losses_ind, iteration, lr = train(train_data_loader, model, criterions, optimizer, iteration, init_lr)
+		train_loss, train_losses_ind, iteration, lr = train(train_data_loader, model, criterions, optimizer, iteration, init_lr, int(trainset_size*len(dataset))*end_epoch/batch_size)
 		val_loss, val_losses_ind = validate(val_data_loader, model, criterions)
 
 		train_loss_mrae, train_loss_sam, train_loss_sid = train_losses_ind
@@ -126,7 +177,7 @@ def main():
 		logger.info(log_string_filled)
 	iteration = 0
 
-def train(train_data_loader, model, criterions, optimizer, iteration, init_lr):
+def train(train_data_loader, model, criterions, optimizer, iteration, init_lr, max_iter):
 	""" Trains the model on the dataloader provided """
 	model.train()
 	losses = AverageMeter()
@@ -134,19 +185,20 @@ def train(train_data_loader, model, criterions, optimizer, iteration, init_lr):
 	losses_mrae, losses_sam, losses_sid, losses_weighted = AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter()
 
 	for images, labels in tqdm(train_data_loader, desc="Train", total=len(train_data_loader)):
+		# print(torch.min(images), torch.max(images), torch.min(labels), torch.max(labels))
 		labels = labels.cuda()
 		images = images.cuda()
 
 		images = Variable(images)
 		labels = Variable(labels)
-
-		lr = poly_lr_scheduler(optimizer, init_lr, iteration, max_iter=968000, power=1.5)
+		lr = poly_lr_scheduler(optimizer, init_lr, iteration, max_iter=968000, power=0.9)
 		iteration = iteration + 1
 
 		# Forward + Backward + Optimize
 		output = model(images)
 
 		loss_mrae = criterion_mrae(output, labels)
+		# print(output, labels, loss_mrae)
 		loss_sam = criterion_sam(output, labels) * 0.1
 		loss_sid = criterion_sid(output, labels) * 0.0001
 		# loss_weighted = criterion_weighted(output, labels)
@@ -156,6 +208,7 @@ def train(train_data_loader, model, criterions, optimizer, iteration, init_lr):
 		optimizer.zero_grad()
 		loss.backward()
 
+		nn.utils.clip_grad_norm_(model.parameters(), max_norm=5)
 		# Calling the step function on an Optimizer makes an update to its parameters
 		optimizer.step()
 		#  record loss
@@ -213,7 +266,7 @@ def poly_lr_scheduler(optimizer, init_lr, iteraion, lr_decay_iter=1, max_iter=10
 	if iteraion % lr_decay_iter or iteraion > max_iter:
 		return optimizer
 
-	lr = init_lr*(1 - iteraion/max_iter)**power
+	lr = init_lr * (1 - iteraion/max_iter) ** power
 
 	for param_group in optimizer.param_groups:
 		param_group["lr"] = lr
