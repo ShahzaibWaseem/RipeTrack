@@ -19,52 +19,58 @@ from models.model import Network
 from utils import AverageMeter, initialize_logger, save_checkpoint, record_loss, makeMobileModel, make_h5_dataset, modeltoONNX, ONNXtotf, tf_to_tflite
 from config import TEST_ROOT_DATASET_DIR, TRAIN_DATASET_DIR, TRAIN_DATASET_FILES, VALID_DATASET_FILES, LOGS_PATH, MODEL_NAME, DATASET_NAME, NUMBER_OF_BANDS, PATCH_SIZE, init_directories, checkpoint_file, batch_size, end_epoch, init_lr, model_run_title
 
-# torch.autograd.set_detect_anomaly(True)
+torch.autograd.set_detect_anomaly(True)
 
-def get_required_transforms():
+def get_required_transforms(task="reconstruction"):
 	""" Returns the two transforms for the RGB-NIR image input and Hypercube label.
 		Note: The `dataset` recieved is already Tensor data.
 		This function gets the dataset specified in the `config.py` file. """
 	# Dataset
+	image_mean, image_std, hypercube_mean, hypercube_std = 0, 0, 0, 0
+
 	dataset = DatasetFromDirectory(root=TEST_ROOT_DATASET_DIR,
 								   dataset_name=DATASET_NAME,
+								   task=task,
 								   patch_size=PATCH_SIZE,
 								   lazy_read=False,
 								   rgbn_from_cube=False,
 								   product_pairing=False,
 								   train_with_patches=True,
+								   positive_only=False,
 								   verbose=False,
-								   value_range=None)
+								   transform=(None, None))
 
-	temp_data_loader = DataLoader(dataset=dataset,
-								  num_workers=1,
-								  batch_size=batch_size,
-								  shuffle=False,
-								  pin_memory=True)
+	dataloader = DataLoader(dataset=dataset,
+							num_workers=1,
+							batch_size=batch_size,
+							shuffle=False,
+							pin_memory=True)
+
+	(image_mean, image_std), (hypercube_mean, hypercube_std) = get_normalization_parameters(dataloader)
 
 	print(75*"-" + "\nDataset Normalization\n" + 75*"-")
 
-	(image_mean, image_std), (label_mean, label_std) = get_normalization_parameters(temp_data_loader)
-	print("RGB-NIR Images (Input) Size:\t", image_mean.size(dim=0))
-	print("The Mean of the dataset is in the range:\t\t%f - %f"
-		  % (torch.min(image_mean).item(), torch.max(image_mean).item()))
-	print("The Standard Deviation of the dataset is in the range:\t%f - %f"
-		  % (torch.min(image_std).item(), torch.max(image_std).item()))
+	if task == "reconstruction":
+		print("RGB-NIR Images Size:\t\t\t\t%d" % (image_mean.size(dim=0)))
+		print("The Mean of the dataset is in the range:\t\t%f - %f"
+			% (torch.min(image_mean).item(), torch.max(image_mean).item()))
+		print("The Standard Deviation of the dataset is in the range:\t%f - %f\n"
+			% (torch.min(image_std).item(), torch.max(image_std).item()))
 
-	print("\nHypercube (Label) Size:\t\t", label_mean.size(dim=0))
+	print("Hypercubes Size:\t\t\t\t\t%d" % (hypercube_mean.size(dim=0)))
 	print("The Mean of the dataset is in the range:\t\t%f - %f"
-		  % (torch.min(label_mean).item(), torch.max(label_mean).item()))
+		  % (torch.min(hypercube_mean).item(), torch.max(hypercube_mean).item()))
 	print("The Standard Deviation of the dataset is in the range:\t%f - %f"
-		  % (torch.min(label_std).item(), torch.max(label_std).item()))
+		  % (torch.min(hypercube_std).item(), torch.max(hypercube_std).item()))
 	print(75*"-")
 
-	del dataset, temp_data_loader
+	del dataset, dataloader
 
 	# Data is already tensor, so just normalize it
-	input_transform = transforms.Compose([transforms.Normalize(mean=image_mean, std=image_std)])
-	label_transform = transforms.Compose([transforms.Normalize(mean=label_mean, std=label_std)])
+	input_transform = transforms.Compose([transforms.Normalize(mean=image_mean, std=image_std)]) if task == "reconstruction" else None
+	hypercube_transform = transforms.Compose([transforms.Normalize(mean=hypercube_mean, std=hypercube_std)])
 
-	return input_transform, label_transform
+	return input_transform, hypercube_transform
 
 def main():
 	torch.backends.cudnn.benchmark = True
@@ -72,14 +78,16 @@ def main():
 	input_transform, label_transform = get_required_transforms()
 	dataset = DatasetFromDirectory(root=TEST_ROOT_DATASET_DIR,
 								   dataset_name=DATASET_NAME,
+								   task="reconstruction",
 								   patch_size=PATCH_SIZE,
 								   lazy_read=False,
+								   shuffle=True,
 								   rgbn_from_cube=False,
 								   product_pairing=False,
 								   train_with_patches=True,
+								   positive_only=True,
 								   verbose=True,
-								   transform=(input_transform, label_transform),
-								   value_range=None)
+								   transform=(input_transform, label_transform))
 
 	trainset_size = 0.8
 	print("Dataset size:\t\t\t{}".format(len(dataset)))
@@ -105,7 +113,7 @@ def main():
 	train_data_loader = DataLoader(dataset=train_data,
 								   num_workers=1,
 								   batch_size=batch_size,
-								   shuffle=False,
+								   shuffle=True,
 								   pin_memory=True)
 
 	val_data_loader = DataLoader(dataset=valid_data,
@@ -184,7 +192,7 @@ def train(train_data_loader, model, criterions, optimizer, iteration, init_lr, m
 	criterion_mrae, criterion_sam, criterion_sid, criterion_weighted = criterions
 	losses_mrae, losses_sam, losses_sid, losses_weighted = AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter()
 
-	for images, labels in tqdm(train_data_loader, desc="Train", total=len(train_data_loader)):
+	for images, labels, _ in tqdm(train_data_loader, desc="Train", total=len(train_data_loader)):
 		# print(torch.min(images), torch.max(images), torch.min(labels), torch.max(labels))
 		labels = labels.cuda()
 		images = images.cuda()
@@ -227,7 +235,7 @@ def validate(val_data_loader, model, criterions):
 	criterion_mrae, criterion_sam, criterion_sid, criterion_weighted = criterions
 	losses_mrae, losses_sam, losses_sid, losses_weighted = AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter()
 
-	for images, labels in tqdm(val_data_loader, desc="Valid", total=len(val_data_loader)):
+	for images, labels, _ in tqdm(val_data_loader, desc="Valid", total=len(val_data_loader)):
 		images = images.cuda()
 		labels = labels.cuda()
 
