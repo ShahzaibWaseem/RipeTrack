@@ -66,12 +66,14 @@ def inference(model, rgbn_from_cube=True):
 
 				image = torch.from_numpy(np.expand_dims(image, axis=0)).float()
 				image = input_transform(image).cuda()
+				image = image + 1.30753493309021 + 0.1
 
 				hypercube = hypercube[:, :, ::BAND_SPACING]
 				hypercube = np.transpose(hypercube, [2, 0, 1])
 				hypercube = torch.from_numpy(hypercube).float()
 				hypercube = label_transform(hypercube)
 				hypercube = np.transpose(hypercube.numpy(), [1, 2, 0])
+				hypercube = hypercube + 2.123685598373413 + 0.1
 
 				# hypercube_pred = (reconstruction(image, model) + np.flip(reconstruction(np.flip(image, 2).copy(), model), 1))
 				hypercube_pred = model(image)
