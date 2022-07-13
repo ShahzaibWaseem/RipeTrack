@@ -27,12 +27,13 @@ CAMERA_OUTPUT_ROOT_PATH = os.path.join("..", "Catalog")
 EXTRACT_DATASETS = ["ambrosia-nonorganic", "ambrosia-organic", "gala-nonorganic", "gala-organic"]
 
 ### Parameters for Data reading ###
-BAND_SPACING = 4					# used only if reading data from directories dataset.DatasetFromDirectory
-NUMBER_OF_BANDS = 204//BAND_SPACING	# holds the number of bands considered (used in model creation)
+BAND_SPACING = 1						# used only if reading data from directories dataset.DatasetFromDirectory
+NUMBER_OF_BANDS = 204//BAND_SPACING		# holds the number of bands considered (used in model creation)
 
-PATCH_SIZE = 64
-NORMALIZATION_FACTOR = 4096			# max value of the captured hypercube (dependent on the camera - Specim IQ)
-RGBN_BANDS = [18, 47, 80, 183]		# correspond to B 454, G 541, R 640, N 949 bands
+PATCH_SIZE = 64							# patching of the hypercubes and images
+NORMALIZATION_FACTOR = 4096				# max value of the captured hypercube (dependent on the camera - Specim IQ)
+RGBN_BANDS = [18, 47, 80, 183]			# correspond to B 454, G 541, R 640, N 949 bands
+BANDS = [RGBN_BANDS, range(104, 204, 2)]
 
 ### Hyperparamters for the model ###
 batch_size = 64
@@ -72,6 +73,28 @@ title_font_dict = {"fontname": "serif", "size": 25}
 ### Bands for text in the visualizations ###
 VIEW_BANDS = [11, 21, 36, 44]
 ACTUAL_BANDS = [520, 640, 820, 910]
+
+def sampler():
+	global BANDS, NUMBER_OF_BANDS
+	sampled_bands = []
+
+	for band in range(len(BANDS)):
+		sampled_bands.append(list(BANDS[band]))
+	
+	BANDS = [band for sampled_list in sampled_bands for band in sampled_list]
+
+	sampled_bands = []
+
+	for band in BANDS:
+		if band in RGBN_BANDS:
+			sampled_bands.append(band)
+		elif band >= 104:				# 105 equivalent to NIR 702.58 nm band
+			sampled_bands.append(band)
+	BANDS = sampled_bands
+	NUMBER_OF_BANDS = len(BANDS)
+	return BANDS
+
+sampler()
 
 def init_directories():
 	""" Creates directories if they don't exist which are used to save model, logs, generated hypercubes and visualizations """
