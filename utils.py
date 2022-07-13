@@ -65,9 +65,9 @@ def save_checkpoint(epoch, iteration, model, optimizer):
 def save_matv73(mat_filename, hypercube):
 	hdf5storage.savemat(mat_filename, {var_name: hypercube}, format="7.3", store_python_metadata=True)
 
-def record_loss(loss_csv,epoch, iteration, epoch_time, lr, train_loss, test_loss):
+def record_loss(loss_csv, epoch, iteration, epoch_time, lr, train_loss, test_loss):
 	""" Record many results."""
-	loss_csv.write("{},{},{},{},{},{}\n".format(epoch, iteration, epoch_time, lr, train_loss, test_loss))
+	loss_csv.write("{}, {}, {}, {}, {}, {}\n".format(epoch, iteration, epoch_time, lr, train_loss, test_loss))
 	loss_csv.flush()
 	loss_csv.close
 
