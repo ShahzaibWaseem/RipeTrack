@@ -92,6 +92,7 @@ def main():
 								   lazy_read=False,
 								   shuffle=True,
 								   rgbn_from_cube=False,
+								   use_all_bands=False,
 								   product_pairing=False,
 								   train_with_patches=True,
 								   positive_only=True,
