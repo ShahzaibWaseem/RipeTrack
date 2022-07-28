@@ -10,11 +10,6 @@ import logging
 from glob import glob
 from imageio import imread
 
-import tensorflow as tf
-
-import onnx
-import onnx_tf
-
 import torch
 from torch.autograd import Variable
 from torch.utils.mobile_optimizer import optimize_for_mobile
@@ -161,11 +156,16 @@ def modeltoONNX():
 	torch.onnx.export(model, input_tensor, os.path.join(LOGS_PATH, onnx_file_name), export_params=True, verbose=True)
 
 def ONNXtotf():
+	import onnx
+	import onnx_tf
+
 	model = onnx.load(os.path.join(LOGS_PATH, onnx_file_name))
 	tf_model = onnx_tf.backend.prepare(model)
 	tf_model.export_graph(tf_model_dir)
 
 def tf_to_tflite():
+	import tensorflow as tf
+
 	converter = tf.lite.TFLiteConverter.from_saved_model(tf_model_dir)		# path to the SavedModel directory
 	converter.target_spec.supported_ops = [
 		tf.lite.OpsSet.TFLITE_BUILTINS,		# enable TFLite ops
