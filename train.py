@@ -17,7 +17,7 @@ from models.resblock import resblock, ResNeXtBottleneck
 from models.model import Network
 
 from utils import AverageMeter, initialize_logger, save_checkpoint, record_loss, makeMobileModel, make_h5_dataset, modeltoONNX, ONNXtotf, tf_to_tflite
-from config import TEST_ROOT_DATASET_DIR, TRAIN_DATASET_DIR, TRAIN_DATASET_FILES, VALID_DATASET_FILES, LOGS_PATH, MODEL_NAME, DATASET_NAME, NUMBER_OF_BANDS, PATCH_SIZE, init_directories, checkpoint_file, batch_size, end_epoch, init_lr, model_run_title
+from config import TEST_ROOT_DATASET_DIR, TRAIN_DATASET_DIR, TRAIN_DATASET_FILES, VALID_DATASET_FILES, LOGS_PATH, MODEL_NAME, DATASET_NAME, NUMBER_OF_BANDS, BANDS, PATCH_SIZE, init_directories, checkpoint_file, batch_size, end_epoch, init_lr, model_run_title
 
 torch.autograd.set_detect_anomaly(True)
 
@@ -34,6 +34,7 @@ def get_required_transforms(task="reconstruction"):
 								   patch_size=PATCH_SIZE,
 								   lazy_read=False,
 								   rgbn_from_cube=False,
+								   reconstruct_all=True,
 								   product_pairing=False,
 								   train_with_patches=True,
 								   positive_only=False,
@@ -51,7 +52,7 @@ def get_required_transforms(task="reconstruction"):
 	print(75*"-" + "\nDataset Normalization\n" + 75*"-")
 
 	if task == "reconstruction":
-		print("RGB-NIR Images Size:\t\t\t\t%d" % (image_mean.size(dim=0)))
+		print("RGB-NIR Images Size:\t\t\t\t\t%d" % (image_mean.size(dim=0)))
 		print("The Mean of the dataset is in the range:\t\t%f - %f"
 			% (torch.min(image_mean).item(), torch.max(image_mean).item()))
 		print("The Standard Deviation of the dataset is in the range:\t%f - %f\n"
@@ -83,6 +84,7 @@ def main():
 								   lazy_read=False,
 								   shuffle=True,
 								   rgbn_from_cube=False,
+								   reconstruct_all=True,
 								   product_pairing=False,
 								   train_with_patches=True,
 								   positive_only=True,
@@ -139,7 +141,7 @@ def main():
 	log_string = "Epoch [%3d], Iter[%5d], Time: %.9f, Learning Rate: %.9f, Train Loss: %.9f (%.9f, %.9f, %.9f), Validation Loss: %.9f (%.9f, %.9f, %.9f)"
 
 	# make model
-	model = Network(block=ResNeXtBottleneck, block_num=10, input_channel=4, n_hidden=64, output_channel=NUMBER_OF_BANDS)
+	model = Network(block=ResNeXtBottleneck, block_num=10, input_channel=4, n_hidden=64, output_channel=len(BANDS))
 	optimizer = torch.optim.Adam(model.parameters(), lr=init_lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.0001)
 	# print(summary(model, (4, 64, 64), verbose=1))
 

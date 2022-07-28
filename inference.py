@@ -15,7 +15,7 @@ from train import get_required_transforms
 from dataset import read_image
 from utils import save_matv73, reconstruction, load_mat, initialize_logger
 from loss import test_mrae, test_rrmse, test_msam, test_sid, test_psnr, test_ssim
-from config import ILLUMINATIONS, TEST_ROOT_DATASET_DIR, TEST_DATASETS, MODEL_PATH, MODEL_NAME, DATASET_NAME, BAND_SPACING, RGBN_BANDS, NUMBER_OF_BANDS, model_run_title, checkpoint_file, init_directories
+from config import ILLUMINATIONS, TEST_ROOT_DATASET_DIR, TEST_DATASETS, MODEL_PATH, MODEL_NAME, DATASET_NAME, BAND_SPACING, RGBN_BANDS, NUMBER_OF_BANDS, BANDS, model_run_title, checkpoint_file, init_directories
 
 import matplotlib.pyplot as plt
 
@@ -64,16 +64,17 @@ def inference(model, rgbn_from_cube=True):
 					image = hypercube[:, :, RGBN_BANDS]
 					image = np.transpose(image, [2, 0, 1])
 
+				# Image Min: -1.1055755615234375, Hypercube Min: -1.3652015924453735, Inference Min: -1.7359950542449951
 				image = torch.from_numpy(np.expand_dims(image, axis=0)).float()
 				image = input_transform(image).cuda()
-				image = image + 1.30753493309021 + 0.1
+				image = image + 1.1055755615234375 + 0.1
 
 				hypercube = hypercube[:, :, ::BAND_SPACING]
 				hypercube = np.transpose(hypercube, [2, 0, 1])
 				hypercube = torch.from_numpy(hypercube).float()
 				hypercube = label_transform(hypercube)
 				hypercube = np.transpose(hypercube.numpy(), [1, 2, 0])
-				hypercube = hypercube + 2.123685598373413 + 0.1
+				hypercube = hypercube + 1.3652015924453735 + 0.1
 
 				# hypercube_pred = (reconstruction(image, model) + np.flip(reconstruction(np.flip(image, 2).copy(), model), 1))
 				hypercube_pred = model(image)
@@ -104,7 +105,7 @@ def inference(model, rgbn_from_cube=True):
 def main():
 	save_point = torch.load(os.path.join(MODEL_PATH, checkpoint_file))
 	model_param = save_point["state_dict"]
-	model = Network(ResNeXtBottleneck, block_num=10, input_channel=4, n_hidden=64, output_channel=NUMBER_OF_BANDS)
+	model = Network(ResNeXtBottleneck, block_num=10, input_channel=4, n_hidden=64, output_channel=len(BANDS))
 	model.load_state_dict(model_param)
 	model = model.cuda()
 	model.eval()
