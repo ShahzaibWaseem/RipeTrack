@@ -30,7 +30,7 @@ if __name__ == "__main__":
 			hypercube_filename = categories.split("/")[-1]
 			hypercube_filepath = os.path.join(categories, "results", "REFLECTANCE_%s.hdr" % hypercube_filename)
 			rgb_filepath = os.path.join(categories, "%s.png" % hypercube_filename)
-			rgb_image = imageio.imread(rgb_filepath)[:,:, :3]
+			rgb_image = imageio.imread(rgb_filepath)[:, :, :3]
 
 			# hypercube_image = open_image(hypercube_filepath)
 			hypercube_image = envi.open(hypercube_filepath, hypercube_filepath.replace(".hdr", ".dat"))
