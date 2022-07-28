@@ -10,10 +10,8 @@ from utils import load_mat
 
 import torch
 from torch.utils.data import Dataset
-from config import BAND_SPACING, RGBN_BANDS, BANDS, TEST_DATASETS, sampler
+from config import BAND_SPACING, RGBN_BANDS, BANDS, TEST_DATASETS
 
-import matplotlib
-# matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 
 class DatasetFromHdf5(Dataset):
@@ -98,7 +96,7 @@ class DatasetFromDirectory(Dataset):
 	min_values = (torch.tensor([float("Inf"), float("Inf")]))		# Image Min: -1.30753493309021, Hypercube Min: -2.123685598373413
 	max_values = (torch.tensor([float("-Inf"), float("-Inf")]))		# Image Max: -1.30753493309021, Hypercube Min: -2.123685598373413
 
-	def __init__(self, root, dataset_name=None, task="reconstruction", patch_size=64, lazy_read=False, shuffle=True, rgbn_from_cube=True, product_pairing=True, train_with_patches=True, positive_only=True, verbose=True, transform=(None, None)):
+	def __init__(self, root, dataset_name=None, task="reconstruction", patch_size=64, lazy_read=False, shuffle=True, rgbn_from_cube=True, reconstruct_all=True, product_pairing=True, train_with_patches=True, positive_only=True, verbose=True, transform=(None, None)):
 		"""
 		Dataloader for the dataset.
 			root:				root directory of the dataset
@@ -107,7 +105,8 @@ class DatasetFromDirectory(Dataset):
 			patch_size:			size of the patches
 			lazy_read:			if True, hypercubes are loaded lazily (only when needed)
 			rgbn_from_cube:		if True, the RGB-NIR pair is extracted from the hypercube
-			product_pairing:	if True, the each RGB-NIR pair is paired with each hypercube
+			reconstruct_all:	if True, all (204) of the bands are reconstructed
+			product_pairing:	if True, the each RGB-NIR pair is paired with each hypercube						(Will be deprecated)
 			train_with_patches:	if True, the RGBN images are split into patches
 			discard_edges:		if True, discard the four corner patches
 			positive_only:		if True, make both the images and hypercubes positive
@@ -119,12 +118,13 @@ class DatasetFromDirectory(Dataset):
 		self.PATCH_SIZE = patch_size
 		self.lazy_read = lazy_read
 		self.rgbn_from_cube = rgbn_from_cube
+		self.reconstruct_all = reconstruct_all
 		self.product_pairing = product_pairing
 		self.positive_only = positive_only
 		self.input_transform, self.label_transform = transform
 		self.verbose = verbose
 
-		elements = 60
+		elements = len([hypercube for directory in glob(os.path.join(self.root, "working_{}".format(dataset_name), "*")) for hypercube in glob(os.path.join(directory, "*.mat"))])
 		if train_with_patches:
 			elements = elements * ((self.IMAGE_SIZE // self.PATCH_SIZE) ** 2)
 			if shuffle:
@@ -168,8 +168,7 @@ class DatasetFromDirectory(Dataset):
 
 					if rgbn_from_cube:
 						image = hypercube[RGBN_BANDS, :, :]
-					# hypercube = hypercube[::BAND_SPACING, :, :]
-					hypercube = hypercube[BANDS, :, :]
+					hypercube = hypercube[BANDS, :, :] if not self.reconstruct_all else hypercube
 					hypercube = self.label_transform(hypercube) if not self.label_transform == None else hypercube
 
 				hypercube_counter += 1
@@ -191,7 +190,7 @@ class DatasetFromDirectory(Dataset):
 		if product_pairing:
 			self.permuted_idx = list(itertools.product(self.images.keys(), self.hypercubes.keys()))
 		if verbose:
-			print("BANDS used:", BANDS)
+			print("BANDS used:", BANDS if not self.reconstruct_all else list(range(1, 204)))
 			# print("Shuffled Indices:", self.idxlist)
 			print("Number of RGBN Files:\t\t\t{}\nNumber of Hypercubes:\t\t\t{}".format(rgbn_counter if not rgbn_from_cube else hypercube_counter, hypercube_counter))
 
@@ -219,7 +218,7 @@ class DatasetFromDirectory(Dataset):
 			else:
 				image = self.images[idx[0]]
 			# hypercube = hypercube[::BAND_SPACING, :, :]
-			hypercube = hypercube[BANDS, :, :]
+			hypercube = hypercube[BANDS, :, :] if not self.reconstruct_all else hypercube
 			hypercube = self.label_transform(hypercube) if not self.label_transform == None else hypercube
 
 			# getting the desired patch from the hypercube
@@ -258,10 +257,10 @@ class DatasetFromDirectory(Dataset):
 		# plt.show()
 
 		if self.positive_only:
-			# Image Min: -1.30753493309021, Hypercube Min: -2.123685598373413, Inference Min: -1.7359950542449951
+			# Image Min: -1.1055755615234375, Hypercube Min: -1.3652015924453735, Inference Min: -1.7359950542449951
 			# 0.1 is to compensate for conversion errors
-			image = image + 1.30753493309021 + 0.1
-			hypercube = hypercube + 2.123685598373413 if self.task == "reconstruction" else hypercube + 1.7359950542449951
+			image = image + 1.1055755615234375 + 0.1
+			hypercube = hypercube + 1.3652015924453735 if self.task == "reconstruction" else hypercube + 1.7359950542449951
 			hypercube = hypercube + 0.1
 
 		return image, hypercube, classlabel
