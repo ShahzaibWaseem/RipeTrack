@@ -42,6 +42,7 @@ init_lr = 0.0001
 
 ### Variables used for printing the results in the logs ###
 MODEL_NAME = "resnext"
+CLASSIFIER_MODEL_NAME = "efficientnet-b7"
 DATASET_NAME = "organic"
 ILLUMINATIONS = ["h"]
 
@@ -54,6 +55,8 @@ elif "cfl_led" in ILLUMINATIONS:
 
 model_run_title = "Model: %s\tDataset: %s\tIllumination: %s\tLosses: MRAE + SAM + SID + Weighted\tFull Image or Patches: patches\n" \
 	% (MODEL_NAME, DATASET_NAME, illumination_string)
+classicication_run_title = "Model: %s\tDataset: %s\tIllumination: %s\tNumber of Classes: %d\tFull Image or Patches: patches\n" \
+	% (CLASSIFIER_MODEL_NAME, DATASET_NAME, illumination_string, len(EXTRACT_DATASETS))
 
 ### to create the checkpoint of the model ###
 checkpoint_fileprestring = "%s_%s" % (MODEL_NAME, DATASET_NAME)
