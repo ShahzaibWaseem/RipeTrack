@@ -7,14 +7,14 @@ from tqdm import tqdm
 import torch
 import torch.nn as nn
 from torchsummary import summary
-from torch.autograd import Variable
 from torchvision import transforms
+from torch.autograd import Variable
 from torch.utils.data import DataLoader, ConcatDataset, random_split
 
+from models.model import Network
+from models.resblock import resblock, ResNeXtBottleneck
 from loss import mrae_loss, sam_loss, sid_loss, weighted_loss
 from dataset import DatasetFromDirectory, DatasetFromHdf5, get_normalization_parameters
-from models.resblock import resblock, ResNeXtBottleneck
-from models.model import Network
 
 from utils import AverageMeter, initialize_logger, save_checkpoint, record_loss, makeMobileModel, make_h5_dataset, modeltoONNX, ONNXtotf, tf_to_tflite
 from config import TEST_ROOT_DATASET_DIR, TRAIN_DATASET_DIR, TRAIN_DATASET_FILES, VALID_DATASET_FILES, LOGS_PATH, MODEL_NAME, DATASET_NAME, NUMBER_OF_BANDS, BANDS, PATCH_SIZE, init_directories, checkpoint_file, batch_size, end_epoch, init_lr, model_run_title
@@ -32,13 +32,15 @@ def get_required_transforms(task="reconstruction"):
 								   dataset_name=DATASET_NAME,
 								   task=task,
 								   patch_size=PATCH_SIZE,
-								   lazy_read=True,
+								   lazy_read=False,
+								   shuffle=False,
 								   rgbn_from_cube=False,
-								   use_all_bands=True,
+								   use_all_bands=False if task == "reconstruction" else True,
 								   product_pairing=False,
 								   train_with_patches=True,
 								   positive_only=False,
 								   verbose=False,
+								   augment_factor=0,
 								   transform=(None, None))
 
 	dataloader = DataLoader(dataset=dataset,
@@ -58,18 +60,30 @@ def get_required_transforms(task="reconstruction"):
 		print("The Standard Deviation of the dataset is in the range:\t%f - %f\n"
 			% (torch.min(image_std).item(), torch.max(image_std).item()))
 
-	print("Hypercubes Size:\t\t\t\t\t%d" % (hypercube_mean.size(dim=0)))
+	print("Hypercubes Size:\t\t\t\t\t%d" % (hypercube_std.size(dim=0)))
 	print("The Mean of the dataset is in the range:\t\t%f - %f"
 		  % (torch.min(hypercube_mean).item(), torch.max(hypercube_mean).item()))
 	print("The Standard Deviation of the dataset is in the range:\t%f - %f"
 		  % (torch.min(hypercube_std).item(), torch.max(hypercube_std).item()))
 	print(75*"-")
-
 	del dataset, dataloader
 
+	hypercube_transform_list = []
+
+	if task == "classification":
+		hypercube_transform_list = [# transforms.Resize((PATCH_SIZE, PATCH_SIZE)),
+									# transforms.RandomResizedCrop(size=(PATCH_SIZE, PATCH_SIZE)),
+									# transforms.CenterCrop(size=(PATCH_SIZE, PATCH_SIZE)),
+									transforms.RandomRotation(20, interpolation=transforms.InterpolationMode.BILINEAR),
+									transforms.RandomHorizontalFlip()]
+
 	# Data is already tensor, so just normalize it
+	hypercube_transform_list.append(transforms.Normalize(mean=hypercube_mean, std=hypercube_std))
 	input_transform = transforms.Compose([transforms.Normalize(mean=image_mean, std=image_std)]) if task == "reconstruction" else None
 	hypercube_transform = transforms.Compose([transforms.Normalize(mean=hypercube_mean, std=hypercube_std)])
+
+	del hypercube_transform_list
+
 
 	return input_transform, hypercube_transform
 
@@ -81,10 +95,10 @@ def main():
 								   dataset_name=DATASET_NAME,
 								   task="reconstruction",
 								   patch_size=PATCH_SIZE,
-								   lazy_read=True,
+								   lazy_read=False,
 								   shuffle=True,
 								   rgbn_from_cube=False,
-								   use_all_bands=True,
+								   use_all_bands=False,
 								   product_pairing=False,
 								   train_with_patches=True,
 								   positive_only=True,
