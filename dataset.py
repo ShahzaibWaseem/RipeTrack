@@ -37,7 +37,6 @@ def read_image(rgb_filename, nir_filename):
 	nir = nir[:,:, 0] if nir.ndim == 3 else np.expand_dims(nir, axis=-1)
 
 	image = np.dstack((rgb, nir))/255.0
-	image = np.transpose(image, [2, 0, 1])
 	del rgb, nir
 
 	return image
@@ -67,6 +66,8 @@ def get_normalization_parameters(dataloader):
 		hypercube_channels_squared_sum += torch.mean(hypercube**2, dim=[0, 2, 3])
 
 		num_batches += 1
+	
+	print("number of batches", num_batches)
 
 	image_mean = image_channels_sum / num_batches
 	hypercube_mean = hypercube_channels_sum / num_batches
@@ -116,23 +117,28 @@ def visualize_data_item(image, hypercube, band, classlabel):
 class DatasetFromDirectory(Dataset):
 	# Expects the directory structure to be:
 	# root/
-	# 	category1/		(oats, flour, etc.)
-	# 		label1/		(gluten)
-	# 			01_RGB.jpg
-	# 			01_NIR.jpg
-	# 			...
-	# 		label2/		(glutenfree)
-	# 			01_RGB.jpg
-	# 			01_NIR.jpg
-	# 			...
-	# 	...
+	#	RGBNIRImages/
+	#		DatasetName			(working_organic)
+	#			label1/			(working_gala-organic etc)
+	#				01_RGB.jpg
+	#				01_NIR.jpg
+	#				...
+	#			label2/
+	#				...
+	#	DatasetName/			(working_organic - Hypercubes)
+	#		label1/				(working_ambrosia-nonorganic_204ch etc)
+	#			01.mat
+	#			...
+	#		label2/
+	#			...
+
 	EPS = 1e-8
 	IMAGE_SIZE = 512
 	images, hypercubes, classlabels = {}, {}, {}
 	min_values = (torch.tensor([float("Inf"), float("Inf")]))		# Image Min: -1.30753493309021, Hypercube Min: -2.123685598373413
 	max_values = (torch.tensor([float("-Inf"), float("-Inf")]))		# Image Max: -1.30753493309021, Hypercube Min: -2.123685598373413
 
-	def __init__(self, root, dataset_name=None, task="reconstruction", patch_size=64, lazy_read=False, shuffle=True, rgbn_from_cube=True, use_all_bands=True, product_pairing=True, train_with_patches=True, positive_only=True, verbose=True, transform=(None, None)):
+	def __init__(self, root, dataset_name=None, task="reconstruction", patch_size=64, lazy_read=False, shuffle=True, rgbn_from_cube=True, use_all_bands=True, product_pairing=False, train_with_patches=True, positive_only=True, crop_size=0, augment_factor=8, verbose=True, transform=(None, None)):
 		"""
 		Dataloader for the dataset.
 			root:				root directory of the dataset
@@ -158,9 +164,18 @@ class DatasetFromDirectory(Dataset):
 		self.product_pairing = product_pairing
 		self.positive_only = positive_only
 		self.input_transform, self.label_transform = transform
+		self.crop_size = crop_size
+		self.augment_factor = augment_factor
+		self.train_with_patches = self.PATCH_SIZE > 0
 		self.verbose = verbose
 
+		self.IMAGE_SIZE -= self.crop_size if self.crop_size > 0 else 0
+
 		number_of_files = len([hypercube for directory in glob(os.path.join(self.root, "working_{}".format(dataset_name), "*")) for hypercube in glob(os.path.join(directory, "*.mat"))])
+		number_of_files *= self.augment_factor if self.augment_factor > 0 else 1
+
+		self.augment_factor = self.augment_factor if self.augment_factor > 0 else 1			# just to make sure script runs even when augment_factor is 0 (otherwise for)
+
 		if train_with_patches:
 			number_of_files = number_of_files * ((self.IMAGE_SIZE // self.PATCH_SIZE) ** 2)
 			if shuffle:
@@ -171,62 +186,78 @@ class DatasetFromDirectory(Dataset):
 		global BAND_SPACING, BANDS
 		# BAND_SPACING = 1 if task == "classification" else 4
 
+		print("Reading RGBN Images from:") if self.verbose else None
+
 		im_id, rgbn_counter = 0, 0
 		if not rgbn_from_cube:
 			for directory in sorted(glob(os.path.join(self.root, "RGBNIRImages", "working_{}".format(dataset_name), "*"))):
+				print(" " * 25 + directory) if self.verbose else None
 				for rgb_filename in sorted(glob(os.path.join(directory, "*_RGB.png"))):
 					classlabel = directory.split("/")[-1].split("_")[1]
+					classlabel = classlabel.split("-")
+					classlabel = classlabel[0] if len(classlabel) == 1 else classlabel[1]
 					nir_filename = os.path.join(directory, rgb_filename.split("/")[-1].replace("RGB", "NIR"))
-					image = read_image(rgb_filename, nir_filename)
-					image = torch.from_numpy(image).float()
-					image = self.input_transform(image) if not self.input_transform == None else image
-					rgbn_counter += 1
+					orig_image = read_image(rgb_filename, nir_filename)
+					# image = crop_image(image, start=self.crop_size, end=self.IMAGE_SIZE-self.crop_size) if task == "classification" and self.crop_size>0 else image
+					for aug_mode in range(self.augment_factor):			# Augment the dataset
+						image = data_augmentation(orig_image, aug_mode)
+						image = np.transpose(image, [2, 0, 1])
+						image = torch.from_numpy(image.copy()).float()
+						image = self.input_transform(image) if not self.input_transform == None else image
+						rgbn_counter += 1
 
-					if train_with_patches:
-						for i in range(self.IMAGE_SIZE // self.PATCH_SIZE):
-							for j in range(self.IMAGE_SIZE // self.PATCH_SIZE):
-								self.images[self.idxlist[im_id]] = image[:, i*self.PATCH_SIZE:(i+1)*self.PATCH_SIZE, j*self.PATCH_SIZE:(j+1)*self.PATCH_SIZE]
-								self.classlabels[self.idxlist[im_id]] = np.long(TEST_DATASETS.index(classlabel))
-								im_id += 1
-					else:
-						self.images[self.idxlist[im_id]] = image
-						self.classlabels[self.idxlist[im_id]] = np.long(TEST_DATASETS.index(classlabel))
-						im_id += 1
+						if train_with_patches:
+							for i in range(image.size(1) // self.PATCH_SIZE):
+								for j in range(image.size(2) // self.PATCH_SIZE):
+									self.images[self.idxlist[im_id]] = image[:, i*self.PATCH_SIZE:(i+1)*self.PATCH_SIZE, j*self.PATCH_SIZE:(j+1)*self.PATCH_SIZE]
+									self.classlabels[self.idxlist[im_id]] = np.long(TEST_DATASETS.index(classlabel))
+									im_id += 1
+						else:
+							self.images[self.idxlist[im_id]] = image
+							self.classlabels[self.idxlist[im_id]] = np.long(TEST_DATASETS.index(classlabel))
+							im_id += 1
+
+		print("\nReading Hyper cubes from:") if self.verbose else None
 
 		im_id, hypercube_counter = 0, 0
 		for directory in sorted(glob(os.path.join(self.root, "working_{}".format(dataset_name), "*"))):
 			directory = os.path.join(directory, "inference") if task == "classification" else directory
+			print(" " * 25 + directory) if self.verbose else None
 			for mat_filename in sorted(glob(os.path.join(directory, "*.mat"))):
-				if not lazy_read:
-					hypercube = load_mat(mat_filename)
-					hypercube = np.transpose(hypercube, [2, 0, 1])
-					hypercube = torch.from_numpy(hypercube).float()
+				for aug_mode in range(self.augment_factor):				# Augment the dataset
+					if not lazy_read:
+						hypercube = load_mat(mat_filename)
+						hypercube = data_augmentation(hypercube, aug_mode)
+						hypercube = np.transpose(hypercube, [2, 0, 1])
+						# hypercube = crop_image(hypercube, start=self.crop_size, end=self.IMAGE_SIZE-self.crop_size) if task == "classification" and self.crop_size>0 else hypercube
+						hypercube = torch.from_numpy(hypercube.copy()).float()
 
-					if rgbn_from_cube:
-						image = hypercube[RGBN_BANDS, :, :]
-					hypercube = hypercube[BANDS, :, :] if not self.use_all_bands else hypercube
-					hypercube = self.label_transform(hypercube) if not self.label_transform == None else hypercube
+						if rgbn_from_cube:
+							image = hypercube[RGBN_BANDS, :, :]
+						hypercube = hypercube[BANDS, :, :] if not self.use_all_bands else hypercube
+						hypercube = self.label_transform(hypercube) if not self.label_transform == None else hypercube
 
-				hypercube_counter += 1
-				if train_with_patches:
-					for i in range(self.IMAGE_SIZE // self.PATCH_SIZE):
-						for j in range(self.IMAGE_SIZE // self.PATCH_SIZE):
-							if lazy_read:
-								self.hypercubes[self.idxlist[im_id]] = {"mat_path": mat_filename, "idx": (i, j)}
-							else:
-								self.hypercubes[self.idxlist[im_id]] = hypercube[:, i*self.PATCH_SIZE:(i+1)*self.PATCH_SIZE, j*self.PATCH_SIZE:(j+1)*self.PATCH_SIZE]
-								if rgbn_from_cube:
-									self.images[self.idxlist[im_id]] = image[:, i*self.PATCH_SIZE:(i+1)*self.PATCH_SIZE, j*self.PATCH_SIZE:(j+1)*self.PATCH_SIZE]
-							im_id += 1
-				else:
-					self.hypercubes[im_id] = mat_filename
-					im_id += 1
+					hypercube_counter += 1
+					if train_with_patches:
+						for i in range(self.IMAGE_SIZE // self.PATCH_SIZE):
+							for j in range(self.IMAGE_SIZE // self.PATCH_SIZE):
+								if lazy_read:
+									self.hypercubes[self.idxlist[im_id]] = {"mat_path": mat_filename, "idx": (i, j), "aug_mode": aug_mode}
+								else:
+									self.hypercubes[self.idxlist[im_id]] = hypercube[:, i*self.PATCH_SIZE:(i+1)*self.PATCH_SIZE, j*self.PATCH_SIZE:(j+1)*self.PATCH_SIZE]
+									if rgbn_from_cube:
+										self.images[self.idxlist[im_id]] = image[:, i*self.PATCH_SIZE:(i+1)*self.PATCH_SIZE, j*self.PATCH_SIZE:(j+1)*self.PATCH_SIZE]
+								im_id += 1
+					else:
+						self.hypercubes[im_id] = hypercube
+						im_id += 1
 
+		assert len(self.images) == len(self.hypercubes) == len(self.classlabels), "Number of images and hypercubes and classlabels do not match."
 		# pair each rgb-nir patch with each hypercube patch
 		if product_pairing:
 			self.permuted_idx = list(itertools.product(self.images.keys(), self.hypercubes.keys()))
 		if verbose:
-			print("BANDS used:", BANDS if not self.use_all_bands else list(range(1, 204)))
+			print("BANDS used:", BANDS if not self.use_all_bands else list(range(204)))
 			# print("Shuffled Indices:", self.idxlist)
 			print("Number of RGBN Files:\t\t\t{}\nNumber of Hypercubes:\t\t\t{}".format(rgbn_counter if not rgbn_from_cube else hypercube_counter, hypercube_counter))
 
@@ -244,16 +275,17 @@ class DatasetFromDirectory(Dataset):
 
 		if self.lazy_read:
 			mat_name = self.hypercubes[idx[1]]["mat_path"]
+			aug_mode = self.hypercubes[idx[1]]["aug_mode"]
 			hypercube = load_mat(mat_name)
+			hypercube = data_augmentation(hypercube, aug_mode)
 			hypercube = np.transpose(hypercube, [2, 0, 1])
-			hypercube = torch.from_numpy(hypercube).float()
+			hypercube = torch.from_numpy(hypercube.copy()).float()
 			classlabel = self.classlabels[idx[0]]
 
 			if self.rgbn_from_cube:
 				image = hypercube[RGBN_BANDS, :, :]
 			else:
 				image = self.images[idx[0]]
-			# hypercube = hypercube[::BAND_SPACING, :, :]
 			hypercube = hypercube[BANDS, :, :] if not self.use_all_bands else hypercube
 			hypercube = self.label_transform(hypercube) if not self.label_transform == None else hypercube
 
@@ -275,7 +307,7 @@ class DatasetFromDirectory(Dataset):
 			return len(self.permuted_idx)
 		else:
 			return len(self.images)
-
+		
 	def __getitem__(self, index):
 		image, hypercube, classlabel = self.fetch_image_label(index)
 
