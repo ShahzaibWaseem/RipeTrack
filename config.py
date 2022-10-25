@@ -10,7 +10,8 @@ LOGS_PATH = os.path.join(".", "logs")
 TRAIN_DATASET_DIR = os.path.join("..", "data_preparation", "datasets")
 
 TEST_ROOT_DATASET_DIR = os.path.join(os.path.dirname(TRAIN_DATASET_DIR), "working_datasets")
-TEST_DATASETS = ["ambrosia-nonorganic", "ambrosia-organic", "gala-nonorganic", "gala-organic"]
+# TEST_DATASETS = ["ambrosia-nonorganic", "ambrosia-organic", "gala-nonorganic", "gala-organic"]
+TEST_DATASETS = ["nonorganic", "organic"]
 
 ### used only in train.py (these h5 files contain patches of the datasets) ###
 TRAIN_DATASET_FILES = ["train_avocado_halogen_4to51bands.h5",
@@ -30,19 +31,19 @@ EXTRACT_DATASETS = ["ambrosia-nonorganic", "ambrosia-organic", "gala-nonorganic"
 BAND_SPACING = 1						# used only if reading data from directories dataset.DatasetFromDirectory
 NUMBER_OF_BANDS = 204//BAND_SPACING		# holds the number of bands considered (used in model creation)
 
-PATCH_SIZE = 64							# patching of the hypercubes and images
+PATCH_SIZE = 512						# patching of the hypercubes and images
 NORMALIZATION_FACTOR = 4096				# max value of the captured hypercube (dependent on the camera - Specim IQ)
 RGBN_BANDS = [18, 47, 80, 183]			# correspond to B 454, G 541, R 640, N 949 bands
 BANDS = [RGBN_BANDS, range(104, 204, 2)]
 
 ### Hyperparamters for the model ###
-batch_size = 64
+batch_size = 32
 end_epoch = 501
 init_lr = 0.0001
 
 ### Variables used for printing the results in the logs ###
 MODEL_NAME = "resnext"
-CLASSIFIER_MODEL_NAME = "efficientnet-b7"
+CLASSIFIER_MODEL_NAME = "efficientnet-b4"
 DATASET_NAME = "organic"
 ILLUMINATIONS = ["h"]
 
@@ -56,7 +57,7 @@ elif "cfl_led" in ILLUMINATIONS:
 model_run_title = "Model: %s\tDataset: %s\tIllumination: %s\tLosses: MRAE + SAM + SID + Weighted\tFull Image or Patches: patches\n" \
 	% (MODEL_NAME, DATASET_NAME, illumination_string)
 classicication_run_title = "Model: %s\tDataset: %s\tIllumination: %s\tNumber of Classes: %d\tFull Image or Patches: patches\n" \
-	% (CLASSIFIER_MODEL_NAME, DATASET_NAME, illumination_string, len(EXTRACT_DATASETS))
+	% (CLASSIFIER_MODEL_NAME, DATASET_NAME, illumination_string, len(TEST_DATASETS))
 
 ### to create the checkpoint of the model ###
 checkpoint_fileprestring = "%s_%s" % (MODEL_NAME, DATASET_NAME)
@@ -72,6 +73,23 @@ tflite_filename = "model.tflite"
 plt_dict = {"mathtext.default": "regular", "axes.linewidth": 2}
 text_font_dict = {"family": "serif", "size": 25}
 title_font_dict = {"fontname": "serif", "size": 25}
+
+### Predefined Transforms (Just to speed the process up)
+from torchvision import transforms
+
+predef_input_transform, predef_label_transform = None, transforms.Compose([transforms.Normalize(
+	mean=[0.0004, 0.0004, 0.0004, 0.0004, 0.0004, 0.0004, 0.0004, 0.0004, 0.0004,
+	0.0004, 0.0004, 0.0004, 0.0004, 0.0004, 0.0004, 0.0004, 0.0004, 0.0004,
+	0.0004, 0.0004, 0.0004, 0.0004, 0.0004, 0.0004, 0.0004, 0.0004, 0.0004,
+	0.0004, 0.0004, 0.0004, 0.0004, 0.0004, 0.0004, 0.0004, 0.0004, 0.0004,
+	0.0004, 0.0004, 0.0004, 0.0004, 0.0004, 0.0004, 0.0004, 0.0004, 0.0004,
+	0.0004, 0.0004, 0.0004, 0.0004, 0.0004, 0.0004, 0.0004, 0.0004, 0.0004],
+	std=[0.0002, 0.0002, 0.0002, 0.0003, 0.0003, 0.0003, 0.0003, 0.0003, 0.0003,
+	0.0003, 0.0003, 0.0003, 0.0003, 0.0003, 0.0003, 0.0003, 0.0003, 0.0003,
+	0.0003, 0.0003, 0.0003, 0.0003, 0.0003, 0.0003, 0.0003, 0.0003, 0.0003,
+	0.0003, 0.0003, 0.0003, 0.0003, 0.0003, 0.0003, 0.0003, 0.0003, 0.0003,
+	0.0003, 0.0003, 0.0003, 0.0003, 0.0003, 0.0003, 0.0003, 0.0003, 0.0003,
+	0.0003, 0.0003, 0.0003, 0.0003, 0.0003, 0.0003, 0.0003, 0.0003, 0.0003])])
 
 ### Bands for text in the visualizations ###
 VIEW_BANDS = [11, 21, 36, 44]
