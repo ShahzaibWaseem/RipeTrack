@@ -14,50 +14,67 @@ from torch.utils.data import DataLoader, random_split, SubsetRandomSampler
 from dataset import DatasetFromDirectory
 from train import get_required_transforms, poly_lr_scheduler
 from utils import AverageMeter, initialize_logger
-from config import PATCH_SIZE, BANDS, TEST_DATASETS, TEST_ROOT_DATASET_DIR, CLASSIFIER_MODEL_NAME, DATASET_NAME, batch_size, classicication_run_title
+from config import PATCH_SIZE, BANDS, TEST_DATASETS, TEST_ROOT_DATASET_DIR, CLASSIFIER_MODEL_NAME, DATASET_NAME, batch_size, classicication_run_title, predef_input_transform, predef_label_transform
 
 class TorchClassifier(nn.Module):
 	def __init__(self, fine_tune=True, in_channels=len(BANDS), num_classes=len(TEST_DATASETS)):
 		super(TorchClassifier, self).__init__()
-		self.model = EfficientNet.from_pretrained(CLASSIFIER_MODEL_NAME, in_channels=in_channels)
-		self.linear = nn.Linear(in_features=1000, out_features=256)
-		self.dropout = nn.Dropout(p=0.25)
-		self.fc = nn.Linear(in_features=256, out_features=num_classes)
+		self.model = EfficientNet.from_pretrained(CLASSIFIER_MODEL_NAME, advprop=True, in_channels=in_channels)
+		self.linear = nn.Linear(in_features=1000, out_features=256, bias=True)
 		self.relu = nn.ReLU()
+		self.fc = nn.Linear(in_features=256, out_features=num_classes)
 
 		if fine_tune:
+			# print([name for name, param in self.model.named_modules()])
 			for params in self.model.parameters():
-				params.requires_grad = True
+				params.requires_grad = False
+			for name, module in self.model.named_modules():
+				if  name == '_blocks.31' or \
+					name == '_fc':
+					# name == '_blocks.53' or \
+					# name == '_blocks.54' or \
+				# if name in ['_conv_head', '_conv_head.static_padding', '_bn1', '_avg_pooling', '_dropout', '_fc', '_swish']:
+					for param in module.parameters():
+						param.requires_grad = True
 
 	def forward(self, x):
 		x = self.model(x)
 		x = x.view(x.size(0), -1)
-		x = self.dropout(self.relu(self.linear(x)))
-		x = self.fc(x)
+		x = self.relu(self.linear(x))
+		# x = self.fc(x)
 		return x
 
-def get_model(fine_tune=True, in_channels=len(BANDS), num_classes=len(TEST_DATASETS)):
-	model_name = "efficientnet-b0"
-	# image_size = EfficientNet.get_image_size(model_name)
-	model = EfficientNet.from_pretrained(model_name, in_channels=in_channels, num_classes=num_classes)
-	if fine_tune:
-		for params in model.parameters():
-			params.requires_grad = True
-	model = model.cuda()
-	return model
+class SeparateClassifiers(nn.Module):
+	def __init__(self, fine_tune=True, in_channels=len(BANDS), num_classes=len(TEST_DATASETS)):
+		super().__init__()
+		self.vis_module = TorchClassifier(fine_tune=fine_tune, in_channels=3, num_classes=num_classes)
+		self.nir_module = TorchClassifier(fine_tune=fine_tune, in_channels=in_channels-3, num_classes=num_classes)
+		self.relu = nn.ReLU()
+		self.fc = nn.Linear(in_features=2*256, out_features=num_classes)
 
-def get_loaders(input_transform, label_transform, trainset_size=0.8):
+	def forward(self, x):
+		rgb_x = x[:, :3, :, :]
+		nir_x = x[:, 3:, :, :]
+		rgb_x = self.vis_module(rgb_x)
+		nir_x = self.nir_module(nir_x)
+		x = torch.cat((rgb_x, nir_x), dim=1)
+		x = self.relu(self.fc(x))
+		return x
+
+def get_loaders(input_transform, label_transform, trainset_size=0.7):
 	dataset = DatasetFromDirectory(root=TEST_ROOT_DATASET_DIR,
 								   dataset_name=DATASET_NAME,
 								   task="classification",
 								   patch_size=PATCH_SIZE,
-								   lazy_read=False,
+								   lazy_read=True,
 								   shuffle=True,
 								   rgbn_from_cube=False,
+								   use_all_bands=True,
 								   product_pairing=False,
 								   train_with_patches=True,
 								   positive_only=True,
 								   verbose=False,
+								   augment_factor=8,
 								   transform=(input_transform, label_transform))
 
 	train_data, valid_data = random_split(dataset, [int(trainset_size*len(dataset)), len(dataset) - int(len(dataset)*trainset_size)])
@@ -70,7 +87,7 @@ def get_loaders(input_transform, label_transform, trainset_size=0.8):
 
 	valid_data_loader = DataLoader(dataset=valid_data,
 								   num_workers=1,
-								   batch_size=batch_size//2,
+								   batch_size=4,
 								   shuffle=False,
 								   pin_memory=True)
 
@@ -80,67 +97,38 @@ init_lr = 0.00005
 
 def main():
 	logger = initialize_logger(filename="classification.log")
-	splits = KFold(n_splits=5, shuffle=False, random_state=None)
 	history = {"train_loss": [], "train_acc": [], "val_loss": [], "val_acc": []}
-	log_string = "Fold [%2d], Epoch [%3d], Time: %.9f, Learning Rate: %.9f, Train Loss: %.9f, Train Accuracy: %.2f%%, Validation Loss: %.9f, Validation Accuracy: %.2f%%"
+	log_string = "Epoch [%3d], Time: %.9f, Learning Rate: %.9f, Train Loss: %.9f, Train Accuracy: %.2f%%, Validation Loss: %.9f, Validation Accuracy: %.2f%%"
 
-	input_transform, label_transform = get_required_transforms(task="classification")
-	dataset = DatasetFromDirectory(root=TEST_ROOT_DATASET_DIR,
-								   dataset_name=DATASET_NAME,
-								   task="classification",
-								   patch_size=PATCH_SIZE,
-								   lazy_read=False,
-								   shuffle=True,
-								   rgbn_from_cube=False,
-								   use_all_bands=False,
-								   product_pairing=False,
-								   train_with_patches=True,
-								   positive_only=True,
-								   verbose=False,
-								   transform=(input_transform, label_transform))
+	# input_transform, label_transform = get_required_transforms(task="classification")
 
 	print("\n" + classicication_run_title)
 	logger.info(classicication_run_title)
 
-	for fold in range(1, 11):
-	# for fold, (train_idx, valid_idx) in enumerate(splits.split(torch.arange(len(dataset)))):
-		# train_sampler = SubsetRandomSampler(train_idx)
-		# valid_sampler = SubsetRandomSampler(valid_idx)
-		# train_data_loader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=True, pin_memory=True, sampler=train_sampler)
-		# valid_data_loader = DataLoader(dataset=dataset, batch_size=batch_size//2, shuffle=False, pin_memory=True, sampler=valid_sampler)
+	train_data_loader, valid_data_loader = get_loaders(predef_input_transform, predef_label_transform)
 
-		# print(train_idx, valid_idx)
-		# print("main loop", [dataset[valid_idx[classlabel]][2] for classlabel in range(len(valid_idx))])
-		# train_sampler = SubsetRandomSampler(train_idx)
-		# valid_sampler = SubsetRandomSampler(valid_idx)
-		# train_data_loader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=False, sampler=train_sampler)
-		# valid_data_loader = DataLoader(dataset=dataset, batch_size=batch_size//2, shuffle=False, sampler=valid_sampler)
+	model = TorchClassifier(fine_tune=True, in_channels=len(BANDS), num_classes=len(TEST_DATASETS))
+	model = model.cuda()
 
-		train_data_loader, valid_data_loader = get_loaders(input_transform, label_transform)
+	criterion = torch.nn.CrossEntropyLoss()
+	optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=init_lr, amsgrad=True, betas=(0.9, 0.999), weight_decay=1e-5)
 
-		# model = get_model(fine_tune=True, in_channels=len(BANDS), num_classes=len(TEST_DATASETS))
-		model = TorchClassifier(fine_tune=True, in_channels=len(BANDS), num_classes=len(TEST_DATASETS))
-		model = model.cuda()
+	iteration = 0
+	for epoch in range(1, 100):
+		start_time = time.time()
+		train_loss, train_acc, iteration, lr = train(train_data_loader, model, criterion, iteration, optimizer)
+		valid_loss, valid_acc = validate(valid_data_loader, model, criterion)
 
-		criterion = torch.nn.CrossEntropyLoss()
-		optimizer = torch.optim.Adam(model.parameters(), lr=init_lr, betas=(0.9, 0.999), weight_decay=1e-5)
-		iteration = 0
-		for epoch in range(1, 500):
-			start_time = time.time()
-			train_loss, train_acc, iteration, lr = train(train_data_loader, model, criterion, iteration, optimizer)
-			valid_loss, valid_acc = validate(valid_data_loader, model, criterion)
+		log_string_filled = log_string % (epoch, time.time() - start_time, lr, train_loss, train_acc, valid_loss, valid_acc)
 
-			log_string_filled = log_string % (fold, epoch, time.time() - start_time, lr, train_loss, train_acc, valid_loss, valid_acc)
+		print(log_string_filled)
+		logger.info(log_string_filled)
 
-			print(log_string_filled)
-			logger.info(log_string_filled)
+		history["train_loss"].append(train_loss)
+		history["train_acc"].append(train_acc)
+		history["val_loss"].append(valid_loss)
+		history["val_acc"].append(valid_acc)
 
-			history["train_loss"].append(train_loss)
-			history["train_acc"].append(train_acc)
-			history["val_loss"].append(valid_loss)
-			history["val_acc"].append(valid_acc)
-
-	
 	plt.plot(history["train_loss"])
 	plt.plot(history["val_loss"])
 	plt.title("Model Loss")
@@ -203,7 +191,7 @@ def validate(val_data_loader, model, criterion):
 			hypercubes = Variable(hypercubes)
 			labels = Variable(labels)
 
-		output = model(hypercubes)
+			output = model(hypercubes)
 
 		loss = criterion(output, labels)
 		losses.update(loss.item())
