@@ -29,7 +29,7 @@ def calculate_metrics(img_pred, img_gt):
 	return mrae, rrmse, msam, sid, psnr, ssim
 
 def inference(model, rgbn_from_cube=True):
-	input_transform, label_transform = get_required_transforms()
+	input_transform, label_transform = get_required_transforms(task="reconstruction")
 	eps = 1e-5
 	logger = initialize_logger(filename="test.log")
 	log_string = "[%15s] Time: %0.9f, MRAE: %0.9f, RRMSE: %0.9f, SAM: %0.9f, SID: %0.9f, PSNR: %0.9f, SSIM: %0.9f"
@@ -60,6 +60,7 @@ def inference(model, rgbn_from_cube=True):
 					rgb_filepath = os.path.join(IMG_PATH, rgb_filename)
 					nir_filepath = os.path.join(IMG_PATH, nir_filename)
 					image = read_image(rgb_filepath, nir_filepath)
+					image = np.transpose(image, [2, 0, 1])
 				else:
 					image = hypercube[:, :, RGBN_BANDS]
 					image = np.transpose(image, [2, 0, 1])
@@ -69,7 +70,7 @@ def inference(model, rgbn_from_cube=True):
 				image = input_transform(image).cuda()
 				image = image + 1.1055755615234375 + 0.1
 
-				hypercube = hypercube[:, :, ::BAND_SPACING]
+				hypercube = hypercube[:, :, BANDS]
 				hypercube = np.transpose(hypercube, [2, 0, 1])
 				hypercube = torch.from_numpy(hypercube).float()
 				hypercube = label_transform(hypercube)
