@@ -77,6 +77,42 @@ def get_normalization_parameters(dataloader):
 
 	return (image_mean, image_std), (hypercube_mean, hypercube_std)
 
+def crop_image(image, start, end):
+	""" Crops the image to the desired range. 
+		Note: This function expects the image to be in the format [C, H, W] and H = W. """
+	return image[:, start:end, start:end]
+
+def data_augmentation(image, aug_mode=0):
+	if aug_mode == 0:
+		return image								# original image
+	elif aug_mode == 1:
+		return np.flipud(image)						# flip up and down
+	elif aug_mode == 2:
+		return np.rot90(image)						# rotate counterwise 90 degree
+	elif aug_mode == 3:
+		return np.flipud(np.rot90(image))			# rotate 90 degree and flip up and down
+	elif aug_mode == 4:
+		return np.rot90(image, k=2)					# rotate 180 degree
+	elif aug_mode == 5:
+		return np.flipud(np.rot90(image, k=2))		# rotate 180 degree and flip
+	elif aug_mode == 6:
+		return np.rot90(image, k=3)					# rotate 270 degree
+	elif aug_mode == 7:
+		return np.flipud(np.rot90(image, k=3))		# rotate 270 degree and flip
+	else:
+		return
+
+def visualize_data_item(image, hypercube, band, classlabel):
+	fig, ax = plt.subplots(1, 2, figsize=(10, 5))
+	fig.suptitle("Class: %s" % TEST_DATASETS[classlabel])
+	ax[0].imshow(image.numpy()[0])
+	ax[0].set_xlabel(image.numpy().shape)
+	ax[0].set_title("RGBN - 0")
+	ax[1].imshow(hypercube.numpy()[band])
+	ax[1].set_xlabel(hypercube.numpy().shape)
+	ax[1].set_title("Hypercube - %i" % band)
+	plt.show()
+
 class DatasetFromDirectory(Dataset):
 	# Expects the directory structure to be:
 	# root/
