@@ -106,9 +106,12 @@ def data_augmentation(image, aug_mode=0):
 def visualize_data_item(image, hypercube, band, classlabel):
 	fig, ax = plt.subplots(1, 2, figsize=(10, 5))
 	fig.suptitle("Class: %s" % TEST_DATASETS[classlabel])
-	ax[0].imshow(image.numpy()[0])
-	ax[0].set_xlabel(image.numpy().shape)
-	ax[0].set_title("RGBN - 0")
+
+	# visualizing it in RGB (instead of BGR)
+	image=np.transpose(image.numpy()[:3], (1, 2, 0))[:,:, [2, 1, 0]]
+	ax[0].imshow(image)
+	ax[0].set_xlabel(image.shape)
+	ax[0].set_title("RGBN - 0:3 (RGB)")
 	ax[1].imshow(hypercube.numpy()[band])
 	ax[1].set_xlabel(hypercube.numpy().shape)
 	ax[1].set_title("Hypercube - %i" % band)
@@ -318,11 +321,7 @@ class DatasetFromDirectory(Dataset):
 		# 	print("Image: %+.5f, %+.5f, Hypercube: %+.5f, %+.5f\t\tMin Values: %s\t Max Values: %s" % \
 		# 		(torch.min(image).item(), torch.max(image).item(), torch.min(hypercube).item(), torch.max(hypercube).item(), self.min_values, self.max_values))
 
-		# fig, ax = plt.subplots(1, 2, figsize=(10, 5))
-		# plt.title(TEST_DATASETS[classlabel])
-		# ax[0].imshow(image.numpy()[0])
-		# ax[1].imshow(hypercube.numpy()[12])
-		# plt.show()
+		# visualize_data_item(image, hypercube, 12, classlabel)
 
 		if self.positive_only:
 			# Image Min: -1.1055755615234375, Hypercube Min: -1.3652015924453735, Inference Min: -1.7359950542449951
