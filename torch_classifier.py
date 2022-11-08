@@ -138,18 +138,18 @@ def main():
 	for epoch in range(1, 25):
 		start_time = time.time()
 		train_loss, train_acc, iteration, lr = train(train_data_loader, model, criterion, iteration, optimizer)
-		valid_loss, valid_acc = validate(valid_data_loader, model, criterion)
-		save_checkpoint(epoch, iteration, model, optimizer, task="classification")
+		val_loss, val_acc = validate(valid_data_loader, model, criterion)
+		save_checkpoint(epoch, iteration, model, optimizer, val_loss, val_acc, task="classification")
 
-		log_string_filled = log_string % (epoch, time.time() - start_time, lr, train_loss, train_acc, valid_loss, valid_acc)
+		log_string_filled = log_string % (epoch, time.time() - start_time, lr, train_loss, train_acc, val_loss, val_acc)
 
 		print(log_string_filled)
 		logger.info(log_string_filled)
 
 		history["train_loss"].append(train_loss)
 		history["train_acc"].append(train_acc)
-		history["val_loss"].append(valid_loss)
-		history["val_acc"].append(valid_acc)
+		history["val_loss"].append(val_loss)
+		history["val_acc"].append(val_acc)
 
 	plt.plot(history["train_loss"])
 	plt.plot(history["val_loss"])
@@ -214,7 +214,7 @@ def validate(val_data_loader, model, criterion):
 	""" Validates the model on the dataloader provided """
 	model.eval()
 	losses = AverageMeter()
-	valid_running_correct = 0
+	correct_examples = 0
 
 	for rgbn, hypercubes, labels in tqdm(val_data_loader, desc="Valid", total=len(val_data_loader)):
 		# rgbn = rgbn[:, :3, :, :]
@@ -233,16 +233,16 @@ def validate(val_data_loader, model, criterion):
 		loss = criterion(output, labels)
 		losses.update(loss.item())
 		_, preds = torch.max(output.data, 1)
-		valid_running_correct += (preds == labels).sum().item()
+		correct_examples += (preds == labels).sum().item()
 
-	epoch_acc = 100. * (valid_running_correct / len(val_data_loader.dataset))
+	epoch_acc = 100. * (correct_examples / len(val_data_loader.dataset))
 	return losses.avg, epoch_acc
 
 def test(test_data_loader, model, criterion):
 	""" Tests the model on the dataloader provided """
 	model.eval()
 	losses = AverageMeter()
-	valid_running_correct = 0
+	correct_examples = 0
 	y_pred, y_true = [], []
 	json_data = []
 
@@ -265,9 +265,9 @@ def test(test_data_loader, model, criterion):
 		losses.update(loss.item())
 		_, preds = torch.max(output.data, 1)
 		y_pred.extend(preds.data.cpu().numpy())
-		valid_running_correct += (preds == labels).sum().item()
+		correct_examples += (preds == labels).sum().item()
 
-	test_acc = 100. * (valid_running_correct / len(test_data_loader.dataset))
+	accuracy = 100. * (correct_examples / len(test_data_loader.dataset))
 
 	# plt.matshow(activations["bottleneck"].cpu().numpy())
 	# plt.savefig(os.path.join("inference", "bottleneck.png"))
@@ -276,14 +276,14 @@ def test(test_data_loader, model, criterion):
 	print(activations["bottleneck"].cpu().numpy().shape)
 
 	# # print(output.cpu().numpy(), pred_logits.cpu().numpy())
-	# confusion_mat = confusion_matrix(y_true, y_pred)
-	# sns.heatmap(confusion_mat/np.sum(confusion_mat), annot=True, fmt=".2%")
-	# plt.savefig(os.path.join("inference", "confusion_matrix.png"))
-	# plt.show()
+	confusion_mat = confusion_matrix(y_true, y_pred)
+	sns.heatmap(confusion_mat/np.sum(confusion_mat), annot=True, fmt=".2%")
+	plt.savefig(os.path.join("inference", "confusion_matrix.png"))
+	plt.show()
 	# # print(torch.max(output, 1)[1], preds)
 	# # print("Outputs", output.shape, "Predictions", preds.shape)
 
-	return losses.avg, test_acc, json_data
+	return losses.avg, accuracy, json_data
 
 if __name__ == "__main__":
 	init_directories()
