@@ -1,26 +1,29 @@
 import os
 import time
+import json
 import numpy as np
 from tqdm import tqdm
+import seaborn as sns
 import matplotlib.pyplot as plt
 
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
+from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import KFold
 from efficientnet_pytorch import EfficientNet
 from torch.utils.data import DataLoader, random_split, SubsetRandomSampler
 
 from dataset import DatasetFromDirectory
 from train import get_required_transforms, poly_lr_scheduler
-from utils import AverageMeter, initialize_logger
-from config import PATCH_SIZE, BANDS, TEST_DATASETS, TEST_ROOT_DATASET_DIR, CLASSIFIER_MODEL_NAME, DATASET_NAME, batch_size, classicication_run_title, predef_input_transform, predef_label_transform
+from utils import AverageMeter, initialize_logger, save_checkpoint
+from config import PATCH_SIZE, BANDS, TEST_DATASETS, TEST_ROOT_DATASET_DIR, CLASSIFIER_MODEL_NAME, DATASET_NAME, batch_size, classicication_run_title, predef_input_transform, predef_label_transform, init_directories
 
 class TorchClassifier(nn.Module):
 	def __init__(self, fine_tune=True, in_channels=len(BANDS), num_classes=len(TEST_DATASETS)):
 		super(TorchClassifier, self).__init__()
 		self.model = EfficientNet.from_pretrained(CLASSIFIER_MODEL_NAME, advprop=True, in_channels=in_channels)
-		self.linear = nn.Linear(in_features=1000, out_features=256, bias=True)
+		self.bottleneck = nn.Linear(in_features=1000, out_features=256, bias=True)
 		self.relu = nn.ReLU()
 		self.fc = nn.Linear(in_features=256, out_features=num_classes)
 
@@ -29,19 +32,19 @@ class TorchClassifier(nn.Module):
 			for params in self.model.parameters():
 				params.requires_grad = False
 			for name, module in self.model.named_modules():
-				if  name == '_blocks.31' or \
-					name == '_fc':
-					# name == '_blocks.53' or \
-					# name == '_blocks.54' or \
-				# if name in ['_conv_head', '_conv_head.static_padding', '_bn1', '_avg_pooling', '_dropout', '_fc', '_swish']:
+				if  name == "_blocks.31" or \
+					name == "_fc":
+					# name == "_blocks.53" or \
+					# name == "_blocks.54" or \
+				# if name in ["_conv_head", "_conv_head.static_padding", "_bn1", "_avg_pooling", "_dropout", "_fc", "_swish"]:
 					for param in module.parameters():
 						param.requires_grad = True
 
 	def forward(self, x):
 		x = self.model(x)
 		x = x.view(x.size(0), -1)
-		x = self.relu(self.linear(x))
-		# x = self.fc(x)
+		x = self.relu(self.bottleneck(x))
+		x = self.fc(x)
 		return x
 
 class SeparateClassifiers(nn.Module):
@@ -77,6 +80,11 @@ def get_loaders(input_transform, label_transform, trainset_size=0.7):
 								   augment_factor=8,
 								   transform=(input_transform, label_transform))
 
+	test_data_loader = DataLoader(dataset,
+								  batch_size=1,
+								  shuffle=False,
+								  num_workers=0)
+
 	train_data, valid_data = random_split(dataset, [int(trainset_size*len(dataset)), len(dataset) - int(len(dataset)*trainset_size)])
 
 	train_data_loader = DataLoader(dataset=train_data,
@@ -91,9 +99,21 @@ def get_loaders(input_transform, label_transform, trainset_size=0.7):
 								   shuffle=False,
 								   pin_memory=True)
 
-	return train_data_loader, valid_data_loader
+	return train_data_loader, valid_data_loader, test_data_loader
 
 init_lr = 0.00005
+
+activations = {}
+def get_activation(name):
+	def hook(model, input, output):
+		activations[name] = output.detach()
+	return hook
+
+class NumpyEncoder(json.JSONEncoder):
+	def default(self, obj):
+		if isinstance(obj, np.ndarray):
+			return obj.tolist()
+		return json.JSONEncoder.default(self, obj)
 
 def main():
 	logger = initialize_logger(filename="classification.log")
@@ -105,19 +125,21 @@ def main():
 	print("\n" + classicication_run_title)
 	logger.info(classicication_run_title)
 
-	train_data_loader, valid_data_loader = get_loaders(predef_input_transform, predef_label_transform)
+	train_data_loader, valid_data_loader, test_data_loader = get_loaders(predef_input_transform, predef_label_transform)
 
 	model = TorchClassifier(fine_tune=True, in_channels=len(BANDS), num_classes=len(TEST_DATASETS))
+	model.bottleneck.register_forward_hook(get_activation("bottleneck"))
 	model = model.cuda()
 
 	criterion = torch.nn.CrossEntropyLoss()
 	optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=init_lr, amsgrad=True, betas=(0.9, 0.999), weight_decay=1e-5)
 
 	iteration = 0
-	for epoch in range(1, 100):
+	for epoch in range(1, 25):
 		start_time = time.time()
 		train_loss, train_acc, iteration, lr = train(train_data_loader, model, criterion, iteration, optimizer)
 		valid_loss, valid_acc = validate(valid_data_loader, model, criterion)
+		save_checkpoint(epoch, iteration, model, optimizer, task="classification")
 
 		log_string_filled = log_string % (epoch, time.time() - start_time, lr, train_loss, train_acc, valid_loss, valid_acc)
 
@@ -146,6 +168,13 @@ def main():
 	plt.legend(["Train", "Validation"], loc="upper left")
 	plt.savefig(os.path.join(".", "inference", "accuracy.png"))
 	plt.show()
+	test_loss, test_acc, json_data = test(test_data_loader, model, criterion)
+	print("Test Loss: %.9f, Test Accuracy: %.2f%%" % (test_loss, test_acc))
+	# print(json_data)
+
+	jsonFile = open(os.path.join("inference", "weights_HS.json"), "w")
+	jsonFile.write(json.dumps(json_data, indent=4))
+	jsonFile.close()
 
 def train(train_data_loader, model, criterion, iteration, optimizer):
 	""" Trains the model on the dataloader provided """
@@ -153,11 +182,13 @@ def train(train_data_loader, model, criterion, iteration, optimizer):
 	losses = AverageMeter()
 	train_running_correct = 0
 
-	for _, hypercubes, labels in tqdm(train_data_loader, desc="Train", total=len(train_data_loader)):
-		# print(torch.min(images), torch.max(images), torch.min(labels), torch.max(labels))
+	for rgbn, hypercubes, labels in tqdm(train_data_loader, desc="Train", total=len(train_data_loader)):
+		# rgbn = rgbn[:, :3, :, :]
+		# rgbn = rgbn.cuda()
 		hypercubes = hypercubes.cuda()
 		labels = labels.cuda()
 
+		# rgbn = Variable(rgbn)
 		hypercubes = Variable(hypercubes)
 		labels = Variable(labels)
 		lr = poly_lr_scheduler(optimizer, init_lr, iteration, max_iter=968000, power=0.9)
@@ -165,10 +196,12 @@ def train(train_data_loader, model, criterion, iteration, optimizer):
 
 		# Forward + Backward + Optimize
 		optimizer.zero_grad()
+		# output = model(rgbn)
 		output = model(hypercubes)
 
 		loss = criterion(output, labels)
 		_, preds = torch.max(output.data, 1)
+
 		train_running_correct += (preds == labels).sum().item()
 		loss.backward()
 		optimizer.step()
@@ -183,14 +216,18 @@ def validate(val_data_loader, model, criterion):
 	losses = AverageMeter()
 	valid_running_correct = 0
 
-	for  _, hypercubes, labels in tqdm(val_data_loader, desc="Valid", total=len(val_data_loader)):
+	for rgbn, hypercubes, labels in tqdm(val_data_loader, desc="Valid", total=len(val_data_loader)):
+		# rgbn = rgbn[:, :3, :, :]
+		# rgbn = rgbn.cuda()
 		hypercubes = hypercubes.cuda()
 		labels = labels.cuda()
 
 		with torch.no_grad():
+			# rgbn = Variable(rgbn)
 			hypercubes = Variable(hypercubes)
 			labels = Variable(labels)
 
+			# output = model(rgbn)
 			output = model(hypercubes)
 
 		loss = criterion(output, labels)
@@ -201,5 +238,53 @@ def validate(val_data_loader, model, criterion):
 	epoch_acc = 100. * (valid_running_correct / len(val_data_loader.dataset))
 	return losses.avg, epoch_acc
 
+def test(test_data_loader, model, criterion):
+	""" Tests the model on the dataloader provided """
+	model.eval()
+	losses = AverageMeter()
+	valid_running_correct = 0
+	y_pred, y_true = [], []
+	json_data = []
+
+	for rgbn, hypercubes, labels in tqdm(test_data_loader, desc="Test", total=len(test_data_loader)):
+		y_true.extend(labels.data.numpy())
+		# rgbn = rgbn[:, :3, :, :]
+		# rgbn = rgbn.cuda()
+		hypercubes = hypercubes.cuda()
+		labels = labels.cuda()
+
+		with torch.no_grad():
+			# rgbn = Variable(rgbn)
+			hypercubes = Variable(hypercubes)
+			labels = Variable(labels)
+
+			# output = model(rgbn)
+			output = model(hypercubes)
+		json_data.append({"output": activations["bottleneck"].cpu().numpy().tolist(), "label": int(labels.cpu().numpy()[0])})
+		loss = criterion(output, labels)
+		losses.update(loss.item())
+		_, preds = torch.max(output.data, 1)
+		y_pred.extend(preds.data.cpu().numpy())
+		valid_running_correct += (preds == labels).sum().item()
+
+	test_acc = 100. * (valid_running_correct / len(test_data_loader.dataset))
+
+	# plt.matshow(activations["bottleneck"].cpu().numpy())
+	# plt.savefig(os.path.join("inference", "bottleneck.png"))
+	# plt.show()
+	# print(y_true, y_pred)
+	print(activations["bottleneck"].cpu().numpy().shape)
+
+	# # print(output.cpu().numpy(), pred_logits.cpu().numpy())
+	# confusion_mat = confusion_matrix(y_true, y_pred)
+	# sns.heatmap(confusion_mat/np.sum(confusion_mat), annot=True, fmt=".2%")
+	# plt.savefig(os.path.join("inference", "confusion_matrix.png"))
+	# plt.show()
+	# # print(torch.max(output, 1)[1], preds)
+	# # print("Outputs", output.shape, "Predictions", preds.shape)
+
+	return losses.avg, test_acc, json_data
+
 if __name__ == "__main__":
+	init_directories()
 	main()
