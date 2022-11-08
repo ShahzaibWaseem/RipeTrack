@@ -9,13 +9,9 @@ import imageio
 from scipy.io import savemat
 from spectral import *
 
-from config import CAMERA_OUTPUT_ROOT_PATH, EXTRACT_DATASETS, TEST_ROOT_DATASET_DIR, DATASET_NAME, RGBN_BANDS, NORMALIZATION_FACTOR, var_name
+from config import CAMERA_OUTPUT_ROOT_PATH, EXTRACT_DATASETS, TEST_ROOT_DATASET_DIR, DATASET_NAME, RGBN_BANDS, NORMALIZATION_FACTOR, var_name, create_directory
 
 import matplotlib.pyplot as plt
-
-def create_dataset_directory(directory):
-	if not os.path.exists(directory):
-		os.makedirs(directory)
 
 if __name__ == "__main__":
 	root_directory = os.path.join("..", CAMERA_OUTPUT_ROOT_PATH)
@@ -23,8 +19,8 @@ if __name__ == "__main__":
 	for dataset_name in EXTRACT_DATASETS:
 		output_hypercube_directory = os.path.join("..", TEST_ROOT_DATASET_DIR, "working_%s" % DATASET_NAME, "working_%s_204ch" % dataset_name)
 		output_rgbn_directory = os.path.join("..", TEST_ROOT_DATASET_DIR, "RGBNIRImages", "working_%s" % DATASET_NAME, "working_%s_204ch" % dataset_name)
-		create_dataset_directory(output_hypercube_directory)
-		create_dataset_directory(output_rgbn_directory)
+		create_directory(output_hypercube_directory)
+		create_directory(output_rgbn_directory)
 
 		for categories in sorted(glob(os.path.join(root_directory, "working_%s" % dataset_name, "*"))):
 			hypercube_filename = categories.split("/")[-1]
