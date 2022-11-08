@@ -7,99 +7,14 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 import torch
-import torch.nn as nn
 from torch.autograd import Variable
 from sklearn.metrics import confusion_matrix
-from sklearn.model_selection import KFold
-from efficientnet_pytorch import EfficientNet
-from torch.utils.data import DataLoader, random_split, SubsetRandomSampler
+
+from models.classifier import TorchClassifier, SeparateClassifier
 
 from dataset import DatasetFromDirectory
-from train import get_required_transforms, poly_lr_scheduler
-from utils import AverageMeter, initialize_logger, save_checkpoint
+from utils import AverageMeter, initialize_logger, save_checkpoint, poly_lr_scheduler, get_required_transforms, get_dataloaders
 from config import PATCH_SIZE, BANDS, TEST_DATASETS, TEST_ROOT_DATASET_DIR, CLASSIFIER_MODEL_NAME, DATASET_NAME, batch_size, classicication_run_title, predef_input_transform, predef_label_transform, init_directories
-
-class TorchClassifier(nn.Module):
-	def __init__(self, fine_tune=True, in_channels=len(BANDS), num_classes=len(TEST_DATASETS)):
-		super(TorchClassifier, self).__init__()
-		self.model = EfficientNet.from_pretrained(CLASSIFIER_MODEL_NAME, advprop=True, in_channels=in_channels)
-		self.bottleneck = nn.Linear(in_features=1000, out_features=256, bias=True)
-		self.relu = nn.ReLU()
-		self.fc = nn.Linear(in_features=256, out_features=num_classes)
-
-		if fine_tune:
-			# print([name for name, param in self.model.named_modules()])
-			for params in self.model.parameters():
-				params.requires_grad = False
-			for name, module in self.model.named_modules():
-				if  name == "_blocks.31" or \
-					name == "_fc":
-					# name == "_blocks.53" or \
-					# name == "_blocks.54" or \
-				# if name in ["_conv_head", "_conv_head.static_padding", "_bn1", "_avg_pooling", "_dropout", "_fc", "_swish"]:
-					for param in module.parameters():
-						param.requires_grad = True
-
-	def forward(self, x):
-		x = self.model(x)
-		x = x.view(x.size(0), -1)
-		x = self.relu(self.bottleneck(x))
-		x = self.fc(x)
-		return x
-
-class SeparateClassifiers(nn.Module):
-	def __init__(self, fine_tune=True, in_channels=len(BANDS), num_classes=len(TEST_DATASETS)):
-		super().__init__()
-		self.vis_module = TorchClassifier(fine_tune=fine_tune, in_channels=3, num_classes=num_classes)
-		self.nir_module = TorchClassifier(fine_tune=fine_tune, in_channels=in_channels-3, num_classes=num_classes)
-		self.relu = nn.ReLU()
-		self.fc = nn.Linear(in_features=2*256, out_features=num_classes)
-
-	def forward(self, x):
-		rgb_x = x[:, :3, :, :]
-		nir_x = x[:, 3:, :, :]
-		rgb_x = self.vis_module(rgb_x)
-		nir_x = self.nir_module(nir_x)
-		x = torch.cat((rgb_x, nir_x), dim=1)
-		x = self.relu(self.fc(x))
-		return x
-
-def get_loaders(input_transform, label_transform, trainset_size=0.7):
-	dataset = DatasetFromDirectory(root=TEST_ROOT_DATASET_DIR,
-								   dataset_name=DATASET_NAME,
-								   task="classification",
-								   patch_size=PATCH_SIZE,
-								   lazy_read=True,
-								   shuffle=True,
-								   rgbn_from_cube=False,
-								   use_all_bands=True,
-								   product_pairing=False,
-								   train_with_patches=True,
-								   positive_only=True,
-								   verbose=False,
-								   augment_factor=8,
-								   transform=(input_transform, label_transform))
-
-	test_data_loader = DataLoader(dataset,
-								  batch_size=1,
-								  shuffle=False,
-								  num_workers=0)
-
-	train_data, valid_data = random_split(dataset, [int(trainset_size*len(dataset)), len(dataset) - int(len(dataset)*trainset_size)])
-
-	train_data_loader = DataLoader(dataset=train_data,
-								   num_workers=1,
-								   batch_size=batch_size,
-								   shuffle=True,
-								   pin_memory=True)
-
-	valid_data_loader = DataLoader(dataset=valid_data,
-								   num_workers=1,
-								   batch_size=4,
-								   shuffle=False,
-								   pin_memory=True)
-
-	return train_data_loader, valid_data_loader, test_data_loader
 
 init_lr = 0.00005
 
@@ -125,7 +40,7 @@ def main():
 	print("\n" + classicication_run_title)
 	logger.info(classicication_run_title)
 
-	train_data_loader, valid_data_loader, test_data_loader = get_loaders(predef_input_transform, predef_label_transform)
+	train_data_loader, valid_data_loader, test_data_loader = get_dataloaders(predef_input_transform, predef_label_transform)
 
 	model = TorchClassifier(fine_tune=True, in_channels=len(BANDS), num_classes=len(TEST_DATASETS))
 	model.bottleneck.register_forward_hook(get_activation("bottleneck"))
