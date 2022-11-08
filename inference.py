@@ -15,7 +15,7 @@ from train import get_required_transforms
 from dataset import read_image
 from utils import save_matv73, reconstruction, load_mat, initialize_logger
 from loss import test_mrae, test_rrmse, test_msam, test_sid, test_psnr, test_ssim
-from config import ILLUMINATIONS, TEST_ROOT_DATASET_DIR, TEST_DATASETS, MODEL_PATH, MODEL_NAME, DATASET_NAME, BAND_SPACING, RGBN_BANDS, NUMBER_OF_BANDS, BANDS, model_run_title, checkpoint_file, init_directories
+from config import ILLUMINATIONS, TEST_ROOT_DATASET_DIR, TEST_DATASETS, MODEL_PATH, MODEL_NAME, DATASET_NAME, BAND_SPACING, RGBN_BANDS, NUMBER_OF_BANDS, BANDS, model_run_title, checkpoint_file, create_directory, init_directories
 
 import matplotlib.pyplot as plt
 
@@ -92,8 +92,7 @@ def inference(model, rgbn_from_cube=True):
 
 				end_time = time.time() - start_time
 
-				if not os.path.exists(INF_PATH):
-					os.makedirs(INF_PATH)
+				create_directory(INF_PATH)
 
 				inf_mat_name = os.path.join(TEST_DATASET_DIR, label, "inference", "inf_" + mat_filename)
 				save_matv73(inf_mat_name, hypercube_pred)
