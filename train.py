@@ -16,8 +16,8 @@ from models.resblock import resblock, ResNeXtBottleneck
 from loss import mrae_loss, sam_loss, sid_loss, weighted_loss
 from dataset import DatasetFromDirectory, DatasetFromHdf5, get_normalization_parameters
 
-from utils import AverageMeter, initialize_logger, save_checkpoint, record_loss, makeMobileModel, make_h5_dataset, modeltoONNX, ONNXtotf, tf_to_tflite
-from config import TEST_ROOT_DATASET_DIR, TRAIN_DATASET_DIR, TRAIN_DATASET_FILES, VALID_DATASET_FILES, LOGS_PATH, MODEL_NAME, DATASET_NAME, NUMBER_OF_BANDS, BANDS, PATCH_SIZE, init_directories, checkpoint_file, batch_size, end_epoch, init_lr, model_run_title
+from utils import AverageMeter, initialize_logger, save_checkpoint, get_best_checkpoint, record_loss, makeMobileModel, make_h5_dataset, modeltoONNX, ONNXtotf, tf_to_tflite
+from config import TEST_ROOT_DATASET_DIR, TRAIN_DATASET_DIR, TRAIN_DATASET_FILES, VALID_DATASET_FILES, LOGS_PATH, MODEL_NAME, DATASET_NAME, NUMBER_OF_BANDS, BANDS, PATCH_SIZE, init_directories, checkpoint_file, batch_size, end_epoch, init_lr, model_run_title, run_pretrained
 
 torch.autograd.set_detect_anomaly(True)
 
@@ -157,6 +157,11 @@ def main():
 	optimizer = torch.optim.Adam(model.parameters(), lr=init_lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.0001)
 	# print(summary(model, (4, 64, 64), verbose=1))
 
+	if run_pretrained:
+		epoch, iter, state_dict, optimizer, val_loss, val_acc = get_best_checkpoint(task="reconstruction")
+		model.load_state_dict(state_dict)
+		optimizer.load_state_dict(optimizer)
+
 	# # Resume
 	# resume_file = checkpoint_file
 	# if resume_file:
@@ -186,7 +191,7 @@ def main():
 		train_loss_mrae, train_loss_sam, train_loss_sid = train_losses_ind
 		val_loss_mrae, val_loss_sam, val_loss_sid = val_losses_ind
 
-		save_checkpoint(epoch, iteration, model, optimizer)
+		save_checkpoint(epoch, iteration, model, optimizer, val_loss, 0, task="reconstruction")
 		epoch_time = time.time() - start_time
 
 		# Printing and saving losses
