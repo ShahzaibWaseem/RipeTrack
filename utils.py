@@ -17,7 +17,7 @@ from torch.utils.mobile_optimizer import optimize_for_mobile
 from models.model import Network
 from models.resblock import resblock, ResNeXtBottleneck
 
-from config import BAND_SPACING, MODEL_PATH, LOGS_PATH, MODEL_PATH, NORMALIZATION_FACTOR, NUMBER_OF_BANDS, checkpoint_fileprestring, checkpoint_file, mobile_model_file, var_name, onnx_file_name, tf_model_dir, tflite_filename
+from config import BAND_SPACING, MODEL_PATH, LOGS_PATH, MODEL_PATH, NORMALIZATION_FACTOR, NUMBER_OF_BANDS, checkpoint_fileprestring, classification_checkpoint_fileprestring, checkpoint_file, mobile_model_file, var_name, onnx_file_name, tf_model_dir, tflite_filename
 
 class AverageMeter(object):
 	"""Computes and stores the average and current value."""
@@ -49,13 +49,40 @@ def initialize_logger(filename):
 	logger.setLevel(logging.INFO)
 	return logger
 
-def save_checkpoint(epoch, iteration, model, optimizer, task="reconstruction"):
+def save_checkpoint(epoch, iteration, model, optimizer, val_loss, val_acc, task="reconstruction"):
 	"""Save the checkpoint."""
 	state = {"epoch": epoch,
 			 "iter": iteration,
 			 "state_dict": model.state_dict(),
-			 "optimizer": optimizer.state_dict()}
-	torch.save(state, os.path.join(MODEL_PATH, task, "MS_%s_%d.pkl" % (checkpoint_fileprestring, epoch)))
+			 "optimizer": optimizer.state_dict(),
+			 "val_loss": val_loss,
+			 "val_acc": val_acc}
+
+	torch.save(state, os.path.join(MODEL_PATH, task, "MS_%s_%d.pkl" % (checkpoint_fileprestring if task=="reconstruction" else classification_checkpoint_fileprestring, epoch)))
+
+def get_best_checkpoint(task="reconstruction", up_a_directory=False):
+	"""Get the model with best validation loss and validation accuracy."""
+	global MODEL_PATH
+	bes_val_loss, best_val_acc = 0.0, 0.0
+	best_checkpoint_file = None
+	MODEL_PATH = os.path.join("..", MODEL_PATH) if up_a_directory else MODEL_PATH
+	print("Loading the best checkpoint...")
+
+	for checkpoint_file in glob(os.path.join(MODEL_PATH, task, "*.pkl")):
+		if os.path.isfile(checkpoint_file):
+			save_point = torch.load(checkpoint_file)
+			val_loss = save_point["val_loss"]
+			val_acc = save_point["val_acc"]
+			print("Checkpoint: {}\tValidation Loss: {}, Validation Accuracy: {}".format(checkpoint_file, val_loss, val_acc))
+			if (100 - val_loss + val_acc) < (100 - bes_val_loss + best_val_acc):
+				bes_val_loss = val_loss
+				best_val_acc = val_acc
+				best_checkpoint_file = checkpoint_file
+	print("The best checkpoint file, is loaded, for task %s is %s with validation loss value %.9f and validation accuracy %.2f%%" %
+		  (task, best_checkpoint_file, bes_val_loss, best_val_acc))
+
+	loaded_model = torch.load(os.path.join(MODEL_PATH, task, best_checkpoint_file))
+	return loaded_model["epoch"], loaded_model["iter"], loaded_model["state_dict"], loaded_model["optimizer"], loaded_model["val_loss"], loaded_model["val_acc"]
 
 def save_matv73(mat_filename, hypercube):
 	hdf5storage.savemat(mat_filename, {var_name: hypercube}, format="7.3", store_python_metadata=True)
