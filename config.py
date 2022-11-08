@@ -64,8 +64,10 @@ classicication_run_title = "Model: %s\tDataset: %s\tIllumination: %s\tNumber of 
 
 ### to create the checkpoint of the model ###
 checkpoint_fileprestring = "%s_%s" % (MODEL_NAME, DATASET_NAME)
+classification_checkpoint_fileprestring = "%s_%s" % (CLASSIFIER_MODEL_NAME, DATASET_NAME)
 checkpoint_file = "MS_%s_500.pkl" % checkpoint_fileprestring
 # checkpoint_file = "HS_model_%d.pkl" % end_epoch
+run_pretrained = True					# if True, the model is loaded from the checkpoint_file
 
 mobile_model_file = "model_%s.pth" % DATASET_NAME
 onnx_file_name = "model.onnx"
