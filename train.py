@@ -83,8 +83,6 @@ def get_required_transforms(task="reconstruction"):
 	hypercube_transform = transforms.Compose([transforms.Normalize(mean=hypercube_mean, std=hypercube_std)])
 
 	del hypercube_transform_list
-
-
 	return input_transform, hypercube_transform
 
 def main():
