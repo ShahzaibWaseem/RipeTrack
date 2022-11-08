@@ -5,14 +5,11 @@ import numpy as np
 
 import h5py
 from glob import glob
-from imageio import imread
-from utils import load_mat
+from utils import load_mat, read_image, data_augmentation
 
 import torch
 from torch.utils.data import Dataset
 from config import BAND_SPACING, RGBN_BANDS, BANDS, TEST_DATASETS
-
-import matplotlib.pyplot as plt
 
 class DatasetFromHdf5(Dataset):
 	def __init__(self, file_path):
@@ -26,96 +23,6 @@ class DatasetFromHdf5(Dataset):
 
 	def __len__(self):
 		return len(self.images)
-
-def read_image(rgb_filename, nir_filename):
-	""" Reads the two images and stack them together while maintaining the order BGR-NIR """
-	rgb = imread(rgb_filename)
-	rgb[:,:, [0, 2]] = rgb[:,:, [2, 0]]	# flipping red and blue channels (shape used for training)
-
-	nir = imread(nir_filename)
-	# because NIR from the phone is saved as three repeated channels
-	nir = nir[:,:, 0] if nir.ndim == 3 else np.expand_dims(nir, axis=-1)
-
-	image = np.dstack((rgb, nir))/255.0
-	del rgb, nir
-
-	return image
-
-def scale_image(image, range=(0, 1)):
-	""" Scales the image to the desired range.
-		Depreciated: Will be removed in the future. """
-	dist = image.max(dim=1, keepdim=True)[0] - image.min(dim=1, keepdim=True)[0]
-	dist[dist == 0.] = 1.
-	scale = 1.0 / dist
-	image.mul_(scale).sub_(image.min(dim=1, keepdim=True)[0])
-	image.mul_(range[1] - range[0]).add_(range[0])
-	return image
-
-def get_normalization_parameters(dataloader):
-	""" Give Dataloader and recieve the mean and std of the dataset.
-		Note: Make sure that the dataloader is Tensordataset and its not already normalized. """
-	image_channels_sum, image_channels_squared_sum = 0, 0
-	hypercube_channels_sum, hypercube_channels_squared_sum, num_batches = 0, 0, 0
-
-	for image, hypercube, _ in dataloader:
-		# Mean over batch, height and width, but not over the channels
-		image_channels_sum += torch.mean(image, dim=[0, 2, 3])
-		image_channels_squared_sum += torch.mean(image**2, dim=[0, 2, 3])
-
-		hypercube_channels_sum += torch.mean(hypercube, dim=[0, 2, 3])
-		hypercube_channels_squared_sum += torch.mean(hypercube**2, dim=[0, 2, 3])
-
-		num_batches += 1
-	
-	print("number of batches", num_batches)
-
-	image_mean = image_channels_sum / num_batches
-	hypercube_mean = hypercube_channels_sum / num_batches
-
-	# std = sqrt(E[X^2] - (E[X])^2)
-	image_std = (image_channels_squared_sum / num_batches - image_mean ** 2) ** 0.5
-	hypercube_std = (hypercube_channels_squared_sum / num_batches - hypercube_mean ** 2) ** 0.5
-
-	return (image_mean, image_std), (hypercube_mean, hypercube_std)
-
-def crop_image(image, start, end):
-	""" Crops the image to the desired range. 
-		Note: This function expects the image to be in the format [C, H, W] and H = W. """
-	return image[:, start:end, start:end]
-
-def data_augmentation(image, aug_mode=0):
-	if aug_mode == 0:
-		return image								# original image
-	elif aug_mode == 1:
-		return np.flipud(image)						# flip up and down
-	elif aug_mode == 2:
-		return np.rot90(image)						# rotate counterwise 90 degree
-	elif aug_mode == 3:
-		return np.flipud(np.rot90(image))			# rotate 90 degree and flip up and down
-	elif aug_mode == 4:
-		return np.rot90(image, k=2)					# rotate 180 degree
-	elif aug_mode == 5:
-		return np.flipud(np.rot90(image, k=2))		# rotate 180 degree and flip
-	elif aug_mode == 6:
-		return np.rot90(image, k=3)					# rotate 270 degree
-	elif aug_mode == 7:
-		return np.flipud(np.rot90(image, k=3))		# rotate 270 degree and flip
-	else:
-		return
-
-def visualize_data_item(image, hypercube, band, classlabel):
-	fig, ax = plt.subplots(1, 2, figsize=(10, 5))
-	fig.suptitle("Class: %s" % TEST_DATASETS[classlabel])
-
-	# visualizing it in RGB (instead of BGR)
-	image=np.transpose(image.numpy()[:3], (1, 2, 0))[:,:, [2, 1, 0]]
-	ax[0].imshow(image)
-	ax[0].set_xlabel(image.shape)
-	ax[0].set_title("RGBN - 0:3 (RGB)")
-	ax[1].imshow(hypercube.numpy()[band])
-	ax[1].set_xlabel(hypercube.numpy().shape)
-	ax[1].set_title("Hypercube - %i" % band)
-	plt.show()
 
 class DatasetFromDirectory(Dataset):
 	# Expects the directory structure to be:
