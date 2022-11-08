@@ -11,13 +11,17 @@ from glob import glob
 from imageio import imread
 
 import torch
+from torchvision import transforms
 from torch.autograd import Variable
+from torch.utils.data import DataLoader, random_split
 from torch.utils.mobile_optimizer import optimize_for_mobile
 
 from models.model import Network
-from models.resblock import resblock, ResNeXtBottleneck
+from models.resblock import ResNeXtBottleneck
+from dataset import DatasetFromDirectory, DatasetFromHdf5
+from config import TEST_DATASETS, TRAIN_DATASET_FILES, TRAIN_DATASET_DIR, VALID_DATASET_FILES, TEST_ROOT_DATASET_DIR, DATASET_NAME, PATCH_SIZE, BAND_SPACING, MODEL_PATH, LOGS_PATH, MODEL_PATH, NORMALIZATION_FACTOR, NUMBER_OF_BANDS, batch_size, checkpoint_fileprestring, classification_checkpoint_fileprestring, checkpoint_file, mobile_model_file, var_name, onnx_file_name, tf_model_dir, tflite_filename
 
-from config import BAND_SPACING, MODEL_PATH, LOGS_PATH, MODEL_PATH, NORMALIZATION_FACTOR, NUMBER_OF_BANDS, checkpoint_fileprestring, classification_checkpoint_fileprestring, checkpoint_file, mobile_model_file, var_name, onnx_file_name, tf_model_dir, tflite_filename
+import matplotlib.pyplot as plt
 
 class AverageMeter(object):
 	"""Computes and stores the average and current value."""
@@ -38,6 +42,233 @@ class AverageMeter(object):
 
 def average(list):
 	return sum(list)/len(list)
+
+def poly_lr_scheduler(optimizer, init_lr, iteraion, lr_decay_iter=1, max_iter=100, power=0.9):
+	"""
+	Polynomial decay of learning rate
+		init_lr:		base learning rate
+		iter:			current iteration
+		lr_decay_iter:	how frequently decay occurs, default is 1
+		max_iter:		number of maximum iterations
+		power:			polymomial power
+	"""
+	if iteraion % lr_decay_iter or iteraion > max_iter:
+		return optimizer
+
+	lr = init_lr * (1 - iteraion/max_iter) ** power
+
+	for param_group in optimizer.param_groups:
+		param_group["lr"] = lr
+
+	return lr
+
+def read_image(rgb_filename, nir_filename):
+	""" Reads the two images and stack them together while maintaining the order BGR-NIR """
+	rgb = imread(rgb_filename)
+	rgb[:,:, [0, 2]] = rgb[:,:, [2, 0]]	# flipping red and blue channels (shape used for training)
+
+	nir = imread(nir_filename)
+	# because NIR from the phone is saved as three repeated channels
+	nir = nir[:,:, 0] if nir.ndim == 3 else np.expand_dims(nir, axis=-1)
+
+	image = np.dstack((rgb, nir))/255.0
+	del rgb, nir
+
+	return image
+
+def crop_image(image, start, end):
+	""" Crops the image to the desired range. 
+		Note: This function expects the image to be in the format [C, H, W] and H = W. """
+	return image[:, start:end, start:end]
+
+def scale_image(image, range=(0, 1)):
+	""" Scales the image to the desired range.
+		Depreciated: Will be removed in the future. """
+	dist = image.max(dim=1, keepdim=True)[0] - image.min(dim=1, keepdim=True)[0]
+	dist[dist == 0.] = 1.
+	scale = 1.0 / dist
+	image.mul_(scale).sub_(image.min(dim=1, keepdim=True)[0])
+	image.mul_(range[1] - range[0]).add_(range[0])
+	return image
+
+def visualize_data_item(image, hypercube, band, classlabel):
+	fig, ax = plt.subplots(1, 2, figsize=(10, 5))
+	fig.suptitle("Class: %s" % TEST_DATASETS[classlabel])
+
+	# visualizing it in RGB (instead of BGR)
+	image=np.transpose(image.numpy()[:3], (1, 2, 0))[:,:, [2, 1, 0]]
+	ax[0].imshow(image)
+	ax[0].set_xlabel(image.shape)
+	ax[0].set_title("RGBN - 0:3 (RGB)")
+	ax[1].imshow(hypercube.numpy()[band])
+	ax[1].set_xlabel(hypercube.numpy().shape)
+	ax[1].set_title("Hypercube - %i" % band)
+	plt.show()
+
+def get_dataloaders(input_transform, label_transform, task, load_from_h5=False, trainset_size=0.7):
+	if load_from_h5:
+		train_data, valid_data = [], []
+		for datasetFile in TRAIN_DATASET_FILES:
+			h5_filepath = os.path.join(TRAIN_DATASET_DIR, datasetFile)
+			dataset = DatasetFromHdf5(h5_filepath)
+			train_data.append(dataset)
+			print("Length of Training Set (%s):" % datasetFile, len(dataset))
+
+		for datasetFile in VALID_DATASET_FILES:
+			h5_filepath = os.path.join(TRAIN_DATASET_DIR, datasetFile)
+			dataset = DatasetFromHdf5(h5_filepath)
+			valid_data.append(dataset)
+			print("Length of Validation Set (%s):" % datasetFile, len(dataset))
+	else:
+		dataset = DatasetFromDirectory(root=TEST_ROOT_DATASET_DIR,
+									dataset_name=DATASET_NAME,
+									task=task,
+									patch_size=PATCH_SIZE,
+									lazy_read=False if task == "reconstruction" else True,
+									shuffle=True,
+									rgbn_from_cube=False,
+									use_all_bands=False if task == "reconstruction" else True,
+									product_pairing=False,
+									train_with_patches=True,
+									positive_only=True,
+									verbose=True,
+									augment_factor=0 if task == "reconstruction" else 8,
+									transform=(input_transform, label_transform))
+
+		test_data_loader = DataLoader(dataset,
+									batch_size=1,
+									shuffle=False,
+									num_workers=0)
+
+		train_data, valid_data = random_split(dataset, [int(trainset_size*len(dataset)), len(dataset) - int(len(dataset)*trainset_size)])
+
+		print("Length of Training Set ({}%):\t{}".format(round(trainset_size * 100), len(train_data)))
+		print("Length of Validation Set ({}%):\t{}".format(round((1-trainset_size) * 100), len(valid_data)))
+
+		train_data_loader = DataLoader(dataset=train_data,
+									num_workers=1,
+									batch_size=batch_size,
+									shuffle=True,
+									pin_memory=True)
+
+		valid_data_loader = DataLoader(dataset=valid_data,
+									num_workers=1,
+									batch_size=4,
+									shuffle=False,
+									pin_memory=True)
+
+	return train_data_loader, valid_data_loader, test_data_loader
+
+def get_normalization_parameters(dataloader):
+	""" Give Dataloader and recieve the mean and std of the dataset.
+		Note: Make sure that the dataloader is Tensordataset and its not already normalized. """
+	image_channels_sum, image_channels_squared_sum = 0, 0
+	hypercube_channels_sum, hypercube_channels_squared_sum, num_batches = 0, 0, 0
+
+	for image, hypercube, _ in dataloader:
+		# Mean over batch, height and width, but not over the channels
+		image_channels_sum += torch.mean(image, dim=[0, 2, 3])
+		image_channels_squared_sum += torch.mean(image**2, dim=[0, 2, 3])
+
+		hypercube_channels_sum += torch.mean(hypercube, dim=[0, 2, 3])
+		hypercube_channels_squared_sum += torch.mean(hypercube**2, dim=[0, 2, 3])
+
+		num_batches += 1
+	
+	print("Number of Batches", num_batches)
+
+	image_mean = image_channels_sum / num_batches
+	hypercube_mean = hypercube_channels_sum / num_batches
+
+	# std = sqrt(E[X^2] - (E[X])^2)
+	image_std = (image_channels_squared_sum / num_batches - image_mean ** 2) ** 0.5
+	hypercube_std = (hypercube_channels_squared_sum / num_batches - hypercube_mean ** 2) ** 0.5
+
+	return (image_mean, image_std), (hypercube_mean, hypercube_std)
+
+def get_required_transforms(task="reconstruction"):
+	""" Returns the two transforms for the RGB-NIR image input and Hypercube label.
+		Note: The `dataset` recieved is already Tensor data.
+		This function gets the dataset specified in the `config.py` file. """
+	# Dataset
+	image_mean, image_std, hypercube_mean, hypercube_std = 0, 0, 0, 0
+
+	dataset = DatasetFromDirectory(root=TEST_ROOT_DATASET_DIR,
+								   dataset_name=DATASET_NAME,
+								   task=task,
+								   patch_size=PATCH_SIZE,
+								   lazy_read=False,
+								   shuffle=False,
+								   rgbn_from_cube=False,
+								   use_all_bands=False if task == "reconstruction" else True,
+								   product_pairing=False,
+								   train_with_patches=True,
+								   positive_only=False,
+								   verbose=False,
+								   augment_factor=0,
+								   transform=(None, None))
+
+	dataloader = DataLoader(dataset=dataset,
+							num_workers=1,
+							batch_size=batch_size,
+							shuffle=False,
+							pin_memory=True)
+
+	(image_mean, image_std), (hypercube_mean, hypercube_std) = get_normalization_parameters(dataloader)
+
+	print(75*"-" + "\nDataset Normalization\n" + 75*"-")
+
+	if task == "reconstruction":
+		print("RGB-NIR Images Size:\t\t\t\t\t%d" % (image_mean.size(dim=0)))
+		print("The Mean of the dataset is in the range:\t\t%f - %f"
+			% (torch.min(image_mean).item(), torch.max(image_mean).item()))
+		print("The Standard Deviation of the dataset is in the range:\t%f - %f\n"
+			% (torch.min(image_std).item(), torch.max(image_std).item()))
+
+	print("Hypercubes Size:\t\t\t\t\t%d" % (hypercube_std.size(dim=0)))
+	print("The Mean of the dataset is in the range:\t\t%f - %f"
+		  % (torch.min(hypercube_mean).item(), torch.max(hypercube_mean).item()))
+	print("The Standard Deviation of the dataset is in the range:\t%f - %f"
+		  % (torch.min(hypercube_std).item(), torch.max(hypercube_std).item()))
+	print(75*"-")
+	del dataset, dataloader
+
+	hypercube_transform_list = []
+
+	if task == "classification":
+		hypercube_transform_list = [# transforms.Resize((PATCH_SIZE, PATCH_SIZE)),
+									# transforms.RandomResizedCrop(size=(PATCH_SIZE, PATCH_SIZE)),
+									# transforms.CenterCrop(size=(PATCH_SIZE, PATCH_SIZE)),
+									transforms.RandomRotation(20, interpolation=transforms.InterpolationMode.BILINEAR),
+									transforms.RandomHorizontalFlip()]
+
+	# Data is already tensor, so just normalize it
+	hypercube_transform_list.append(transforms.Normalize(mean=hypercube_mean, std=hypercube_std))
+	input_transform = transforms.Compose([transforms.Normalize(mean=image_mean, std=image_std)]) if task == "reconstruction" else None
+	hypercube_transform = transforms.Compose([transforms.Normalize(mean=hypercube_mean, std=hypercube_std)])
+
+	del hypercube_transform_list
+	return input_transform, hypercube_transform
+
+def data_augmentation(image, aug_mode=0):
+	if aug_mode == 0:
+		return image								# original image
+	elif aug_mode == 1:
+		return np.flipud(image)						# flip up and down
+	elif aug_mode == 2:
+		return np.rot90(image)						# rotate counterwise 90 degree
+	elif aug_mode == 3:
+		return np.flipud(np.rot90(image))			# rotate 90 degree and flip up and down
+	elif aug_mode == 4:
+		return np.rot90(image, k=2)					# rotate 180 degree
+	elif aug_mode == 5:
+		return np.flipud(np.rot90(image, k=2))		# rotate 180 degree and flip
+	elif aug_mode == 6:
+		return np.rot90(image, k=3)					# rotate 270 degree
+	elif aug_mode == 7:
+		return np.flipud(np.rot90(image, k=3))		# rotate 270 degree and flip
+	else:
+		return
 
 def initialize_logger(filename):
 	"""Print the results in the log file."""
