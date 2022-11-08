@@ -170,7 +170,6 @@ def main():
 	plt.show()
 	test_loss, test_acc, json_data = test(test_data_loader, model, criterion)
 	print("Test Loss: %.9f, Test Accuracy: %.2f%%" % (test_loss, test_acc))
-	# print(json_data)
 
 	jsonFile = open(os.path.join("inference", "weights_HS.json"), "w")
 	jsonFile.write(json.dumps(json_data, indent=4))
@@ -269,19 +268,12 @@ def test(test_data_loader, model, criterion):
 
 	accuracy = 100. * (correct_examples / len(test_data_loader.dataset))
 
-	# plt.matshow(activations["bottleneck"].cpu().numpy())
-	# plt.savefig(os.path.join("inference", "bottleneck.png"))
-	# plt.show()
-	# print(y_true, y_pred)
-	print(activations["bottleneck"].cpu().numpy().shape)
+	print("Weights Shape:", activations["bottleneck"].cpu().numpy().shape)
 
-	# # print(output.cpu().numpy(), pred_logits.cpu().numpy())
 	confusion_mat = confusion_matrix(y_true, y_pred)
 	sns.heatmap(confusion_mat/np.sum(confusion_mat), annot=True, fmt=".2%")
 	plt.savefig(os.path.join("inference", "confusion_matrix.png"))
 	plt.show()
-	# # print(torch.max(output, 1)[1], preds)
-	# # print("Outputs", output.shape, "Predictions", preds.shape)
 
 	return losses.avg, accuracy, json_data
 
