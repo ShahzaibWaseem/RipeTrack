@@ -25,7 +25,7 @@ VALID_DATASET_FILES = ["valid_avocado_halogen_4to51bands.h5",
 
 ### Datagenerator Directories ###
 CAMERA_OUTPUT_ROOT_PATH = os.path.join("..", "Catalog")
-EXTRACT_DATASETS = ["ambrosia-nonorganic", "ambrosia-organic", "gala-nonorganic", "gala-organic"]
+EXTRACT_DATASETS = ["ambrosia-nonorganic", "ambrosia-organic", "gala-nonorganic", "gala-organic", "organic", "nonorganic"]
 
 ### Parameters for Data reading ###
 BAND_SPACING = 1						# used only if reading data from directories dataset.DatasetFromDirectory
