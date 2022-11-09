@@ -10,7 +10,7 @@ from utils import load_mat, read_image, data_augmentation, get_normalization_par
 import torch
 from torchvision import transforms
 from torch.utils.data import Dataset, DataLoader, random_split
-from config import BAND_SPACING, RGBN_BANDS, BANDS, TEST_DATASETS, TRAIN_DATASET_DIR, TRAIN_DATASET_FILES, VALID_DATASET_FILES, TEST_ROOT_DATASET_DIR, DATASET_NAME, PATCH_SIZE, batch_size
+from config import BAND_SPACING, RGBN_BANDS, BANDS, TEST_DATASETS, EXTRACT_DATASETS, TRAIN_DATASET_DIR, TRAIN_DATASET_FILES, VALID_DATASET_FILES, TEST_ROOT_DATASET_DIR, DATASET_NAME, PATCH_SIZE, batch_size
 
 def get_dataloaders(input_transform, label_transform, task, load_from_h5=False, trainset_size=0.7):
 	if load_from_h5:
@@ -163,7 +163,7 @@ class DatasetFromDirectory(Dataset):
 
 	EPS = 1e-8
 	IMAGE_SIZE = 512
-	images, hypercubes, classlabels = {}, {}, {}
+	images, hypercubes, classlabels, actual_classlabels = {}, {}, {}, {}
 	min_values = (torch.tensor([float("Inf"), float("Inf")]))		# Image Min: -1.30753493309021, Hypercube Min: -2.123685598373413
 	max_values = (torch.tensor([float("-Inf"), float("-Inf")]))		# Image Max: -1.30753493309021, Hypercube Min: -2.123685598373413
 
@@ -223,6 +223,7 @@ class DatasetFromDirectory(Dataset):
 				print(" " * 25 + directory) if self.verbose else None
 				for rgb_filename in sorted(glob(os.path.join(directory, "*_RGB.png"))):
 					classlabel = directory.split("/")[-1].split("_")[1]
+					actual_classlabel = classlabel
 					classlabel = classlabel.split("-")
 					classlabel = classlabel[0] if len(classlabel) == 1 else classlabel[1]
 					nir_filename = os.path.join(directory, rgb_filename.split("/")[-1].replace("RGB", "NIR"))
@@ -240,10 +241,12 @@ class DatasetFromDirectory(Dataset):
 								for j in range(image.size(2) // self.PATCH_SIZE):
 									self.images[self.idxlist[im_id]] = image[:, i*self.PATCH_SIZE:(i+1)*self.PATCH_SIZE, j*self.PATCH_SIZE:(j+1)*self.PATCH_SIZE]
 									self.classlabels[self.idxlist[im_id]] = np.long(TEST_DATASETS.index(classlabel))
+									self.actual_classlabels[self.idxlist[im_id]] = np.long(EXTRACT_DATASETS.index(actual_classlabel))
 									im_id += 1
 						else:
 							self.images[self.idxlist[im_id]] = image
 							self.classlabels[self.idxlist[im_id]] = np.long(TEST_DATASETS.index(classlabel))
+							self.actual_classlabels[self.idxlist[im_id]] = np.long(EXTRACT_DATASETS.index(actual_classlabel))
 							im_id += 1
 
 		print("\nReading Hyper cubes from:") if self.verbose else None
@@ -310,6 +313,7 @@ class DatasetFromDirectory(Dataset):
 			hypercube = np.transpose(hypercube, [2, 0, 1])
 			hypercube = torch.from_numpy(hypercube.copy()).float()
 			classlabel = self.classlabels[idx[0]]
+			actual_classlabel = self.actual_classlabels[idx[0]]
 
 			if self.rgbn_from_cube:
 				image = hypercube[RGBN_BANDS, :, :]
@@ -329,7 +333,7 @@ class DatasetFromDirectory(Dataset):
 			hypercube = self.hypercubes[idx[1]]
 			classlabel = self.classlabels[idx[0]]
 
-		return image, hypercube, classlabel
+		return image, hypercube, classlabel, actual_classlabel
 
 	def __len__(self):
 		if self.product_pairing:
@@ -338,7 +342,7 @@ class DatasetFromDirectory(Dataset):
 			return len(self.images)
 		
 	def __getitem__(self, index):
-		image, hypercube, classlabel = self.fetch_image_label(index)
+		image, hypercube, classlabel, actual_classlabel = self.fetch_image_label(index)
 
 		# self.min_values = (torch.min(torch.tensor([torch.min(image), self.min_values[0]])).item(), torch.min(torch.tensor([torch.min(hypercube), self.min_values[1]])).item())
 		# self.max_values = (torch.max(torch.tensor([torch.max(image), self.max_values[0]])).item(), torch.max(torch.tensor([torch.max(hypercube), self.max_values[1]])).item())
@@ -356,4 +360,4 @@ class DatasetFromDirectory(Dataset):
 			hypercube = hypercube + 1.3652015924453735 if self.task == "reconstruction" else hypercube + 1.7359950542449951
 			hypercube = hypercube + 0.1
 
-		return image, hypercube, classlabel
+		return image, hypercube, classlabel, actual_classlabel

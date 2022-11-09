@@ -28,7 +28,7 @@ def main():
 	print("\n" + classicication_run_title)
 	logger.info(classicication_run_title)
 
-	train_data_loader, valid_data_loader, test_data_loader = get_dataloaders(predef_input_transform, predef_label_transform)
+	train_data_loader, valid_data_loader, test_data_loader = get_dataloaders(predef_input_transform, predef_label_transform, task="classification")
 
 	model = TorchClassifier(fine_tune=True, in_channels=len(BANDS), num_classes=len(TEST_DATASETS))
 	model.bottleneck.register_forward_hook(get_activation("bottleneck"))
@@ -37,12 +37,11 @@ def main():
 	criterion = torch.nn.CrossEntropyLoss()
 	optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=init_lr, amsgrad=True, betas=(0.9, 0.999), weight_decay=1e-5)
 
-	iteration = 0
+	epoch, iteration = 0, 0
 
 	if run_pretrained:
 		epoch, iteration, state_dict, optimizer, val_loss, val_acc = get_best_checkpoint(task="classification")
 		model.load_state_dict(state_dict)
-		optimizer.load_state_dict(optimizer)
 
 	for epoch in range(1, 25):
 		start_time = time.time()
@@ -81,7 +80,7 @@ def main():
 	print("Test Loss: %.9f, Test Accuracy: %.2f%%" % (test_loss, test_acc))
 
 	jsonFile = open(os.path.join("inference", "weights_HS.json"), "w")
-	jsonFile.write(json.dumps(json_data, indent=4))
+	jsonFile.write(json.dumps(json_data, indent=4, cls=NumpyEncoder))
 	jsonFile.close()
 
 def train(train_data_loader, model, criterion, iteration, optimizer):
@@ -90,7 +89,7 @@ def train(train_data_loader, model, criterion, iteration, optimizer):
 	losses = AverageMeter()
 	train_running_correct = 0
 
-	for rgbn, hypercubes, labels in tqdm(train_data_loader, desc="Train", total=len(train_data_loader)):
+	for rgbn, hypercubes, labels, _ in tqdm(train_data_loader, desc="Train", total=len(train_data_loader)):
 		# rgbn = rgbn[:, :3, :, :]
 		# rgbn = rgbn.cuda()
 		hypercubes = hypercubes.cuda()
@@ -124,7 +123,7 @@ def validate(val_data_loader, model, criterion):
 	losses = AverageMeter()
 	correct_examples = 0
 
-	for rgbn, hypercubes, labels in tqdm(val_data_loader, desc="Valid", total=len(val_data_loader)):
+	for rgbn, hypercubes, labels, _ in tqdm(val_data_loader, desc="Valid", total=len(val_data_loader)):
 		# rgbn = rgbn[:, :3, :, :]
 		# rgbn = rgbn.cuda()
 		hypercubes = hypercubes.cuda()
@@ -154,7 +153,7 @@ def test(test_data_loader, model, criterion):
 	y_pred, y_true = [], []
 	json_data = []
 
-	for rgbn, hypercubes, labels in tqdm(test_data_loader, desc="Test", total=len(test_data_loader)):
+	for rgbn, hypercubes, labels, actual_labels in tqdm(test_data_loader, desc="Test", total=len(test_data_loader)):
 		y_true.extend(labels.data.numpy())
 		# rgbn = rgbn[:, :3, :, :]
 		# rgbn = rgbn.cuda()
@@ -168,7 +167,7 @@ def test(test_data_loader, model, criterion):
 
 			# output = model(rgbn)
 			output = model(hypercubes)
-		json_data.append({"output": activations["bottleneck"].cpu().numpy().tolist(), "label": int(labels.cpu().numpy()[0])})
+		json_data.append({"output": activations["bottleneck"].cpu().numpy().tolist(), "label": int(labels.cpu().numpy()[0]), "actual_label": int(actual_labels.cpu().numpy()[0])})
 		loss = criterion(output, labels)
 		losses.update(loss.item())
 		_, preds = torch.max(output.data, 1)

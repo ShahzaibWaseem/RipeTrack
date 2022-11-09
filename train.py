@@ -98,7 +98,7 @@ def train(train_data_loader, model, criterions, optimizer, iteration, init_lr, m
 	criterion_mrae, criterion_sam, criterion_sid, criterion_weighted = criterions
 	losses_mrae, losses_sam, losses_sid, losses_weighted = AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter()
 
-	for images, labels, _ in tqdm(train_data_loader, desc="Train", total=len(train_data_loader)):
+	for images, labels, _, _ in tqdm(train_data_loader, desc="Train", total=len(train_data_loader)):
 		# print(torch.min(images), torch.max(images), torch.min(labels), torch.max(labels))
 		labels = labels.cuda()
 		images = images.cuda()
@@ -141,7 +141,7 @@ def validate(val_data_loader, model, criterions):
 	criterion_mrae, criterion_sam, criterion_sid, criterion_weighted = criterions
 	losses_mrae, losses_sam, losses_sid, losses_weighted = AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter()
 
-	for images, labels, _ in tqdm(val_data_loader, desc="Valid", total=len(val_data_loader)):
+	for images, labels, _, _ in tqdm(val_data_loader, desc="Valid", total=len(val_data_loader)):
 		images = images.cuda()
 		labels = labels.cuda()
 
