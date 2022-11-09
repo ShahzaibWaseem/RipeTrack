@@ -19,13 +19,13 @@ def get_dataloaders(input_transform, label_transform, task, load_from_h5=False, 
 			h5_filepath = os.path.join(TRAIN_DATASET_DIR, datasetFile)
 			dataset = DatasetFromHdf5(h5_filepath)
 			train_data.append(dataset)
-			print("Length of Training Set (%s):" % datasetFile, len(dataset))
+			print("Length of Training Set (%s):\t" % datasetFile, len(dataset))
 
 		for datasetFile in VALID_DATASET_FILES:
 			h5_filepath = os.path.join(TRAIN_DATASET_DIR, datasetFile)
 			dataset = DatasetFromHdf5(h5_filepath)
 			valid_data.append(dataset)
-			print("Length of Validation Set (%s):" % datasetFile, len(dataset))
+			print("Length of Validation Set (%s):\t" % datasetFile, len(dataset))
 	else:
 		dataset = DatasetFromDirectory(root=TEST_ROOT_DATASET_DIR,
 									dataset_name=DATASET_NAME,
@@ -49,8 +49,8 @@ def get_dataloaders(input_transform, label_transform, task, load_from_h5=False, 
 
 		train_data, valid_data = random_split(dataset, [int(trainset_size*len(dataset)), len(dataset) - int(len(dataset)*trainset_size)])
 
-		print("Length of Training Set ({}%):\t{}".format(round(trainset_size * 100), len(train_data)))
-		print("Length of Validation Set ({}%):\t{}".format(round((1-trainset_size) * 100), len(valid_data)))
+		print("Length of Training Set ({}%):\t\t{}".format(round(trainset_size * 100), len(train_data)))
+		print("Length of Validation Set ({}%):\t\t{}".format(round((1-trainset_size) * 100), len(valid_data)))
 
 		train_data_loader = DataLoader(dataset=train_data,
 									num_workers=1,
@@ -179,7 +179,6 @@ class DatasetFromDirectory(Dataset):
 			use_all_bands:		if True, use all, 204, bands (ideal case is for reconstruction)
 			product_pairing:	if True, the each RGB-NIR pair is paired with each hypercube						(Will be deprecated)
 			train_with_patches:	if True, the RGBN images are split into patches
-			discard_edges:		if True, discard the four corner patches
 			positive_only:		if True, make both the images and hypercubes positive
 			verbose:			if True, print the statistics of the dataset
 			transform:			two transforms for RGB-NIR and Hypercubes from the dataset
@@ -289,7 +288,7 @@ class DatasetFromDirectory(Dataset):
 		if product_pairing:
 			self.permuted_idx = list(itertools.product(self.images.keys(), self.hypercubes.keys()))
 		if verbose:
-			print("BANDS used:", BANDS if not self.use_all_bands else list(range(204)))
+			print("BANDS used: {} Length: {}".format(BANDS if not self.use_all_bands else list(range(204)), len(BANDS)))
 			# print("Shuffled Indices:", self.idxlist)
 			print("Number of RGBN Files:\t\t\t{}\nNumber of Hypercubes:\t\t\t{}".format(rgbn_counter if not rgbn_from_cube else hypercube_counter, hypercube_counter))
 
@@ -332,6 +331,7 @@ class DatasetFromDirectory(Dataset):
 			image = self.images[idx[0]]
 			hypercube = self.hypercubes[idx[1]]
 			classlabel = self.classlabels[idx[0]]
+			actual_classlabel = self.actual_classlabels[idx[0]]
 
 		return image, hypercube, classlabel, actual_classlabel
 
