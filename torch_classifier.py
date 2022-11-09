@@ -10,25 +10,13 @@ import torch
 from torch.autograd import Variable
 from sklearn.metrics import confusion_matrix
 
-from models.classifier import TorchClassifier, SeparateClassifier
+from models.classifier import TorchClassifier, SeparateClassifiers
 
-from dataset import DatasetFromDirectory
-from utils import AverageMeter, initialize_logger, save_checkpoint, poly_lr_scheduler, get_required_transforms, get_dataloaders
-from config import PATCH_SIZE, BANDS, TEST_DATASETS, TEST_ROOT_DATASET_DIR, CLASSIFIER_MODEL_NAME, DATASET_NAME, batch_size, classicication_run_title, predef_input_transform, predef_label_transform, init_directories
+from dataset import get_dataloaders, get_required_transforms
+from utils import AverageMeter, NumpyEncoder, initialize_logger, save_checkpoint, poly_lr_scheduler, get_best_checkpoint, get_activation, activations
+from config import BANDS, TEST_DATASETS, run_pretrained, classicication_run_title, predef_input_transform, predef_label_transform, run_pretrained, init_directories
 
 init_lr = 0.00005
-
-activations = {}
-def get_activation(name):
-	def hook(model, input, output):
-		activations[name] = output.detach()
-	return hook
-
-class NumpyEncoder(json.JSONEncoder):
-	def default(self, obj):
-		if isinstance(obj, np.ndarray):
-			return obj.tolist()
-		return json.JSONEncoder.default(self, obj)
 
 def main():
 	logger = initialize_logger(filename="classification.log")
@@ -50,6 +38,12 @@ def main():
 	optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=init_lr, amsgrad=True, betas=(0.9, 0.999), weight_decay=1e-5)
 
 	iteration = 0
+
+	if run_pretrained:
+		epoch, iteration, state_dict, optimizer, val_loss, val_acc = get_best_checkpoint(task="classification")
+		model.load_state_dict(state_dict)
+		optimizer.load_state_dict(optimizer)
+
 	for epoch in range(1, 25):
 		start_time = time.time()
 		train_loss, train_acc, iteration, lr = train(train_data_loader, model, criterion, iteration, optimizer)
