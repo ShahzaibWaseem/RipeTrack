@@ -5,11 +5,130 @@ import numpy as np
 
 import h5py
 from glob import glob
-from utils import load_mat, read_image, data_augmentation
+from utils import load_mat, read_image, data_augmentation, get_normalization_parameters
 
 import torch
-from torch.utils.data import Dataset
-from config import BAND_SPACING, RGBN_BANDS, BANDS, TEST_DATASETS
+from torchvision import transforms
+from torch.utils.data import Dataset, DataLoader, random_split
+from config import BAND_SPACING, RGBN_BANDS, BANDS, TEST_DATASETS, TRAIN_DATASET_DIR, TRAIN_DATASET_FILES, VALID_DATASET_FILES, TEST_ROOT_DATASET_DIR, DATASET_NAME, PATCH_SIZE, batch_size
+
+def get_dataloaders(input_transform, label_transform, task, load_from_h5=False, trainset_size=0.7):
+	if load_from_h5:
+		train_data, valid_data = [], []
+		for datasetFile in TRAIN_DATASET_FILES:
+			h5_filepath = os.path.join(TRAIN_DATASET_DIR, datasetFile)
+			dataset = DatasetFromHdf5(h5_filepath)
+			train_data.append(dataset)
+			print("Length of Training Set (%s):" % datasetFile, len(dataset))
+
+		for datasetFile in VALID_DATASET_FILES:
+			h5_filepath = os.path.join(TRAIN_DATASET_DIR, datasetFile)
+			dataset = DatasetFromHdf5(h5_filepath)
+			valid_data.append(dataset)
+			print("Length of Validation Set (%s):" % datasetFile, len(dataset))
+	else:
+		dataset = DatasetFromDirectory(root=TEST_ROOT_DATASET_DIR,
+									dataset_name=DATASET_NAME,
+									task=task,
+									patch_size=PATCH_SIZE,
+									lazy_read=False if task == "reconstruction" else True,
+									shuffle=True,
+									rgbn_from_cube=False,
+									use_all_bands=False if task == "reconstruction" else True,
+									product_pairing=False,
+									train_with_patches=True,
+									positive_only=True,
+									verbose=True,
+									augment_factor=0 if task == "reconstruction" else 8,
+									transform=(input_transform, label_transform))
+
+		test_data_loader = DataLoader(dataset,
+									batch_size=1,
+									shuffle=False,
+									num_workers=0)
+
+		train_data, valid_data = random_split(dataset, [int(trainset_size*len(dataset)), len(dataset) - int(len(dataset)*trainset_size)])
+
+		print("Length of Training Set ({}%):\t{}".format(round(trainset_size * 100), len(train_data)))
+		print("Length of Validation Set ({}%):\t{}".format(round((1-trainset_size) * 100), len(valid_data)))
+
+		train_data_loader = DataLoader(dataset=train_data,
+									num_workers=1,
+									batch_size=batch_size,
+									shuffle=True,
+									pin_memory=True)
+
+		valid_data_loader = DataLoader(dataset=valid_data,
+									num_workers=1,
+									batch_size=4,
+									shuffle=False,
+									pin_memory=True)
+
+	return train_data_loader, valid_data_loader, test_data_loader
+
+def get_required_transforms(task="reconstruction"):
+	""" Returns the two transforms for the RGB-NIR image input and Hypercube label.
+		Note: The `dataset` recieved is already Tensor data.
+		This function gets the dataset specified in the `config.py` file. """
+	# Dataset
+	image_mean, image_std, hypercube_mean, hypercube_std = 0, 0, 0, 0
+
+	dataset = DatasetFromDirectory(root=TEST_ROOT_DATASET_DIR,
+								   dataset_name=DATASET_NAME,
+								   task=task,
+								   patch_size=PATCH_SIZE,
+								   lazy_read=False,
+								   shuffle=False,
+								   rgbn_from_cube=False,
+								   use_all_bands=False if task == "reconstruction" else True,
+								   product_pairing=False,
+								   train_with_patches=True,
+								   positive_only=False,
+								   verbose=False,
+								   augment_factor=0,
+								   transform=(None, None))
+
+	dataloader = DataLoader(dataset=dataset,
+							num_workers=1,
+							batch_size=batch_size,
+							shuffle=False,
+							pin_memory=True)
+
+	(image_mean, image_std), (hypercube_mean, hypercube_std) = get_normalization_parameters(dataloader)
+
+	print(75*"-" + "\nDataset Normalization\n" + 75*"-")
+
+	if task == "reconstruction":
+		print("RGB-NIR Images Size:\t\t\t\t\t%d" % (image_mean.size(dim=0)))
+		print("The Mean of the dataset is in the range:\t\t%f - %f"
+			% (torch.min(image_mean).item(), torch.max(image_mean).item()))
+		print("The Standard Deviation of the dataset is in the range:\t%f - %f\n"
+			% (torch.min(image_std).item(), torch.max(image_std).item()))
+
+	print("Hypercubes Size:\t\t\t\t\t%d" % (hypercube_std.size(dim=0)))
+	print("The Mean of the dataset is in the range:\t\t%f - %f"
+		  % (torch.min(hypercube_mean).item(), torch.max(hypercube_mean).item()))
+	print("The Standard Deviation of the dataset is in the range:\t%f - %f"
+		  % (torch.min(hypercube_std).item(), torch.max(hypercube_std).item()))
+	print(75*"-")
+	del dataset, dataloader
+
+	hypercube_transform_list = []
+
+	if task == "classification":
+		hypercube_transform_list = [# transforms.Resize((PATCH_SIZE, PATCH_SIZE)),
+									# transforms.RandomResizedCrop(size=(PATCH_SIZE, PATCH_SIZE)),
+									# transforms.CenterCrop(size=(PATCH_SIZE, PATCH_SIZE)),
+									transforms.RandomRotation(20, interpolation=transforms.InterpolationMode.BILINEAR),
+									transforms.RandomHorizontalFlip()]
+
+	# Data is already tensor, so just normalize it
+	hypercube_transform_list.append(transforms.Normalize(mean=hypercube_mean, std=hypercube_std))
+	input_transform = transforms.Compose([transforms.Normalize(mean=image_mean, std=image_std)]) if task == "reconstruction" else None
+	hypercube_transform = transforms.Compose([transforms.Normalize(mean=hypercube_mean, std=hypercube_std)])
+
+	del hypercube_transform_list
+	return input_transform, hypercube_transform
 
 class DatasetFromHdf5(Dataset):
 	def __init__(self, file_path):
@@ -174,7 +293,7 @@ class DatasetFromDirectory(Dataset):
 			if train_with_patches:
 				print("Patch Size:\t\t\t\t{}\nNumber of Patches ({}/{} * {}):\t{}".format(self.PATCH_SIZE, self.IMAGE_SIZE, self.PATCH_SIZE, rgbn_counter, len(self.hypercubes)))
 
-			print("Images Shape:\t\t\t\t{}\nHypercubes Shape:\t\t\t{}".format(list(self.images[0].size()), list(self.hypercubes[0].size())))
+			print("Images Shape:\t\t\t\t{}\nHypercubes Shape:\t\t\t{}".format(list(self.images[0].size()), list(self.hypercubes[0].size()) if not lazy_read else "Lazy Read. Size decided later."))
 
 	def fetch_image_label(self, index):
 		""" Reads the image and label from the index (lazily or not) and/or product pairs """
