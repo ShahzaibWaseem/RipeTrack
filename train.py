@@ -13,14 +13,16 @@ from models.model import Network
 from models.resblock import ResNeXtBottleneck
 from loss import mrae_loss, sam_loss, sid_loss, weighted_loss
 
-from utils import AverageMeter, get_dataloaders, get_required_transforms, initialize_logger, save_checkpoint, get_best_checkpoint, record_loss, makeMobileModel, make_h5_dataset, modeltoONNX, ONNXtotf, tf_to_tflite, poly_lr_scheduler
-from config import LOGS_PATH, BANDS, init_directories, batch_size, end_epoch, init_lr, model_run_title, run_pretrained
+from dataset import get_dataloaders, get_required_transforms
+from utils import AverageMeter, initialize_logger, save_checkpoint, get_best_checkpoint, record_loss, poly_lr_scheduler, makeMobileModel, make_h5_dataset, modeltoONNX, ONNXtotf, tf_to_tflite
+from config import LOGS_PATH, BANDS, init_directories, batch_size, end_epoch, init_lr, model_run_title, run_pretrained, predef_input_transform, predef_label_transform
 
 torch.autograd.set_detect_anomaly(True)
 
 def main():
 	trainset_size=0.8
 	input_transform, label_transform = get_required_transforms()
+	# input_transform, label_transform = predef_input_transform, predef_label_transform
 	train_data_loader, val_data_loader, whole_dataset_loader = get_dataloaders(input_transform, label_transform, task="reconstruction", trainset_size=trainset_size)
 
 	# Parameters, Loss and Optimizer
