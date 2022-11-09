@@ -115,7 +115,7 @@ def get_normalization_parameters(dataloader):
 	image_channels_sum, image_channels_squared_sum = 0, 0
 	hypercube_channels_sum, hypercube_channels_squared_sum, num_batches = 0, 0, 0
 
-	for image, hypercube, _ in dataloader:
+	for image, hypercube, _, _ in dataloader:
 		# Mean over batch, height and width, but not over the channels
 		image_channels_sum += torch.mean(image, dim=[0, 2, 3])
 		image_channels_squared_sum += torch.mean(image**2, dim=[0, 2, 3])
