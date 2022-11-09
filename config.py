@@ -32,12 +32,12 @@ BAND_SPACING = 1						# used only if reading data from directories dataset.Datas
 NUMBER_OF_BANDS = 204//BAND_SPACING		# holds the number of bands considered (used in model creation)
 
 IMAGE_SIZE = 512
-PATCH_SIZE = 512						# patching of the hypercubes and images
+PATCH_SIZE = 64							# patching of the hypercubes and images
 NORMALIZATION_FACTOR = 4096				# max value of the captured hypercube (dependent on the camera - Specim IQ)
 RGBN_BANDS = [18, 47, 80, 183]			# correspond to B 454, G 541, R 640, N 949 bands
-BANDS = [RGBN_BANDS, range(104, 204, 2)]
+# BANDS = [RGBN_BANDS, range(104, 204, 2)]
 # Bands: (450, 650, 5), (670, 690, 5), (750, 900, 5), (900, 1000, 5)
-# BANDS = [range(19, 87, 5), range(94, 102, 5), range(120, 170, 5), range(170, 204, 5)]
+BANDS = [range(19, 87, 5), range(94, 102, 5), range(120, 170, 5), range(170, 204, 5)]
 
 ### Hyperparamters for the model ###
 batch_size = 32
@@ -67,7 +67,7 @@ checkpoint_fileprestring = "%s_%s" % (MODEL_NAME, DATASET_NAME)
 classification_checkpoint_fileprestring = "%s_%s" % (CLASSIFIER_MODEL_NAME, DATASET_NAME)
 checkpoint_file = "MS_%s_500.pkl" % checkpoint_fileprestring
 # checkpoint_file = "HS_model_%d.pkl" % end_epoch
-run_pretrained = True					# if True, the model is loaded from the checkpoint_file
+run_pretrained = False					# if True, the model is loaded from the checkpoint_file
 
 mobile_model_file = "model_%s.pth" % DATASET_NAME
 onnx_file_name = "model.onnx"
@@ -108,19 +108,10 @@ def sampler():
 	global BANDS, NUMBER_OF_BANDS
 	sampled_bands = []
 
-	for band in range(len(BANDS)):
-		sampled_bands.append(list(BANDS[band]))
+	for band_segment in range(len(BANDS)):
+		sampled_bands.append(list(BANDS[band_segment]))
 	
 	BANDS = [band for sampled_list in sampled_bands for band in sampled_list]
-
-	sampled_bands = []
-
-	for band in BANDS:
-		if band in RGBN_BANDS:
-			sampled_bands.append(band)
-		elif band >= 104:				# 105 equivalent to NIR 702.58 nm band
-			sampled_bands.append(band)
-	BANDS = sampled_bands
 	NUMBER_OF_BANDS = len(BANDS)
 	return BANDS
 
