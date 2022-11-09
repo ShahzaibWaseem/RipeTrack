@@ -9,11 +9,14 @@ from sklearn.decomposition import PCA
 
 import torch
 
-import matplotlib.pyplot as plt
+from torch_classifier import test
+from models.classifier import TorchClassifier
 
-from utils import get_best_checkpoint
-from torch_classifier import TorchClassifier, get_loaders, test, get_activation
+from dataset import get_dataloaders
+from utils import get_best_checkpoint, get_activation
 from config import BANDS, TEST_DATASETS, predef_input_transform, predef_label_transform, init_lr, run_pretrained
+
+import matplotlib.pyplot as plt
 
 def get_json(test_model=True):
 	X, y = np.empty(shape=(1, 256), dtype=np.int32), np.empty(shape=(1,), dtype=np.int8)
@@ -24,7 +27,8 @@ def get_json(test_model=True):
 		model = model.cuda()
 
 		criterion = torch.nn.CrossEntropyLoss()
-		_, _, test_data_loader = get_loaders(predef_input_transform, predef_label_transform)
+		os.chdir(os.path.join(".."))			# go up a directory as this script is in the visualization folder
+		_, _, test_data_loader = get_dataloaders(predef_input_transform, predef_label_transform, task="classification")
 		epoch, iter, state_dict, optimizer, val_loss, val_acc = get_best_checkpoint(task="classification")
 		model.load_state_dict(state_dict)
 
@@ -42,7 +46,6 @@ def get_json(test_model=True):
 	return X, y
 
 def main():
-	get_best_checkpoint(task="classification", up_a_directory=True)
 	X, y = get_json(test_model=True)
 
 	# scaling the data
