@@ -10,7 +10,7 @@ import torch
 from torch.autograd import Variable
 from sklearn.metrics import confusion_matrix
 
-from models.classifier import TorchClassifier, SeparateClassifiers
+from models.classifier import TorchClassifier, SeparateClassifiers, MultiHeadClassification
 
 from dataset import get_dataloaders, get_required_transforms
 from utils import AverageMeter, NumpyEncoder, initialize_logger, save_checkpoint, poly_lr_scheduler, get_best_checkpoint, get_activation, activations
@@ -30,7 +30,8 @@ def main():
 
 	train_data_loader, valid_data_loader, test_data_loader = get_dataloaders(predef_input_transform, predef_label_transform, task="classification")
 
-	model = TorchClassifier(fine_tune=True, in_channels=len(BANDS), num_classes=len(TEST_DATASETS))
+	# model = TorchClassifier(fine_tune=True, in_channels=len(BANDS), num_classes=len(TEST_DATASETS))
+	model = MultiHeadClassification()
 	model.bottleneck.register_forward_hook(get_activation("bottleneck"))
 	model = model.cuda()
 
