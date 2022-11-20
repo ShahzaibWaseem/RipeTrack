@@ -5,12 +5,13 @@ import numpy as np
 
 import h5py
 from glob import glob
-from utils import load_mat, read_image, data_augmentation, get_normalization_parameters
 
 import torch
 from torchvision import transforms
 from torch.utils.data import Dataset, DataLoader, random_split
-from config import BAND_SPACING, RGBN_BANDS, BANDS, TEST_DATASETS, EXTRACT_DATASETS, TRAIN_DATASET_DIR, TRAIN_DATASET_FILES, VALID_DATASET_FILES, TEST_ROOT_DATASET_DIR, DATASET_NAME, PATCH_SIZE, batch_size
+
+from utils import load_mat, read_image, data_augmentation, get_normalization_parameters, visualize_data_item
+from config import BAND_SPACING, RGBN_BANDS, BANDS, TEST_DATASETS, EXTRACT_DATASETS, TRAIN_DATASET_DIR, TRAIN_DATASET_FILES, VALID_DATASET_FILES, TEST_ROOT_DATASET_DIR, DATASET_NAME, PATCH_SIZE, batch_size, device
 
 def get_dataloaders(input_transform, label_transform, task, load_from_h5=False, trainset_size=0.7):
 	if load_from_h5:
@@ -28,41 +29,41 @@ def get_dataloaders(input_transform, label_transform, task, load_from_h5=False, 
 			print("Length of Validation Set (%s):\t" % datasetFile, len(dataset))
 	else:
 		dataset = DatasetFromDirectory(root=TEST_ROOT_DATASET_DIR,
-									dataset_name=DATASET_NAME,
-									task=task,
-									patch_size=PATCH_SIZE,
-									lazy_read=True,
-									shuffle=True,
-									rgbn_from_cube=False,
-									use_all_bands=False if task == "reconstruction" else True,
-									product_pairing=False,
-									train_with_patches=True,
-									positive_only=True,
-									verbose=True,
-									augment_factor=0 if task == "reconstruction" else 8,
-									transform=(input_transform, label_transform))
+									   dataset_name=DATASET_NAME,
+									   task=task,
+									   patch_size=PATCH_SIZE,
+									   lazy_read=True,
+									   shuffle=True,
+									   rgbn_from_cube=False,
+									   use_all_bands=False if task == "reconstruction" else True,
+									   product_pairing=False,
+									   train_with_patches=True,
+									   positive_only=True,
+									   verbose=True,
+									   augment_factor=0 if task == "reconstruction" else 8,
+									   transform=(input_transform, label_transform))
 
-		test_data_loader = DataLoader(dataset,
-									batch_size=1,
-									shuffle=False,
-									num_workers=0)
+		test_data_loader = DataLoader(dataset=dataset,
+									  num_workers=0,
+									  batch_size=1,
+									  shuffle=False,
+									  pin_memory=False) if task == "classification" else dataset
 
 		train_data, valid_data = random_split(dataset, [int(trainset_size*len(dataset)), len(dataset) - int(len(dataset)*trainset_size)])
 
 		print("Length of Training Set ({}%):\t\t{}".format(round(trainset_size * 100), len(train_data)))
 		print("Length of Validation Set ({}%):\t\t{}".format(round((1-trainset_size) * 100), len(valid_data)))
+	train_data_loader = DataLoader(dataset=train_data,
+								   num_workers=2,
+								   batch_size=batch_size,
+								   shuffle=True,
+								   pin_memory=True)
 
-		train_data_loader = DataLoader(dataset=train_data,
-									num_workers=1,
-									batch_size=batch_size,
-									shuffle=True,
-									pin_memory=True)
-
-		valid_data_loader = DataLoader(dataset=valid_data,
-									num_workers=1,
-									batch_size=4,
-									shuffle=False,
-									pin_memory=True)
+	valid_data_loader = DataLoader(dataset=valid_data,
+								   num_workers=2,
+								   batch_size=4,
+								   shuffle=False,
+								   pin_memory=True)
 
 	return train_data_loader, valid_data_loader, test_data_loader
 
@@ -89,10 +90,10 @@ def get_required_transforms(task="reconstruction"):
 								   transform=(None, None))
 
 	dataloader = DataLoader(dataset=dataset,
-							num_workers=1,
+							num_workers=0,
 							batch_size=batch_size,
 							shuffle=False,
-							pin_memory=True)
+							pin_memory=False)
 
 	(image_mean, image_std), (hypercube_mean, hypercube_std) = get_normalization_parameters(dataloader)
 
@@ -229,7 +230,7 @@ class DatasetFromDirectory(Dataset):
 					orig_image = read_image(rgb_filename, nir_filename)
 					# image = crop_image(image, start=self.crop_size, end=self.IMAGE_SIZE-self.crop_size) if task == "classification" and self.crop_size>0 else image
 					for aug_mode in range(self.augment_factor):			# Augment the dataset
-						image = data_augmentation(orig_image, aug_mode)
+						image = data_augmentation(orig_image, aug_mode) if task == "classification" else orig_image
 						image = np.transpose(image, [2, 0, 1])
 						image = torch.from_numpy(image.copy()).float()
 						image = self.input_transform(image) if not self.input_transform == None else image
@@ -283,16 +284,18 @@ class DatasetFromDirectory(Dataset):
 						self.hypercubes[im_id] = hypercube
 						im_id += 1
 
-		assert len(self.images) == len(self.hypercubes) == len(self.classlabels), "Number of images and hypercubes and classlabels do not match."
+		assert len(self.images) == len(self.hypercubes) == len(self.classlabels) == len(self.actual_classlabels), "Number of images and hypercubes and classlabels do not match."
 		# pair each rgb-nir patch with each hypercube patch
 		if product_pairing:
 			self.permuted_idx = list(itertools.product(self.images.keys(), self.hypercubes.keys()))
 		if verbose:
-			print("BANDS used: {} Length: {}".format(BANDS if not self.use_all_bands else list(range(204)), len(BANDS)))
+			print("\nBands used:\t\t\t\t{}\nBand Numbers:\t\t\t\t{}".format(BANDS if not self.use_all_bands else "Using the reconstructed images, check config.py" if task == "classification" else list(range(204)), len(BANDS)))
 			# print("Shuffled Indices:", self.idxlist)
-			print("Number of RGBN Files:\t\t\t{}\nNumber of Hypercubes:\t\t\t{}".format(rgbn_counter if not rgbn_from_cube else hypercube_counter, hypercube_counter))
+			print("Number of RGBN Files:\t\t\t{}\nNumber of Hypercubes Files:\t\t{}".format(rgbn_counter//augment_factor if not rgbn_from_cube else hypercube_counter, hypercube_counter//augment_factor))
+			print("Augmentation factor:\t\t\t{}".format(self.augment_factor))
+			print("Number of RGBN Images:\t\t\t{}\nNumber of Hypercubes Images:\t\t{}".format(rgbn_counter if not rgbn_from_cube else hypercube_counter, hypercube_counter))
 
-			if train_with_patches:
+			if train_with_patches and PATCH_SIZE != self.IMAGE_SIZE:
 				print("Patch Size:\t\t\t\t{}\nNumber of Patches ({}/{} * {}):\t{}".format(self.PATCH_SIZE, self.IMAGE_SIZE, self.PATCH_SIZE, rgbn_counter, len(self.hypercubes)))
 
 			print("Images Shape:\t\t\t\t{}\nHypercubes Shape:\t\t\t{}".format(list(self.images[0].size()), list(self.hypercubes[0].size()) if not lazy_read else "Lazy Read. Size decided later."))
@@ -308,7 +311,7 @@ class DatasetFromDirectory(Dataset):
 			mat_name = self.hypercubes[idx[1]]["mat_path"]
 			aug_mode = self.hypercubes[idx[1]]["aug_mode"]
 			hypercube = load_mat(mat_name)
-			hypercube = data_augmentation(hypercube, aug_mode)
+			hypercube = data_augmentation(hypercube, aug_mode) if self.task == "classification" else hypercube
 			hypercube = np.transpose(hypercube, [2, 0, 1])
 			hypercube = torch.from_numpy(hypercube.copy()).float()
 			classlabel = self.classlabels[idx[0]]
