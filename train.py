@@ -15,15 +15,17 @@ from loss import mrae_loss, sam_loss, sid_loss, weighted_loss
 
 from dataset import get_dataloaders, get_required_transforms
 from utils import AverageMeter, initialize_logger, save_checkpoint, get_best_checkpoint, record_loss, poly_lr_scheduler, makeMobileModel, make_h5_dataset, modeltoONNX, ONNXtotf, tf_to_tflite
-from config import LOGS_PATH, BANDS, init_directories, batch_size, end_epoch, init_lr, model_run_title, run_pretrained, predef_input_transform, predef_label_transform
+from config import LOGS_PATH, BANDS, init_directories, batch_size, device, end_epoch, init_lr, model_run_title, run_pretrained, predef_input_transform, predef_label_transform
 
 torch.autograd.set_detect_anomaly(True)
 
 def main():
+	torch.backends.cudnn.benchmark = True
 	trainset_size=0.8
-	input_transform, label_transform = get_required_transforms()
-	# input_transform, label_transform = predef_input_transform, predef_label_transform
+	# input_transform, label_transform = get_required_transforms()
+	input_transform, label_transform = predef_input_transform, predef_label_transform
 	train_data_loader, val_data_loader, whole_dataset_loader = get_dataloaders(input_transform, label_transform, task="reconstruction", trainset_size=trainset_size)
+	# train_data_loader, val_data_loader = train_data_loader.to(device), val_data_loader.to(device)
 
 	# Parameters, Loss and Optimizer
 	start_epoch = 0
@@ -63,10 +65,7 @@ def main():
 	# 		optimizer.load_state_dict(checkpoint["optimizer"])
 
 	# Multi Device Cuda
-	if torch.cuda.device_count() > 1:
-		model = nn.DataParallel(model)
-	if torch.cuda.is_available():
-		model.cuda()
+	model.to(device)
 
 	print("\n" + model_run_title)
 	logger.info(model_run_title)
@@ -102,24 +101,20 @@ def train(train_data_loader, model, criterions, optimizer, iteration, init_lr, m
 
 	for images, labels, _, _ in tqdm(train_data_loader, desc="Train", total=len(train_data_loader)):
 		# print(torch.min(images), torch.max(images), torch.min(labels), torch.max(labels))
-		labels = labels.cuda()
-		images = images.cuda()
+		images, labels = Variable(images.to(device, non_blocking=True)), Variable(labels.to(device, non_blocking=True))
 
-		images = Variable(images)
-		labels = Variable(labels)
-		lr = poly_lr_scheduler(optimizer, init_lr, iteration, max_iter=968000, power=0.9)
+		lr = poly_lr_scheduler(optimizer, init_lr, iteration, max_iter=max_iter, power=0.9)
 		iteration = iteration + 1
 
 		# Forward + Backward + Optimize
 		output = model(images)
 
 		loss_mrae = criterion_mrae(output, labels)
-		# print(output, labels, loss_mrae)
-		loss_sam = criterion_sam(output, labels) * 0.1
-		loss_sid = criterion_sid(output, labels) * 0.0001
+		loss_sam = torch.mul(criterion_sam(output, labels), 0.1)
+		loss_sid = torch.mul(criterion_sid(output, labels), 0.0001)
 		# loss_weighted = criterion_weighted(output, labels)
-
-		loss = loss_mrae + loss_sam + loss_sid
+		loss = loss_mrae.add_(loss_sam).add_(loss_sid)
+		# loss = loss_mrae + loss_sam + loss_sid
 
 		optimizer.zero_grad()
 		loss.backward()
@@ -155,11 +150,11 @@ def validate(val_data_loader, model, criterions):
 		output = model(images)
 
 		loss_mrae = criterion_mrae(output, labels)
-		loss_sam = criterion_sam(output, labels) * 0.1
-		loss_sid = criterion_sid(output, labels) * 0.0001
+		loss_sam = torch.mul(criterion_sam(output, labels), 0.1)
+		loss_sid = torch.mul(criterion_sid(output, labels), 0.0001)
 		# loss_weighted = criterion_weighted(output, labels)
-
-		loss = loss_mrae + loss_sam + loss_sid
+		loss = loss_mrae.add_(loss_sam).add_(loss_sid)
+		# loss = loss_mrae + loss_sam + loss_sid
 
 		#  record loss
 		losses.update(loss.item())
@@ -171,7 +166,6 @@ def validate(val_data_loader, model, criterions):
 	return losses.avg, (losses_mrae.avg, losses_sam.avg, losses_sid.avg)
 
 if __name__ == "__main__":
-	torch.backends.cudnn.benchmark = True
 	init_directories()
 	# makeMobileModel()
 	# make_h5_dataset(TRAIN_DATASET_DIR=os.path.join(TRAIN_DATASET_DIR, "train"), h5_filename="train_apple_halogen_4to51bands_whole.h5")
