@@ -259,6 +259,7 @@ class DatasetFromDirectory(Dataset):
 				for aug_mode in range(self.augment_factor):				# Augment the dataset
 					if not lazy_read:
 						hypercube = load_mat(mat_filename)
+						hypercube = hypercube[:, :, BANDS] if not self.use_all_bands else hypercube
 						hypercube = data_augmentation(hypercube, aug_mode)
 						hypercube = np.transpose(hypercube, [2, 0, 1])
 						# hypercube = crop_image(hypercube, start=self.crop_size, end=self.IMAGE_SIZE-self.crop_size) if task == "classification" and self.crop_size>0 else hypercube
@@ -266,7 +267,6 @@ class DatasetFromDirectory(Dataset):
 
 						if rgbn_from_cube:
 							image = hypercube[RGBN_BANDS, :, :]
-						hypercube = hypercube[BANDS, :, :] if not self.use_all_bands else hypercube
 						hypercube = self.label_transform(hypercube) if not self.label_transform == None else hypercube
 
 					hypercube_counter += 1
@@ -311,6 +311,7 @@ class DatasetFromDirectory(Dataset):
 			mat_name = self.hypercubes[idx[1]]["mat_path"]
 			aug_mode = self.hypercubes[idx[1]]["aug_mode"]
 			hypercube = load_mat(mat_name)
+			hypercube = hypercube[:, :, BANDS] if not self.use_all_bands else hypercube
 			hypercube = data_augmentation(hypercube, aug_mode) if self.task == "classification" else hypercube
 			hypercube = np.transpose(hypercube, [2, 0, 1])
 			hypercube = torch.from_numpy(hypercube.copy()).float()
@@ -321,7 +322,6 @@ class DatasetFromDirectory(Dataset):
 				image = hypercube[RGBN_BANDS, :, :]
 			else:
 				image = self.images[idx[0]]
-			hypercube = hypercube[BANDS, :, :] if not self.use_all_bands else hypercube
 			hypercube = self.label_transform(hypercube) if not self.label_transform == None else hypercube
 
 			# getting the desired patch from the hypercube
