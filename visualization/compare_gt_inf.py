@@ -9,7 +9,8 @@ from loss import test_psnr
 
 import matplotlib
 import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1 import make_axes_locatable
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+
 
 from config import BAND_SPACING, ILLUMINATIONS, MODEL_NAME, TEST_ROOT_DATASET_DIR, TEST_DATASETS, VIEW_BANDS, ACTUAL_BANDS, text_font_dict, title_font_dict, plt_dict, init_directories
 
@@ -56,21 +57,25 @@ def main():
 
 					# Difference b/w the two hypercubes
 					# diff = np.abs(lab - img)
+					# psnr = test_psnr(lab, img)	"PSNR=%.2f" % psnr	cmap="hot_r"
+
 					cfl = cfl_file[:,:,VIEW_BANDS[j]].reshape(512, 512)
 					axs[2, j].imshow(exposure.adjust_gamma(cfl, 0.25), interpolation="nearest", cmap="gray")
-					axs[2, j].text(75, 570, " ", **text_font_dict)
+					axs[2, j].set_xlabel(" ", loc="center", fontsize=25)
 					axs[2, j].set_xticks([])
 					axs[2, j].set_yticks([])
 
 				# norm = matplotlib.colors.Normalize(0, 1)
-				# divider = make_axes_locatable(plt.gca())
-				# cax = divider.append_axes("right", "5%", pad="1%")
-				# cax = fig.add_axes([0.945, 0.0455, 0.015, 0.2945])
-				# cax.tick_params(labelsize=18)
-				# matplotlib.colorbar.ColorbarBase(cax, cmap=plt.get_cmap("hot_r"), norm=norm)
-				axs[0, len(VIEW_BANDS) - 1].text(525, 425, "MobiSpectral", rotation=-90, **text_font_dict)
-				axs[1, len(VIEW_BANDS) - 1].text(525, 350, "Halogen", rotation=-90, **text_font_dict)
-				axs[2, len(VIEW_BANDS) - 1].text(525, 275, "CFL", rotation=-90, **text_font_dict)
+				# axin = inset_axes(axs[2, len(VIEW_BANDS) - 1], height="100%", width="5%", loc="right", borderpad=-1.5)
+				# axin.tick_params(labelsize=18)
+				# matplotlib.colorbar.ColorbarBase(axin, cmap=plt.get_cmap("hot_r"), norm=norm)
+				axs[0, len(VIEW_BANDS) - 1].yaxis.set_label_position("right")
+				axs[0, len(VIEW_BANDS) - 1].set_ylabel("MobiSpectral", loc="center", rotation=-90, labelpad=30, **text_font_dict)
+				axs[1, len(VIEW_BANDS) - 1].yaxis.set_label_position("right")
+				axs[1, len(VIEW_BANDS) - 1].set_ylabel("Ground Truth", loc="center", rotation=-90, labelpad=30, **text_font_dict)
+				axs[2, len(VIEW_BANDS) - 1].yaxis.set_label_position("right")
+				axs[2, len(VIEW_BANDS) - 1].set_ylabel("CFL", loc="center", rotation=-90, labelpad=30, **text_font_dict)
+
 				fig.tight_layout(pad=1, h_pad=1, w_pad=-5)
 				fig.savefig(os.path.join(PLOTS_PATH, MODEL_NAME, "%s.pdf" % (gt_filename)), dpi=fig.dpi*2, bbox_inches="tight")
 				plt.show()
