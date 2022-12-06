@@ -27,12 +27,14 @@ def main():
 	fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(25, 10))
 	x=range(400, 1001, 12)
 	xlim=[400, 1000]
+	point1 = [350, 256]
+	point2 = [64, 350]
 
-	axs[0].plot(x, gt_img[350, 256, :], "r--", label="Ground Truth (unripe)", linewidth=3)
-	axs[0].plot(x, inf_img[350, 256, :], "r-", label="MobiSpectral (unripe)", linewidth=3)
+	axs[0].plot(x, gt_img[point1[0], point1[1], :], "r--", label="Ground Truth (unripe)", linewidth=3)
+	axs[0].plot(x, inf_img[point1[0], point1[1], :], "r-", label="MobiSpectral (unripe)", linewidth=3)
 
-	axs[0].plot(x, gt_img[64, 350, :], "b--", label="Ground Truth (ripe)", linewidth=3)
-	axs[0].plot(x, inf_img[64, 350, :], "b-", label="MobiSpectral (ripe)", linewidth=3)
+	axs[0].plot(x, gt_img[point2[0], point2[1], :], "b--", label="Ground Truth (ripe)", linewidth=3)
+	axs[0].plot(x, inf_img[point2[0], point2[1], :], "b-", label="MobiSpectral (ripe)", linewidth=3)
 	axs[0].set_xlim(xlim)
 	axs[0].set_xlabel("Wavelength (nm)")
 	axs[0].set_ylabel("Normalized Intensity")
@@ -43,9 +45,9 @@ def main():
 	axs[1].set_xticks([])
 	axs[1].set_yticks([])
 
-	circle1 = Circle((256, 350), 15, edgecolor="r", fill=0, linestyle="--", linewidth=7)
+	circle1 = Circle((point1[1], point1[0]), 15, edgecolor="r", fill=0, linestyle="--", linewidth=7)
 	axs[1].add_patch(circle1)
-	circle2 = Circle((64, 350), 15, edgecolor="b", fill=0, linestyle="--", linewidth=7)
+	circle2 = Circle((point2[1], point2[0]), 15, edgecolor="b", fill=0, linestyle="--", linewidth=7)
 	axs[1].add_patch(circle2)
 	
 	fig.tight_layout(w_pad=-2.5)
