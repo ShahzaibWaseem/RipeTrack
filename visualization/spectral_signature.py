@@ -31,10 +31,10 @@ def main():
 	point2 = [64, 350]
 
 	axs[0].plot(x, gt_img[point1[0], point1[1], :], "r--", label="Ground Truth (unripe)", linewidth=3)
-	axs[0].plot(x, inf_img[point1[0], point1[1], :], "r-", label="MobiSpectral (unripe)", linewidth=3)
+	axs[0].plot(x, inf_img[point1[0], point1[1], :], "r-", label="MobiSLP (unripe)", linewidth=3)
 
 	axs[0].plot(x, gt_img[point2[0], point2[1], :], "b--", label="Ground Truth (ripe)", linewidth=3)
-	axs[0].plot(x, inf_img[point2[0], point2[1], :], "b-", label="MobiSpectral (ripe)", linewidth=3)
+	axs[0].plot(x, inf_img[point2[0], point2[1], :], "b-", label="MobiSLP (ripe)", linewidth=3)
 	axs[0].set_xlim(xlim)
 	axs[0].set_xlabel("Wavelength (nm)")
 	axs[0].set_ylabel("Normalized Intensity")

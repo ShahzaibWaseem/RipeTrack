@@ -87,7 +87,7 @@ def plotSingleMetric(error, row, ax, ylim, ylabel, xlabel="Wavelength (nm)", leg
 
 	ax.plot(x, error[:, row + 0], "k-", linewidth=2, label="HSCNN")
 	ax.plot(x, error[:, row + 2], "b-", linewidth=2, label="AWAN")
-	ax.plot(x, error[:, row + 4], "r-", linewidth=2, label="MobiSpectral")
+	ax.plot(x, error[:, row + 4], "r-", linewidth=2, label="MobiSLP")
 	ax.legend(loc=legend_loc)
 	ax.set_ylabel(ylabel)
 	ax.set_xlabel(xlabel)

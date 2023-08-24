@@ -15,14 +15,14 @@ from torch.utils.data import DataLoader
 from dataset import DatasetFromDirectory, get_normalization_parameters
 
 from train import get_required_transforms
-from config import PATCH_SIZE, NUMBER_OF_BANDS, TEST_DATASETS, TEST_ROOT_DATASET_DIR, DATASET_NAME, batch_size, end_epoch
+from config import PATCH_SIZE, NUMBER_OF_BANDS, TEST_DATASETS, TEST_ROOT_DATASET_DIR, APPLICATION_NAME, batch_size, end_epoch
 
 num_classes = len(TEST_DATASETS)
 input_shape = (PATCH_SIZE, PATCH_SIZE, NUMBER_OF_BANDS)
 
 input_transform, label_transform = get_required_transforms(task="classification")
 dataset = DatasetFromDirectory(root=TEST_ROOT_DATASET_DIR,
-							   dataset_name=DATASET_NAME,
+							   dataset_name=APPLICATION_NAME,
 							   task="classification",
 							   patch_size=PATCH_SIZE,
 							   lazy_read=False,

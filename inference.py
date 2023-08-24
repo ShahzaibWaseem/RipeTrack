@@ -15,7 +15,7 @@ from train import get_required_transforms
 from dataset import read_image
 from utils import save_matv73, reconstruction, load_mat, initialize_logger
 from loss import test_mrae, test_rrmse, test_msam, test_sid, test_psnr, test_ssim
-from config import ILLUMINATIONS, TEST_ROOT_DATASET_DIR, TEST_DATASETS, MODEL_PATH, MODEL_NAME, DATASET_NAME, BAND_SPACING, RGBN_BANDS, NUMBER_OF_BANDS, BANDS, model_run_title, checkpoint_file, create_directory, init_directories
+from config import ILLUMINATIONS, TEST_ROOT_DATASET_DIR, TEST_DATASETS, MODEL_PATH, MODEL_NAME, APPLICATION_NAME, BAND_SPACING, RGBN_BANDS, NUMBER_OF_BANDS, BANDS, model_run_title, checkpoint_file, create_directory, init_directories
 
 import matplotlib.pyplot as plt
 
@@ -33,17 +33,17 @@ def inference(model, rgbn_from_cube=True):
 	eps = 1e-5
 	logger = initialize_logger(filename="test.log")
 	log_string = "[%15s] Time: %0.9f, MRAE: %0.9f, RRMSE: %0.9f, SAM: %0.9f, SID: %0.9f, PSNR: %0.9f, SSIM: %0.9f"
-	TEST_DATASET_DIR = os.path.join(TEST_ROOT_DATASET_DIR, "working_%s" % DATASET_NAME)
+	TEST_DATASET_DIR = os.path.join(TEST_ROOT_DATASET_DIR, "working_%s" % APPLICATION_NAME)
 
 	for test_dataset in TEST_DATASETS:
 		for illumination in ILLUMINATIONS:
 			print("\n" + model_run_title)
 			logger.info(model_run_title)
-			print("\nDataset: %s\nIllumination: %s\nModel: %s\n" % (DATASET_NAME, illumination, checkpoint_file))
-			logger.info("Dataset: %s\tIllumination: %s\tModel: %s\n" % (DATASET_NAME, illumination, checkpoint_file))
+			print("\nDataset: %s\nIllumination: %s\nModel: %s\n" % (APPLICATION_NAME, illumination, checkpoint_file))
+			logger.info("Dataset: %s\tIllumination: %s\tModel: %s\n" % (APPLICATION_NAME, illumination, checkpoint_file))
 
 			GT_PATH = os.path.join(TEST_DATASET_DIR, "working_%s_204ch" % test_dataset)
-			IMG_PATH = os.path.join(os.path.dirname(TEST_DATASET_DIR), "RGBNIRImages", "working_%s" % DATASET_NAME, "working_%s_204ch" % test_dataset) if not rgbn_from_cube else None
+			IMG_PATH = os.path.join(os.path.dirname(TEST_DATASET_DIR), "RGBNIRImages", "working_%s" % APPLICATION_NAME, "working_%s_204ch" % test_dataset) if not rgbn_from_cube else None
 			INF_PATH = os.path.join(GT_PATH, "inference")
 
 			for mat_filepath in sorted(glob(os.path.join(TEST_DATASET_DIR, "working_%s_204ch" % test_dataset, "*.mat"))):

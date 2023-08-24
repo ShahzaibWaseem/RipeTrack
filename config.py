@@ -1,31 +1,33 @@
 import os
 
-var_name = "rad"					# key for the dictionary which are saved in the files
+var_name = "hcube"					# key for the dictionary which are saved in the files
+
+SHELF_LIFE_GROUND_TRUTH_FILENAME = "ShelfLifeGroundTruth.csv"
+
+### Datagenerator Directories ###
+CAMERA_OUTPUT_ROOT_PATH = os.path.join("..", "Catalog")
+CAMERA_EXTRACT_DATASETS = ["pear-bosc", "pear-williams", "avocado-organic", "avocado-emp"]
+
+### Root directories for train and test dataset loading ###
+TRAIN_DATASET_DIR = os.path.join("..", "data_preparation", "h5datasets")
+
+TEST_ROOT_DATASET_DIR = os.path.join(os.path.dirname(TRAIN_DATASET_DIR), "datasets")
+TEST_DATASETS = ["pear-bosc", "pear-williams", "avocado-organic", "avocado-emp"]
+LABELS = {"SlightlyUnripe": 0, "Ripe": 1, "Dangerous": 2, "Expired": 3}
+
+### used only in train.py (these h5 files contain patches of the datasets) ###
+# TRAIN_DATASET_FILES = ["train_avocado_halogen_4to51bands.h5",
+# 					   "train_apple_halogen_4to51bands.h5",
+# 					   "train_apple_cfl_led_4to51bands.h5",
+# 					   "train_avocado_cfl_led_4to51bands.h5"]
+# VALID_DATASET_FILES = ["valid_avocado_halogen_4to51bands.h5",
+# 					   "valid_apple_halogen_4to51bands.h5",
+# 					   "valid_apple_cfl_led_4to51bands.h5",
+# 					   "valid_avocado_cfl_led_4to51bands.h5"]
 
 ### Directories for logs and model checkpoints ###
 MODEL_PATH = os.path.join(".", "checkpoints")
 LOGS_PATH = os.path.join(".", "logs")
-
-### Root directories for train and test dataset loading ###
-TRAIN_DATASET_DIR = os.path.join("..", "data_preparation", "datasets")
-
-TEST_ROOT_DATASET_DIR = os.path.join(os.path.dirname(TRAIN_DATASET_DIR), "working_datasets")
-# TEST_DATASETS = ["ambrosia-nonorganic", "ambrosia-organic", "gala-nonorganic", "gala-organic"]
-TEST_DATASETS = ["nonorganic", "organic"]
-
-### used only in train.py (these h5 files contain patches of the datasets) ###
-TRAIN_DATASET_FILES = ["train_avocado_halogen_4to51bands.h5",
-					   "train_apple_halogen_4to51bands.h5",
-					   "train_apple_cfl_led_4to51bands.h5",
-					   "train_avocado_cfl_led_4to51bands.h5"]
-VALID_DATASET_FILES = ["valid_avocado_halogen_4to51bands.h5",
-					   "valid_apple_halogen_4to51bands.h5",
-					   "valid_apple_cfl_led_4to51bands.h5",
-					   "valid_avocado_cfl_led_4to51bands.h5"]
-
-### Datagenerator Directories ###
-CAMERA_OUTPUT_ROOT_PATH = os.path.join("..", "Catalog")
-EXTRACT_DATASETS = ["ambrosia-nonorganic", "ambrosia-organic", "gala-nonorganic", "gala-organic", "organic", "nonorganic"]
 
 ### Parameters for Data reading ###
 BAND_SPACING = 1						# used only if reading data from directories dataset.DatasetFromDirectory
@@ -45,9 +47,9 @@ end_epoch = 501
 init_lr = 0.0001
 
 ### Variables used for printing the results in the logs ###
+APPLICATION_NAME = "shelflife"
 MODEL_NAME = "resnext"
 CLASSIFIER_MODEL_NAME = "efficientnet-b4"
-DATASET_NAME = "organic"
 ILLUMINATIONS = ["h"]
 
 if "h" in ILLUMINATIONS and "cfl_led" in ILLUMINATIONS:
@@ -58,18 +60,18 @@ elif "cfl_led" in ILLUMINATIONS:
 	illumination_string = "CFL-LED"
 
 model_run_title = "Model: %s\tDataset: %s\tIllumination: %s\tLosses: MRAE + SAM + SID + Weighted\tFull Image or Patches: %s\n" \
-	% (MODEL_NAME, DATASET_NAME, illumination_string, "Full Image" if PATCH_SIZE == IMAGE_SIZE else "Patches")
+	% (MODEL_NAME, APPLICATION_NAME, illumination_string, "Full Image" if PATCH_SIZE == IMAGE_SIZE else "Patches")
 classicication_run_title = "Model: %s\tDataset: %s\tIllumination: %s\tNumber of Classes: %d\tFull Image or Patches: %s\n" \
-	% (CLASSIFIER_MODEL_NAME, DATASET_NAME, illumination_string, len(TEST_DATASETS), "Full Image" if PATCH_SIZE == IMAGE_SIZE else "Patches")
+	% (CLASSIFIER_MODEL_NAME, APPLICATION_NAME, illumination_string, len(TEST_DATASETS), "Full Image" if PATCH_SIZE == IMAGE_SIZE else "Patches")
 
 ### to create the checkpoint of the model ###
-checkpoint_fileprestring = "%s_%s" % (MODEL_NAME, DATASET_NAME)
-classification_checkpoint_fileprestring = "%s_%s" % (CLASSIFIER_MODEL_NAME, DATASET_NAME)
+checkpoint_fileprestring = "%s_%s" % (MODEL_NAME, APPLICATION_NAME)
+classification_checkpoint_fileprestring = "%s_%s" % (CLASSIFIER_MODEL_NAME, APPLICATION_NAME)
 checkpoint_file = "MS_%s_500.pkl" % checkpoint_fileprestring
 # checkpoint_file = "HS_model_%d.pkl" % end_epoch
 run_pretrained = False					# if True, the model is loaded from the checkpoint_file
 
-mobile_model_file = "model_%s.pth" % DATASET_NAME
+mobile_model_file = "model_%s.pth" % APPLICATION_NAME
 onnx_file_name = "model.onnx"
 tf_model_dir = os.path.join("tfmodel")
 tflite_filename = "model.tflite"
@@ -135,6 +137,6 @@ def init_directories():
 				# ignore making directories for chicken cfl-led dataset
 				if illumination == "cfl_led" and test_dataset == "chicken":
 					continue
-				test_dataset_path = os.path.join(TEST_ROOT_DATASET_DIR, "working_%s" % DATASET_NAME, "working_%s" % test_dataset, "%s_%s_204ch" \
+				test_dataset_path = os.path.join(TEST_ROOT_DATASET_DIR, "working_%s" % APPLICATION_NAME, "working_%s" % test_dataset, "%s_%s_204ch" \
 					% (test_dataset, illumination), "test", directory, MODEL_NAME)
 				create_directory(test_dataset_path)

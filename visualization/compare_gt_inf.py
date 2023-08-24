@@ -70,7 +70,7 @@ def main():
 				# axin.tick_params(labelsize=18)
 				# matplotlib.colorbar.ColorbarBase(axin, cmap=plt.get_cmap("hot_r"), norm=norm)
 				axs[0, len(VIEW_BANDS) - 1].yaxis.set_label_position("right")
-				axs[0, len(VIEW_BANDS) - 1].set_ylabel("MobiSpectral", loc="center", rotation=-90, labelpad=30, **text_font_dict)
+				axs[0, len(VIEW_BANDS) - 1].set_ylabel("MobiSLP", loc="center", rotation=-90, labelpad=30, **text_font_dict)
 				axs[1, len(VIEW_BANDS) - 1].yaxis.set_label_position("right")
 				axs[1, len(VIEW_BANDS) - 1].set_ylabel("Ground Truth", loc="center", rotation=-90, labelpad=30, **text_font_dict)
 				axs[2, len(VIEW_BANDS) - 1].yaxis.set_label_position("right")

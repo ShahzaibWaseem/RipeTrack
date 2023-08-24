@@ -11,7 +11,7 @@ from torchvision import transforms
 from torch.utils.data import Dataset, DataLoader, random_split
 
 from utils import load_mat, read_image, data_augmentation, get_normalization_parameters, visualize_data_item
-from config import BAND_SPACING, RGBN_BANDS, BANDS, TEST_DATASETS, EXTRACT_DATASETS, TRAIN_DATASET_DIR, TRAIN_DATASET_FILES, VALID_DATASET_FILES, TEST_ROOT_DATASET_DIR, DATASET_NAME, PATCH_SIZE, batch_size, device
+from config import BAND_SPACING, RGBN_BANDS, BANDS, TEST_DATASETS, EXTRACT_DATASETS, TRAIN_DATASET_DIR, TRAIN_DATASET_FILES, VALID_DATASET_FILES, TEST_ROOT_DATASET_DIR, APPLICATION_NAME, PATCH_SIZE, batch_size, device
 
 def get_dataloaders(input_transform, label_transform, task, load_from_h5=False, trainset_size=0.7):
 	if load_from_h5:
@@ -29,7 +29,7 @@ def get_dataloaders(input_transform, label_transform, task, load_from_h5=False, 
 			print("Length of Validation Set (%s):\t" % datasetFile, len(dataset))
 	else:
 		dataset = DatasetFromDirectory(root=TEST_ROOT_DATASET_DIR,
-									   dataset_name=DATASET_NAME,
+									   dataset_name=APPLICATION_NAME,
 									   task=task,
 									   patch_size=PATCH_SIZE,
 									   lazy_read=True,
@@ -75,7 +75,7 @@ def get_required_transforms(task="reconstruction"):
 	image_mean, image_std, hypercube_mean, hypercube_std = 0, 0, 0, 0
 
 	dataset = DatasetFromDirectory(root=TEST_ROOT_DATASET_DIR,
-								   dataset_name=DATASET_NAME,
+								   dataset_name=APPLICATION_NAME,
 								   task=task,
 								   patch_size=PATCH_SIZE,
 								   lazy_read=False,
