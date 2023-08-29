@@ -15,6 +15,13 @@ TEST_ROOT_DATASET_DIR = os.path.join(os.path.dirname(TRAIN_DATASET_DIR), "datase
 TEST_DATASETS = ["pear-bosc", "pear-williams", "avocado-organic", "avocado-emp"]
 LABELS = {"SlightlyUnripe": 0, "Ripe": 1, "Dangerous": 2, "Expired": 3}
 
+GT_RGBN_DIR_NAME = "rgbn"
+GT_SECONDARY_RGB_CAM_DIR_NAME = "secondary-rgbn"
+MOBILE_DATASET_DIR_NAME = "mobile-rgbn"
+RECONSTRUCTED_HS_DIR_NAME = "reconstructed"
+MOBILE_RECONSTRUCTED_HS_DIR_NAME = "mobile-reconstructed"
+VISUALIZATION_DIR_NAME = "visualizations"
+
 ### used only in train.py (these h5 files contain patches of the datasets) ###
 # TRAIN_DATASET_FILES = ["train_avocado_halogen_4to51bands.h5",
 # 					   "train_apple_halogen_4to51bands.h5",

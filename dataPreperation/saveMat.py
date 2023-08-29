@@ -9,7 +9,7 @@ import pandas as pd
 from spectral import envi
 from scipy.io import savemat
 
-from config import CAMERA_OUTPUT_ROOT_PATH, TEST_ROOT_DATASET_DIR, APPLICATION_NAME, RGBN_BANDS, SHELF_LIFE_GROUND_TRUTH_FILENAME, var_name, create_directory
+from config import CAMERA_OUTPUT_ROOT_PATH, TEST_ROOT_DATASET_DIR, APPLICATION_NAME, RGBN_BANDS, SHELF_LIFE_GROUND_TRUTH_FILENAME, GT_RGBN_DIR_NAME, var_name, create_directory
 
 import matplotlib.pyplot as plt
 
@@ -32,30 +32,34 @@ def bandToNpNormalize(image):
 	image = image.astype(np.uint8)
 	return image
 
-if __name__ == "__main__":
+def main():
 	root_directory = os.path.join("..", CAMERA_OUTPUT_ROOT_PATH)
 	ground_truth_df = pd.read_csv(os.path.join(SHELF_LIFE_GROUND_TRUTH_FILENAME))
 
 	for index in ground_truth_df.index:
-		hs_filenames = [int(x) for x in ground_truth_df["HS Files"][index].split(",")]
+		hs_filenumbers = [int(x) for x in ground_truth_df["HS Files"][index].split(",")]
 		dataset_name = ground_truth_df["Fruit"][index].lower() + "-" + ground_truth_df["Type"][index].replace("'", "").lower()
 
 		output_hypercube_directory = os.path.join("..", TEST_ROOT_DATASET_DIR, APPLICATION_NAME, "%s_204ch" % dataset_name)
-		output_rgbn_directory = os.path.join(output_hypercube_directory, "rgbn")
+		output_rgbn_directory = os.path.join(output_hypercube_directory, GT_RGBN_DIR_NAME)
 		create_directory(output_hypercube_directory)
 		create_directory(output_rgbn_directory)
 
 		input_catalog_directory = os.path.join(root_directory, "working_%s" % APPLICATION_NAME)
 
-		for hs_filename in hs_filenames:
-			hs_filepath = os.path.join(input_catalog_directory, "%d" % hs_filename, "results", "REFLECTANCE_%s.hdr" % hs_filename)
+		for hs_filenumber in hs_filenumbers:
+			hs_filepath = os.path.join(input_catalog_directory, "%d" % hs_filenumber, "results", "REFLECTANCE_%s.hdr" % hs_filenumber)
 			if (not os.path.exists(hs_filepath)):
 				print("File, %s, in the .csv does not exist. Skipping" % hs_filepath)
 				continue
 			hypercube = envi.open(hs_filepath, hs_filepath.replace(".hdr", ".dat"))
 
-			rgb_filepath = os.path.join(input_catalog_directory, "%d" % hs_filename, "results", "REFLECTANCE_%s.png" % hs_filename)
+			rgb_filepath = os.path.join(input_catalog_directory, "%d" % hs_filenumber, "results", "REFLECTANCE_%s.png" % hs_filenumber)
 			rgb_image = imageio.imread(rgb_filepath)[:, :, :3]
+
+			rgb_secondary_filepath = os.path.join(input_catalog_directory, "%d" % hs_filenumber, "results", "RGBBACKGROUND_%s.png" % hs_filenumber)
+			rgb_secondary_image = imageio.imread(rgb_secondary_filepath)[:, :, :3]
+			# CROP TO 512x512
 
 			nir_image = np.expand_dims(np.rot90(hypercube.read_band(RGBN_BANDS[-1]), k=-1), axis=-1)
 			nir_image = bandToNpNormalize(nir_image)
@@ -63,13 +67,16 @@ if __name__ == "__main__":
 			hypercube = hypercube.load()*256
 			hypercube = {var_name: np.rot90(hypercube, k=-1)}
 
-			# plotImages(rgb_image, nir_image, hypercube)
+			plotImages(rgb_image, nir_image, hypercube)
 
-			print("[%30s] Hypercube Shape: %s [Min: %d, Max: %d],\tRGB Image Shape: %s [Min: %d, Max: %d],\tNIR Image Shape: %s [Min: %d, Max: %d]"
-	 			% (os.path.join(output_hypercube_directory.split("/")[-1], "%s.mat" % hs_filename), hypercube[var_name].shape, hypercube[var_name].min(), hypercube[var_name].max(),
-				   rgb_image.shape, np.min(rgb_image), np.max(rgb_image), nir_image.shape, np.min(nir_image), np.max(nir_image)))
+			print("[%30s] Hypercube Shape: %s [Min: %d, Max: %d],\tRGB Image Shape: %s [Min: %d, Max: %d],\tNIR Image Shape: %s [Min: %d, Max: %d],\tRGB Secondary Image Shape: %s [Min: %d, Max: %d]"
+	 			% (os.path.join(output_hypercube_directory.split("/")[-1], "%s.mat" % hs_filenumber), hypercube[var_name].shape, hypercube[var_name].min(), hypercube[var_name].max(),
+				   rgb_image.shape, np.min(rgb_image), np.max(rgb_image), nir_image.shape, np.min(nir_image), np.max(nir_image), rgb_secondary_image.shape, np.min(rgb_secondary_image), np.max(rgb_secondary_image)))
 
-			savemat(os.path.join(output_hypercube_directory, "%s.mat" % hs_filename), hypercube)
+			# savemat(os.path.join(output_hypercube_directory, "%s.mat" % hs_filenumber), hypercube)
 
-			imageio.imwrite(os.path.join(output_rgbn_directory, "%s_RGB.png" % hs_filename), rgb_image)
-			imageio.imwrite(os.path.join(output_rgbn_directory, "%s_NIR.png" % hs_filename), nir_image)
+			# imageio.imwrite(os.path.join(output_rgbn_directory, "%s_RGB.png" % hs_filenumber), rgb_image)
+			# imageio.imwrite(os.path.join(output_rgbn_directory, "%s_NIR.png" % hs_filenumber), nir_image)
+
+if __name__ == "__main__":
+	main()
