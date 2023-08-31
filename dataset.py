@@ -11,7 +11,7 @@ from torchvision import transforms
 from torch.utils.data import Dataset, DataLoader, random_split
 
 from utils import load_mat, read_image, data_augmentation, get_normalization_parameters, visualize_data_item
-from config import BAND_SPACING, RGBN_BANDS, BANDS, TEST_DATASETS, EXTRACT_DATASETS, TRAIN_DATASET_DIR, TRAIN_DATASET_FILES, VALID_DATASET_FILES, TEST_ROOT_DATASET_DIR, APPLICATION_NAME, PATCH_SIZE, batch_size, device
+from config import BAND_SPACING, RGBN_BANDS, BANDS, TEST_DATASETS, GT_RGBN_DIR_NAME, TRAIN_DATASET_DIR, TRAIN_DATASET_FILES, VALID_DATASET_FILES, TEST_ROOT_DATASET_DIR, APPLICATION_NAME, PATCH_SIZE, RECONSTRUCTED_HS_DIR_NAME, batch_size, device
 
 def get_dataloaders(input_transform, label_transform, task, load_from_h5=False, trainset_size=0.7):
 	if load_from_h5:
@@ -29,14 +29,13 @@ def get_dataloaders(input_transform, label_transform, task, load_from_h5=False, 
 			print("Length of Validation Set (%s):\t" % datasetFile, len(dataset))
 	else:
 		dataset = DatasetFromDirectory(root=TEST_ROOT_DATASET_DIR,
-									   dataset_name=APPLICATION_NAME,
+									   application_name=APPLICATION_NAME,
 									   task=task,
 									   patch_size=PATCH_SIZE,
 									   lazy_read=True,
 									   shuffle=True,
 									   rgbn_from_cube=False,
 									   use_all_bands=False if task == "reconstruction" else True,
-									   product_pairing=False,
 									   train_with_patches=True,
 									   positive_only=True,
 									   verbose=True,
@@ -75,14 +74,13 @@ def get_required_transforms(task="reconstruction"):
 	image_mean, image_std, hypercube_mean, hypercube_std = 0, 0, 0, 0
 
 	dataset = DatasetFromDirectory(root=TEST_ROOT_DATASET_DIR,
-								   dataset_name=APPLICATION_NAME,
+								   application_name=APPLICATION_NAME,
 								   task=task,
 								   patch_size=PATCH_SIZE,
 								   lazy_read=False,
 								   shuffle=False,
 								   rgbn_from_cube=False,
 								   use_all_bands=False if task == "reconstruction" else True,
-								   product_pairing=False,
 								   train_with_patches=True,
 								   positive_only=False,
 								   verbose=False,
@@ -147,20 +145,21 @@ class DatasetFromHdf5(Dataset):
 class DatasetFromDirectory(Dataset):
 	# Expects the directory structure to be:
 	# root/
-	#	RGBNIRImages/
-	#		DatasetName			(working_organic)
-	#			label1/			(working_gala-organic etc)
-	#				01_RGB.jpg
-	#				01_NIR.jpg
+	# 	application_name/		(shelflife)
+	#		DatasetName/			(avocado-emp_204ch - Hypercubes)
+	#			rgbn/				(RGB-NIR Images)
+	#				01_[RGB/NIR].png
 	#				...
-	#			label2/
+	# 			mobile-rgbn/		(RGB-NIR Images captured by the mobile phone)
+	#				01_[RGB/NIR].png
 	#				...
-	#	DatasetName/			(working_organic - Hypercubes)
-	#		label1/				(working_ambrosia-nonorganic_204ch etc)
+	#			secondary-rgbn/		(RGB-NIR Images from the Hyperspectral Camera's Secondary Camera - RGB)
+	#				01_[RGB/NIR].png
+	#				...
 	#			01.mat
 	#			...
-	#		label2/
-	#			...
+	#		DatasetName/			(pear-williams_204ch - Hypercubes)
+	#				...
 
 	EPS = 1e-8
 	IMAGE_SIZE = 512
@@ -168,17 +167,16 @@ class DatasetFromDirectory(Dataset):
 	min_values = (torch.tensor([float("Inf"), float("Inf")]))		# Image Min: -1.30753493309021, Hypercube Min: -2.123685598373413
 	max_values = (torch.tensor([float("-Inf"), float("-Inf")]))		# Image Max: -1.30753493309021, Hypercube Min: -2.123685598373413
 
-	def __init__(self, root, dataset_name=None, task="reconstruction", patch_size=64, lazy_read=False, shuffle=True, rgbn_from_cube=True, use_all_bands=True, product_pairing=False, train_with_patches=True, positive_only=True, crop_size=0, augment_factor=8, verbose=True, transform=(None, None)):
+	def __init__(self, root, application_name=None, task="reconstruction", patch_size=64, lazy_read=False, shuffle=True, rgbn_from_cube=True, use_all_bands=True, train_with_patches=True, positive_only=True, crop_size=0, augment_factor=8, verbose=True, transform=(None, None)):
 		"""
 		Dataloader for the dataset.
 			root:				root directory of the dataset
-			dataset_name:		name of the dataset, used to scan over directories (e.g. "oats", "flour", etc.)
+			application_name:	name of the application, contains the datasets (e.g. "shelflife", etc.)
 			task:				Deep Learning tasks. "reconstruction" or "classification"
 			patch_size:			size of the patches
 			lazy_read:			if True, hypercubes are loaded lazily (only when needed)
 			rgbn_from_cube:		if True, the RGB-NIR pair is extracted from the hypercube
 			use_all_bands:		if True, use all, 204, bands (ideal case is for reconstruction)
-			product_pairing:	if True, the each RGB-NIR pair is paired with each hypercube						(Will be deprecated)
 			train_with_patches:	if True, the RGBN images are split into patches
 			positive_only:		if True, make both the images and hypercubes positive
 			verbose:			if True, print the statistics of the dataset
@@ -190,7 +188,6 @@ class DatasetFromDirectory(Dataset):
 		self.lazy_read = lazy_read
 		self.rgbn_from_cube = rgbn_from_cube
 		self.use_all_bands = use_all_bands
-		self.product_pairing = product_pairing
 		self.positive_only = positive_only
 		self.input_transform, self.label_transform = transform
 		self.crop_size = crop_size
@@ -200,7 +197,7 @@ class DatasetFromDirectory(Dataset):
 
 		self.IMAGE_SIZE -= self.crop_size if self.crop_size > 0 else 0
 
-		number_of_files = len([hypercube for directory in glob(os.path.join(self.root, "working_{}".format(dataset_name), "*")) for hypercube in glob(os.path.join(directory, "*.mat"))])
+		number_of_files = len([hypercube for directory in glob(os.path.join(self.root, application_name, "*")) for hypercube in glob(os.path.join(directory, "*.mat"))])
 		number_of_files *= self.augment_factor if self.augment_factor > 0 else 1
 
 		self.augment_factor = self.augment_factor if self.augment_factor > 0 else 1			# just to make sure script runs even when augment_factor is 0 (otherwise for)
@@ -211,6 +208,8 @@ class DatasetFromDirectory(Dataset):
 				self.idxlist = random.sample(range(number_of_files), number_of_files)
 			else:
 				self.idxlist = list(range(number_of_files))
+		
+		print("Shuffle IDX:", self.idxlist[:10]) if self.verbose else None
 
 		global BAND_SPACING, BANDS
 		# BAND_SPACING = 1 if task == "classification" else 4
@@ -218,14 +217,14 @@ class DatasetFromDirectory(Dataset):
 		print("Reading RGBN Images from:") if self.verbose else None
 
 		im_id, rgbn_counter = 0, 0
+		shelf_life_root_directory = os.path.join(self.root, application_name)
 		if not rgbn_from_cube:
-			for directory in sorted(glob(os.path.join(self.root, "RGBNIRImages", "working_{}".format(dataset_name), "*"))):
-				print(" " * 25 + directory) if self.verbose else None
+			for dataset in TEST_DATASETS:
+				directory = os.path.join(shelf_life_root_directory, "{}_204ch".format(dataset), GT_RGBN_DIR_NAME)
+				print(" " * 25, directory) if self.verbose else None
 				for rgb_filename in sorted(glob(os.path.join(directory, "*_RGB.png"))):
-					classlabel = directory.split("/")[-1].split("_")[1]
+					classlabel = directory.split("/")[-2].split("_")[0]
 					actual_classlabel = classlabel
-					classlabel = classlabel.split("-")
-					classlabel = classlabel[0] if len(classlabel) == 1 else classlabel[1]
 					nir_filename = os.path.join(directory, rgb_filename.split("/")[-1].replace("RGB", "NIR"))
 					orig_image = read_image(rgb_filename, nir_filename)
 					# image = crop_image(image, start=self.crop_size, end=self.IMAGE_SIZE-self.crop_size) if task == "classification" and self.crop_size>0 else image
@@ -241,19 +240,20 @@ class DatasetFromDirectory(Dataset):
 								for j in range(image.size(2) // self.PATCH_SIZE):
 									self.images[self.idxlist[im_id]] = image[:, i*self.PATCH_SIZE:(i+1)*self.PATCH_SIZE, j*self.PATCH_SIZE:(j+1)*self.PATCH_SIZE]
 									self.classlabels[self.idxlist[im_id]] = np.long(TEST_DATASETS.index(classlabel))
-									self.actual_classlabels[self.idxlist[im_id]] = np.long(EXTRACT_DATASETS.index(actual_classlabel))
+									self.actual_classlabels[self.idxlist[im_id]] = np.long(TEST_DATASETS.index(actual_classlabel))
 									im_id += 1
 						else:
 							self.images[self.idxlist[im_id]] = image
 							self.classlabels[self.idxlist[im_id]] = np.long(TEST_DATASETS.index(classlabel))
-							self.actual_classlabels[self.idxlist[im_id]] = np.long(EXTRACT_DATASETS.index(actual_classlabel))
+							self.actual_classlabels[self.idxlist[im_id]] = np.long(TEST_DATASETS.index(actual_classlabel))
 							im_id += 1
 
 		print("\nReading Hyper cubes from:") if self.verbose else None
 
 		im_id, hypercube_counter = 0, 0
-		for directory in sorted(glob(os.path.join(self.root, "working_{}".format(dataset_name), "*"))):
-			directory = os.path.join(directory, "inference") if task == "classification" else directory
+		for dataset in TEST_DATASETS:
+			directory = os.path.join(shelf_life_root_directory, "{}_204ch".format(dataset))
+			directory = os.path.join(directory, RECONSTRUCTED_HS_DIR_NAME) if task == "classification" else directory
 			print(" " * 25 + directory) if self.verbose else None
 			for mat_filename in sorted(glob(os.path.join(directory, "*.mat"))):
 				for aug_mode in range(self.augment_factor):				# Augment the dataset
@@ -285,13 +285,9 @@ class DatasetFromDirectory(Dataset):
 						im_id += 1
 
 		assert len(self.images) == len(self.hypercubes) == len(self.classlabels) == len(self.actual_classlabels), "Number of images and hypercubes and classlabels do not match."
-		# pair each rgb-nir patch with each hypercube patch
-		if product_pairing:
-			self.permuted_idx = list(itertools.product(self.images.keys(), self.hypercubes.keys()))
 		if verbose:
 			print("\nBands used:\t\t\t\t{}\nBand Numbers:\t\t\t\t{}".format(BANDS if not self.use_all_bands else "Using the reconstructed images, check config.py" if task == "classification" else list(range(204)), len(BANDS)))
-			# print("Shuffled Indices:", self.idxlist)
-			print("Number of RGBN Files:\t\t\t{}\nNumber of Hypercubes Files:\t\t{}".format(rgbn_counter//augment_factor if not rgbn_from_cube else hypercube_counter, hypercube_counter//augment_factor))
+			# print("Number of RGBN Files:\t\t\t{}\nNumber of Hypercubes Files:\t\t{}".format(rgbn_counter//augment_factor if not rgbn_from_cube else hypercube_counter, hypercube_counter//augment_factor))
 			print("Augmentation factor:\t\t\t{}".format(self.augment_factor))
 			print("Number of RGBN Images:\t\t\t{}\nNumber of Hypercubes Images:\t\t{}".format(rgbn_counter if not rgbn_from_cube else hypercube_counter, hypercube_counter))
 
@@ -302,10 +298,7 @@ class DatasetFromDirectory(Dataset):
 
 	def fetch_image_label(self, index):
 		""" Reads the image and label from the index (lazily or not) and/or product pairs """
-		if self.product_pairing:
-			idx = self.permuted_idx[index]
-		else:
-			idx = (index, index)
+		idx = (index, index)	
 
 		if self.lazy_read:
 			mat_name = self.hypercubes[idx[1]]["mat_path"]
@@ -339,10 +332,7 @@ class DatasetFromDirectory(Dataset):
 		return image, hypercube, classlabel, actual_classlabel
 
 	def __len__(self):
-		if self.product_pairing:
-			return len(self.permuted_idx)
-		else:
-			return len(self.images)
+		return len(self.images)
 		
 	def __getitem__(self, index):
 		image, hypercube, classlabel, actual_classlabel = self.fetch_image_label(index)

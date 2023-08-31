@@ -9,21 +9,20 @@ import torch.nn as nn
 from torchsummary import summary
 from torch.autograd import Variable
 
-from models.model import Network
-from models.resblock import ResNeXtBottleneck
+from models.MST import MST_Plus_Plus
 from loss import mrae_loss, sam_loss, sid_loss, weighted_loss
 
 from dataset import get_dataloaders, get_required_transforms
 from utils import AverageMeter, initialize_logger, save_checkpoint, get_best_checkpoint, record_loss, poly_lr_scheduler, makeMobileModel, make_h5_dataset, modeltoONNX, ONNXtotf, tf_to_tflite
-from config import LOGS_PATH, BANDS, init_directories, batch_size, device, end_epoch, init_lr, model_run_title, run_pretrained, predef_input_transform, predef_label_transform
+from config import MODEL_PATH, LOGS_PATH, BANDS, batch_size, device, end_epoch, init_lr, model_run_title, run_pretrained, predef_input_transform, predef_label_transform, create_directory
 
 torch.autograd.set_detect_anomaly(True)
 
 def main():
 	torch.backends.cudnn.benchmark = True
 	trainset_size=0.8
-	# input_transform, label_transform = get_required_transforms()
-	input_transform, label_transform = predef_input_transform, predef_label_transform
+	input_transform, label_transform = get_required_transforms()
+	# input_transform, label_transform = predef_input_transform, predef_label_transform
 	train_data_loader, val_data_loader, whole_dataset_loader = get_dataloaders(input_transform, label_transform, task="reconstruction", trainset_size=trainset_size)
 	# train_data_loader, val_data_loader = train_data_loader.to(device), val_data_loader.to(device)
 
@@ -44,7 +43,7 @@ def main():
 	log_string = "Epoch [%3d], Iter[%5d], Time: %.9f, Learning Rate: %.9f, Train Loss: %.9f (%.9f, %.9f, %.9f), Validation Loss: %.9f (%.9f, %.9f, %.9f)"
 
 	# make model
-	model = Network(block=ResNeXtBottleneck, block_num=10, input_channel=4, n_hidden=64, output_channel=len(BANDS))
+	model = MST_Plus_Plus(in_channels=4, out_channels=68, n_feat=60, stage=3)
 	optimizer = torch.optim.Adam(model.parameters(), lr=init_lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.0001)
 	# print(summary(model, (4, 64, 64), verbose=1))
 
@@ -166,7 +165,8 @@ def validate(val_data_loader, model, criterions):
 	return losses.avg, (losses_mrae.avg, losses_sam.avg, losses_sid.avg)
 
 if __name__ == "__main__":
-	init_directories()
+	create_directory(MODEL_PATH)
+	create_directory(LOGS_PATH)
 	# makeMobileModel()
 	# make_h5_dataset(TRAIN_DATASET_DIR=os.path.join(TRAIN_DATASET_DIR, "train"), h5_filename="train_apple_halogen_4to51bands_whole.h5")
 	# make_h5_dataset(TRAIN_DATASET_DIR=os.path.join(TRAIN_DATASET_DIR, "valid"), h5_filename="valid_apple_halogen_4to51bands_whole.h5")
