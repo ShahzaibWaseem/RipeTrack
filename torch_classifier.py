@@ -14,7 +14,7 @@ from models.classifier import TorchClassifier, SeparateClassifiers, MultiHeadCla
 
 from dataset import get_dataloaders, get_required_transforms
 from utils import AverageMeter, NumpyEncoder, initialize_logger, save_checkpoint, poly_lr_scheduler, get_best_checkpoint, get_activation, activations
-from config import BANDS, TEST_DATASETS, run_pretrained, classicication_run_title, predef_input_transform, predef_label_transform, run_pretrained, init_directories
+from config import VISUALIZATION_DIR_NAME, MODEL_PATH, BANDS, TEST_DATASETS, run_pretrained, classicication_run_title, predef_input_transform, predef_label_transform, run_pretrained, create_directory
 
 init_lr = 0.00005
 
@@ -181,11 +181,12 @@ def test(test_data_loader, model, criterion):
 
 	confusion_mat = confusion_matrix(y_true, y_pred)
 	sns.heatmap(confusion_mat/np.sum(confusion_mat), annot=True, fmt=".2%")
-	plt.savefig(os.path.join("inference", "confusion_matrix.png"))
+	plt.savefig(os.path.join(VISUALIZATION_DIR_NAME, "confusion_matrix.png"))
 	plt.show()
 
 	return losses.avg, accuracy, json_data
 
 if __name__ == "__main__":
-	init_directories()
+	create_directory(os.path.join(VISUALIZATION_DIR_NAME))
+	create_directory(os.path.join(MODEL_PATH, "classification"))
 	main()
