@@ -10,21 +10,43 @@ from torchsummary import summary
 from torch.autograd import Variable
 
 from models.MST import MST_Plus_Plus
-from loss import mrae_loss, sam_loss, sid_loss, weighted_loss
+from loss import mrae_loss, sam_loss, sid_loss
 
-from dataset import get_dataloaders, get_required_transforms
-from utils import AverageMeter, initialize_logger, save_checkpoint, get_best_checkpoint, record_loss, poly_lr_scheduler, makeMobileModel, make_h5_dataset, modeltoONNX, ONNXtotf, tf_to_tflite
-from config import MODEL_PATH, LOGS_PATH, BANDS, batch_size, device, end_epoch, init_lr, model_run_title, run_pretrained, predef_input_transform, predef_label_transform, create_directory
+from dataset import get_required_transforms, get_dataloaders_reconstruction
+from utils import AverageMeter, initialize_logger, save_checkpoint, get_best_checkpoint, record_loss, poly_lr_scheduler
+from config import MODEL_PATH, LOGS_PATH, BANDS, PREDEF_TRANSFORMS_FILENAME, batch_size, device, end_epoch, init_lr, model_run_title, run_pretrained, lossfunctions_considered, create_directory
 
-torch.autograd.set_detect_anomaly(True)
+torch.autograd.set_detect_anomaly(False)
+
+def get_and_save_predef_transforms():
+	if os.path.exists(os.path.join("dataPreparation", PREDEF_TRANSFORMS_FILENAME)):
+		print("Loading Pre-defined Transforms...")
+		transforms = torch.load(os.path.join("dataPreparation", PREDEF_TRANSFORMS_FILENAME))
+		input_transform, label_transform = transforms["rgbn"], transforms["hypercube"]
+		if BANDS == transforms["bands"]:
+			return input_transform, label_transform
+		else:
+			input_transform, label_transform = get_required_transforms()
+			transforms = {"rgbn": input_transform, "hypercube": label_transform, "bands": BANDS}
+			torch.save(transforms, os.path.join("dataPreparation", PREDEF_TRANSFORMS_FILENAME))
+			return input_transform, label_transform
+	else:
+		input_transform, label_transform = get_required_transforms()
+		transforms = {"rgbn": input_transform, "hypercube": label_transform, "bands": BANDS}
+		torch.save(transforms, os.path.join("dataPreparation", PREDEF_TRANSFORMS_FILENAME))
+		return input_transform, label_transform
 
 def main():
-	torch.backends.cudnn.benchmark = True
+	# torch.backends.cudnn.benchmark = True
 	trainset_size=0.8
-	input_transform, label_transform = get_required_transforms()
-	# input_transform, label_transform = predef_input_transform, predef_label_transform
-	train_data_loader, val_data_loader, whole_dataset_loader = get_dataloaders(input_transform, label_transform, task="reconstruction", trainset_size=trainset_size)
+	# input_transform, label_transform = get_and_save_predef_transforms()
+
+	# train_data_loader, val_data_loader, whole_dataset_loader = get_dataloaders(input_transform, label_transform, task="reconstruction", trainset_size=trainset_size)
 	# train_data_loader, val_data_loader = train_data_loader.to(device), val_data_loader.to(device)
+
+	train_data_loader, val_data_loader = get_dataloaders_reconstruction(trainset_size=trainset_size)
+
+	whole_dataset_size = len(train_data_loader.dataset) + len(val_data_loader.dataset)
 
 	# Parameters, Loss and Optimizer
 	start_epoch = 0
@@ -32,9 +54,8 @@ def main():
 	criterion_mrae = mrae_loss
 	criterion_sam = sam_loss
 	criterion_sid = sid_loss
-	criterion_weighted = weighted_loss
 
-	criterions = (criterion_mrae, criterion_sam, criterion_sid, criterion_weighted)
+	criterions = (criterion_mrae, criterion_sam, criterion_sid)
 
 	# Log files
 	logger = initialize_logger(filename="train.log")
@@ -43,7 +64,7 @@ def main():
 	log_string = "Epoch [%3d], Iter[%5d], Time: %.9f, Learning Rate: %.9f, Train Loss: %.9f (%.9f, %.9f, %.9f), Validation Loss: %.9f (%.9f, %.9f, %.9f)"
 
 	# make model
-	model = MST_Plus_Plus(in_channels=4, out_channels=68, n_feat=60, stage=3)
+	model = MST_Plus_Plus(in_channels=4, out_channels=len(BANDS), n_feat=len(BANDS), stage=3)
 	optimizer = torch.optim.Adam(model.parameters(), lr=init_lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.0001)
 	# print(summary(model, (4, 64, 64), verbose=1))
 
@@ -51,17 +72,6 @@ def main():
 		epoch, iter, state_dict, optimizer, val_loss, val_acc = get_best_checkpoint(task="reconstruction")
 		model.load_state_dict(state_dict)
 		optimizer.load_state_dict(optimizer)
-
-	# # Resume
-	# resume_file = checkpoint_file
-	# if resume_file:
-	# 	if os.path.isfile(resume_file):
-	# 		print("=> loading checkpoint '{}'".format(resume_file))
-	# 		checkpoint = torch.load(resume_file)
-	# 		start_epoch = checkpoint["epoch"]
-	# 		iteration = checkpoint["iter"]
-	# 		model.load_state_dict(checkpoint["state_dict"])
-	# 		optimizer.load_state_dict(checkpoint["optimizer"])
 
 	# Multi Device Cuda
 	model.to(device)
@@ -72,7 +82,7 @@ def main():
 	for epoch in range(start_epoch+1, end_epoch):
 		start_time = time.time()
 
-		train_loss, train_losses_ind, iteration, lr = train(train_data_loader, model, criterions, optimizer, iteration, init_lr, int(trainset_size*len(whole_dataset_loader))*end_epoch/batch_size)
+		train_loss, train_losses_ind, iteration, lr = train(train_data_loader, model, criterions, optimizer, iteration, init_lr, int(trainset_size*whole_dataset_size)*end_epoch/batch_size)
 		val_loss, val_losses_ind = validate(val_data_loader, model, criterions)
 
 		train_loss_mrae, train_loss_sam, train_loss_sid = train_losses_ind
@@ -82,7 +92,7 @@ def main():
 		epoch_time = time.time() - start_time
 
 		# Printing and saving losses
-		record_loss(loss_csv, epoch, iteration, epoch_time, lr, train_loss, val_loss)
+		# record_loss(loss_csv, epoch, iteration, epoch_time, lr, train_loss, val_loss)
 		log_string_filled = log_string % (epoch, iteration, epoch_time, lr,
 							train_loss, train_loss_mrae, train_loss_sam, train_loss_sid,
 							val_loss, val_loss_mrae, val_loss_sam, val_loss_sid)
@@ -95,10 +105,10 @@ def train(train_data_loader, model, criterions, optimizer, iteration, init_lr, m
 	""" Trains the model on the dataloader provided """
 	model.train()
 	losses = AverageMeter()
-	criterion_mrae, criterion_sam, criterion_sid, criterion_weighted = criterions
-	losses_mrae, losses_sam, losses_sid, losses_weighted = AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter()
+	criterion_mrae, criterion_sam, criterion_sid = criterions
+	losses_mrae, losses_sam, losses_sid = AverageMeter(), AverageMeter(), AverageMeter()
 
-	for images, labels, _, _ in tqdm(train_data_loader, desc="Train", total=len(train_data_loader)):
+	for images, labels in tqdm(train_data_loader, desc="Train", total=len(train_data_loader)):
 		# print(torch.min(images), torch.max(images), torch.min(labels), torch.max(labels))
 		images, labels = Variable(images.to(device, non_blocking=True)), Variable(labels.to(device, non_blocking=True))
 
@@ -109,16 +119,14 @@ def train(train_data_loader, model, criterions, optimizer, iteration, init_lr, m
 		output = model(images)
 
 		loss_mrae = criterion_mrae(output, labels)
-		loss_sam = torch.mul(criterion_sam(output, labels), 0.1)
-		loss_sid = torch.mul(criterion_sid(output, labels), 0.0001)
-		# loss_weighted = criterion_weighted(output, labels)
-		loss = loss_mrae.add_(loss_sam).add_(loss_sid)
-		# loss = loss_mrae + loss_sam + loss_sid
+		loss_sam = torch.mul(criterion_sam(output, labels), 0.1) if "SAM" in lossfunctions_considered else torch.tensor(0)
+		loss_sid = torch.mul(criterion_sid(output, labels), 0.0001) if "SID" in lossfunctions_considered else torch.tensor(0)
+		loss = loss_mrae + loss_sam + loss_sid
 
 		optimizer.zero_grad()
 		loss.backward()
 
-		nn.utils.clip_grad_norm_(model.parameters(), max_norm=5)
+		nn.utils.clip_grad_norm_(model.parameters(), 5.0)
 		# Calling the step function on an Optimizer makes an update to its parameters
 		optimizer.step()
 		#  record loss
@@ -126,7 +134,6 @@ def train(train_data_loader, model, criterions, optimizer, iteration, init_lr, m
 		losses_mrae.update(loss_mrae.item())
 		losses_sam.update(loss_sam.item())
 		losses_sid.update(loss_sid.item())
-		# losses_weighted.update(loss_weighted.item())
 
 	return losses.avg, (losses_mrae.avg, losses_sam.avg, losses_sid.avg), iteration, lr
 
@@ -134,10 +141,10 @@ def validate(val_data_loader, model, criterions):
 	""" Validates the model on the dataloader provided """
 	model.eval()
 	losses = AverageMeter()
-	criterion_mrae, criterion_sam, criterion_sid, criterion_weighted = criterions
-	losses_mrae, losses_sam, losses_sid, losses_weighted = AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter()
+	criterion_mrae, criterion_sam, criterion_sid = criterions
+	losses_mrae, losses_sam, losses_sid = AverageMeter(), AverageMeter(), AverageMeter()
 
-	for images, labels, _, _ in tqdm(val_data_loader, desc="Valid", total=len(val_data_loader)):
+	for images, labels in tqdm(val_data_loader, desc="Valid", total=len(val_data_loader)):
 		images = images.cuda()
 		labels = labels.cuda()
 
@@ -149,28 +156,19 @@ def validate(val_data_loader, model, criterions):
 		output = model(images)
 
 		loss_mrae = criterion_mrae(output, labels)
-		loss_sam = torch.mul(criterion_sam(output, labels), 0.1)
-		loss_sid = torch.mul(criterion_sid(output, labels), 0.0001)
-		# loss_weighted = criterion_weighted(output, labels)
-		loss = loss_mrae.add_(loss_sam).add_(loss_sid)
-		# loss = loss_mrae + loss_sam + loss_sid
+		loss_sam = torch.mul(criterion_sam(output, labels), 0.1) if "SAM" in lossfunctions_considered else torch.tensor(0)
+		loss_sid = torch.mul(criterion_sid(output, labels), 0.0001) if "SID" in lossfunctions_considered else torch.tensor(0)
+		loss = loss_mrae + loss_sam + loss_sid
 
 		#  record loss
 		losses.update(loss.item())
 		losses_mrae.update(loss_mrae.item())
 		losses_sam.update(loss_sam.item())
 		losses_sid.update(loss_sid.item())
-		# losses_weighted.update(loss_weighted.item())
 
 	return losses.avg, (losses_mrae.avg, losses_sam.avg, losses_sid.avg)
 
 if __name__ == "__main__":
-	create_directory(MODEL_PATH)
+	create_directory(os.path.join(MODEL_PATH, "reconstruction"))
 	create_directory(LOGS_PATH)
-	# makeMobileModel()
-	# make_h5_dataset(TRAIN_DATASET_DIR=os.path.join(TRAIN_DATASET_DIR, "train"), h5_filename="train_apple_halogen_4to51bands_whole.h5")
-	# make_h5_dataset(TRAIN_DATASET_DIR=os.path.join(TRAIN_DATASET_DIR, "valid"), h5_filename="valid_apple_halogen_4to51bands_whole.h5")
 	main()
-	# modeltoONNX()
-	# ONNXtotf()
-	# tf_to_tflite()
