@@ -6,6 +6,7 @@ import imageio
 from PIL import Image
 from glob import glob
 
+import numpy as np
 import pandas as pd
 
 from config import TEST_ROOT_DATASET_DIR, APPLICATION_NAME, SHELF_LIFE_GROUND_TRUTH_FILENAME, MOBILE_DATASET_DIR_NAME, VISUALIZATION_DIR_NAME, create_directory
@@ -49,6 +50,7 @@ def main():
 
 	for index in ground_truth_df.index:
 		date, month = ground_truth_df["Date"][index].split("-")
+		date = date.zfill(2)
 		hs_filenames = [int(x) for x in ground_truth_df["HS Files"][index].split(",")]
 		mobile_fid = ground_truth_df["Mobile FID"][index]
 		dataset_name = ground_truth_df["Fruit"][index].lower() + "-" + ground_truth_df["Type"][index].replace("'", "").lower()
@@ -63,6 +65,7 @@ def main():
 		# IMG_2023_08_14_16_16_27_916_RGB_(Pr_ID_0).png
 		mobile_rgbfilename = "IMG_2023_%s_%s_*_RGB_(%s_ID_%s).png" % (months[month], date, fruit_name_short, mobile_fid)
 		mobile_nirfilename = "IMG_2023_%s_%s_*_NIR_(%s_ID_%s).png" % (months[month], date, fruit_name_short, mobile_fid)
+		check_number_of_files_per_day = len(glob(os.path.join(mobile_dataset_input_directory, "IMG_2023_%s_%s_*(%s_ID*).png" % (months[month], date, fruit_name_short))))
 
 		# Checks if the files captured on Mobile have correct names. Soft Assertion/Warning
 		rgb_glob_len = len(glob(os.path.join(mobile_dataset_input_directory, mobile_rgbfilename)))
@@ -78,8 +81,10 @@ def main():
 			plot_title = "Date %s-%s, FID: %s, Fruit Short Name: %s" % (date, month, mobile_fid, fruit_name_short)
 			viewImages(rgb_image, nir_image, rgb_image_aligned, plot_title, dataset_name, hs_filename)
 
-			print("Copied %s -> %s [Glob Len: %d]" % (mobile_rgb.split("/")[-1], "%s_RGB.png" % hs_filename, rgb_glob_len))
-			print("Copied %s -> %s [Glob Len: %d]" % (mobile_nir.split("/")[-1], "%s_NIR.png" % hs_filename, nir_glob_len))
+			print("Copied %s -> %s [Glob Len: %d]" % (mobile_rgb.split("/")[-1], "%s_RGB.png" % hs_filename, rgb_glob_len), "\tNumber of Files per day: %d\t" % check_number_of_files_per_day, "Fruit Name: %s\t" % fruit_name_short, "FID: %s\t" % mobile_fid, "Date: %s-%s" % (date, month))
+			print("Copied %s -> %s [Glob Len: %d]" % (mobile_nir.split("/")[-1], "%s_NIR.png" % hs_filename, nir_glob_len), "\tNumber of Files per day: %d\t" % check_number_of_files_per_day, "Fruit Name: %s\t" % fruit_name_short, "FID: %s\t" % mobile_fid, "Date: %s-%s" % (date, month))
+
+			nir_image = np.expand_dims(np.asarray(nir_image[:,:,0]), axis=-1)
 
 			imageio.imwrite(os.path.join(mobile_dataset_output_directory, "%s_RGB.png" % hs_filename), rgb_image_aligned)
 			imageio.imwrite(os.path.join(mobile_dataset_output_directory, "%s_NIR.png" % hs_filename), nir_image)
