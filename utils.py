@@ -17,7 +17,7 @@ from torch.utils.mobile_optimizer import optimize_for_mobile
 
 from models.model import Network
 from models.resblock import ResNeXtBottleneck
-from config import TEST_DATASETS, BAND_SPACING, MODEL_PATH, LOGS_PATH, MODEL_PATH, NORMALIZATION_FACTOR, NUMBER_OF_BANDS, checkpoint_fileprestring, classification_checkpoint_fileprestring, checkpoint_file, mobile_model_file, var_name, onnx_file_name, tf_model_dir, tflite_filename
+from config import TEST_DATASETS, BAND_SPACING, MODEL_PATH, LOGS_PATH, MODEL_PATH, NORMALIZATION_FACTOR, NUMBER_OF_BANDS, checkpoint_fileprestring, classification_checkpoint_fileprestring, checkpoint_file, mobile_model_file, var_name, onnx_file_name, tf_model_dir, tflite_filename, create_directory
 
 import matplotlib.pyplot as plt
 
@@ -66,7 +66,7 @@ def poly_lr_scheduler(optimizer, init_lr, iteraion, lr_decay_iter=1, max_iter=10
 
 	return lr
 
-def read_image(rgb_filename, nir_filename):
+def read_image(rgb_filename, nir_filename, normalize=False):
 	""" Reads the two images and stack them together while maintaining the order BGR-NIR """
 	rgb = imread(rgb_filename)
 	rgb[:,:, [0, 2]] = rgb[:,:, [2, 0]]	# flipping red and blue channels (shape used for training)
@@ -75,7 +75,8 @@ def read_image(rgb_filename, nir_filename):
 	# because NIR from the phone is saved as three repeated channels
 	nir = nir[:,:, 0] if nir.ndim == 3 else np.expand_dims(nir, axis=-1)
 
-	image = np.dstack((rgb, nir))/255.0
+	image = np.dstack((rgb, nir))
+	image /= 255.0 if normalize else 1.0
 	del rgb, nir
 
 	return image
@@ -97,15 +98,14 @@ def scale_image(image, range=(0, 1)):
 
 def visualize_data_item(image, hypercube, band, classlabel):
 	fig, ax = plt.subplots(1, 2, figsize=(10, 5))
-	fig.suptitle("Class: %s" % TEST_DATASETS[classlabel])
+	# fig.suptitle("Class: %s" % TEST_DATASETS[classlabel])
 
 	# visualizing it in RGB (instead of BGR)
-	image=np.transpose(image.numpy()[:3], (1, 2, 0))[:,:, [2, 1, 0]]
 	ax[0].imshow(image)
 	ax[0].set_xlabel(image.shape)
 	ax[0].set_title("RGBN - 0:3 (RGB)")
-	ax[1].imshow(hypercube.numpy()[band])
-	ax[1].set_xlabel(hypercube.numpy().shape)
+	ax[1].imshow(hypercube[:, :, band])
+	ax[1].set_xlabel(hypercube.shape)
 	ax[1].set_title("Hypercube - %i" % band)
 	plt.show()
 
@@ -173,7 +173,7 @@ def save_checkpoint(epoch, iteration, model, optimizer, val_loss, val_acc, task=
 			 "val_loss": val_loss,
 			 "val_acc": val_acc}
 
-	torch.save(state, os.path.join(MODEL_PATH, task, "MS_%s_%s.pkl" % (checkpoint_fileprestring if task=="reconstruction" else classification_checkpoint_fileprestring, str(epoch).zfill(3))))
+	torch.save(state, os.path.join(MODEL_PATH, task, "MSLP_%s_%s.pkl" % (checkpoint_fileprestring if task=="reconstruction" else classification_checkpoint_fileprestring, str(epoch).zfill(3))))
 
 def get_best_checkpoint(task="reconstruction"):
 	"""Get the model with best validation loss and validation accuracy."""
@@ -241,10 +241,11 @@ def reconstruction(rgb, model, normalize=False):
 		img_res = np.maximum(img_res, 0)
 	return img_res
 
-def load_mat(mat_name):
+def load_mat(mat_name, normalize=False):
 	""" Helper function to load mat files (used in making h5 dataset) """
-	data = hdf5storage.loadmat(mat_name, variable_names=[var_name])
-	return data[var_name] / NORMALIZATION_FACTOR
+	data = hdf5storage.loadmat(mat_name, variable_names=[var_name])[var_name]
+	data /= NORMALIZATION_FACTOR if normalize else 1.0
+	return data
 
 def make_h5_dataset(DATASET_DIR, h5_filename):
 	labels = []
