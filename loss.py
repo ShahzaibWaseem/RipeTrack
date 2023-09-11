@@ -50,6 +50,11 @@ def sid_loss(tensor_pred, tensor_gt):
 	a2_sum = a2.sum(dim=3).sum(dim=2)
 
 	sid = torch.mean(torch.abs(a1_sum + a2_sum))
+	if torch.isnan(sid):
+		raise ValueError(f"Loss is NaN value. output: {output},\
+			a1: {a1}, a1_sum: {a1_sum},\
+			a2: {a2}, a2_sum: {a2_sum},\
+			sid: {sid}, input: {tensor_pred}, output: {tensor_gt}")
 	return sid
 
 def weighted_loss(tensor_pred, tensor_gt):
