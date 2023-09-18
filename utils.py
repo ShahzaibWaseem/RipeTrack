@@ -96,17 +96,34 @@ def scale_image(image, range=(0, 1)):
 	image.mul_(range[1] - range[0]).add_(range[0])
 	return image
 
-def visualize_data_item(image, hypercube, band, classlabel):
-	fig, ax = plt.subplots(1, 2, figsize=(10, 5))
+def visualize_data_item(image, hypercube, secondary_rgb_image=None, band=12, classlabel=""):
+	fig, ax = plt.subplots(1, 3, figsize=(10, 5)) if secondary_rgb_image is not None else plt.subplots(1, 2, figsize=(10, 5))
 	# fig.suptitle("Class: %s" % TEST_DATASETS[classlabel])
 
+	ax[0].imshow(hypercube[:, :, band])
+	ax[0].set_xlabel(hypercube.shape)
+	ax[0].set_title("Hypercube - %i" % band)
+
 	# visualizing it in RGB (instead of BGR)
-	ax[0].imshow(image)
-	ax[0].set_xlabel(image.shape)
-	ax[0].set_title("RGBN - 0:3 (RGB)")
-	ax[1].imshow(hypercube[:, :, band])
-	ax[1].set_xlabel(hypercube.shape)
-	ax[1].set_title("Hypercube - %i" % band)
+	ax[1].imshow(image)
+	ax[1].set_xlabel(image.shape)
+	ax[1].set_title("RGBN - 0:3 (RGB)")
+	if secondary_rgb_image is not None:
+		ax[2].imshow(secondary_rgb_image)
+		ax[2].set_xlabel(secondary_rgb_image.shape)
+		ax[2].set_title("Secondary RGB - 0:3 (RGB)")
+
+	plt.show()
+
+def visualize_gt_pred_hs_data(gt_hypercube, pred_hypercube, band):
+	fig, ax = plt.subplots(1, 2, figsize=(10, 5))
+
+	ax[0].imshow(gt_hypercube[:, :, band])
+	ax[0].set_xlabel(gt_hypercube.shape)
+	ax[0].set_title("Ground Truth - %i" % band)
+	ax[1].imshow(pred_hypercube[:, :, band])
+	ax[1].set_xlabel(pred_hypercube.shape)
+	ax[1].set_title("Prediction - %i" % band)
 	plt.show()
 
 def get_normalization_parameters(dataloader):
@@ -178,7 +195,7 @@ def save_checkpoint(epoch, iteration, model, optimizer, val_loss, val_acc, task=
 def get_best_checkpoint(task="reconstruction"):
 	"""Get the model with best validation loss and validation accuracy."""
 	global MODEL_PATH
-	best_val_loss, best_val_acc = 0, 0
+	best_val_loss, best_val_acc = 100, 0
 	best_checkpoint_file = None
 	print("\nLoading the best checkpoint...", end="\n\n")
 
@@ -187,20 +204,20 @@ def get_best_checkpoint(task="reconstruction"):
 			save_point = torch.load(checkpoint_file)
 			val_loss = save_point["val_loss"]
 			val_acc = save_point["val_acc"]
-			print("Checkpoint: %s\tValidation Loss: %.9f\tValidation Accuracy: %.2f%%" % (checkpoint_file.split("/")[-1], val_loss, val_acc), end="\t")
+			print("Checkpoint: %s\tValidation Loss: %.9f\tValidation Accuracy: %.2f%%" % (os.path.split(checkpoint_file)[-1], val_loss, val_acc), end="\t")
 			if (100 - best_val_loss + best_val_acc) < (100 - val_loss + val_acc):
 				print("<- Best checkpoint yet. Updating the best checkpoint.", end="")
 				best_val_loss = val_loss
 				best_val_acc = val_acc
-				best_checkpoint_file = checkpoint_file.split("/")[-1]
+				best_checkpoint_file = os.path.split(checkpoint_file)[-1]
 			print()
 	print("\nThe best checkpoint file, is loaded, for %s task and it is %s with validation loss value %.9f and validation accuracy %.2f%%" %
 		  (task, best_checkpoint_file, best_val_loss, best_val_acc), end="\n\n")
 
 	loaded_model = torch.load(os.path.join(MODEL_PATH, task, best_checkpoint_file))
-	return loaded_model["epoch"], loaded_model["iter"], loaded_model["state_dict"], loaded_model["optimizer"], loaded_model["val_loss"], loaded_model["val_acc"]
+	return best_checkpoint_file, loaded_model["epoch"], loaded_model["iter"], loaded_model["state_dict"], loaded_model["optimizer"], loaded_model["val_loss"], loaded_model["val_acc"]
 
-def save_matv73(mat_filename, hypercube):
+def save_mat(mat_filename, hypercube):
 	hdf5storage.savemat(mat_filename, {var_name: hypercube}, format="7.3", store_python_metadata=True)
 
 class NumpyEncoder(json.JSONEncoder):
@@ -252,9 +269,9 @@ def make_h5_dataset(DATASET_DIR, h5_filename):
 	images = []
 
 	for filename in glob(os.path.join(DATASET_DIR, "*_dense_demRGB.png")):
-		mat_file_name = filename.split("/")[-1].split("_")[0]
+		mat_file_name = os.path.split(filename)[-1].split("_")[0]
 		rgb_img_path = filename
-		nir_img_path = os.path.join(DATASET_DIR, filename.split("/")[-1].replace("RGB", "NIRc"))
+		nir_img_path = os.path.join(DATASET_DIR, os.path.split(filename)[-1].replace("RGB", "NIRc"))
 		print(rgb_img_path)
 		rgb = imread(rgb_img_path)
 		rgb[:,:, [0, 2]] = rgb[:,:, [2, 0]]	# flipping red and blue channels (shape used for training)
