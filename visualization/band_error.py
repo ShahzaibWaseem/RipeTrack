@@ -29,9 +29,9 @@ def getBandErrors():
 			for filename in sorted(glob(os.path.join(INF_PATH, "*.mat"))):
 				mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors = [], [], [], [], [], []
 				if(illumination == "cfl_led"):
-					gt_filename = "_".join(filename.split("/")[-1].split(".")[0].split("_")[1:3])
+					gt_filename = "_".join(os.path.split(filename)[-1].split(".")[0].split("_")[1:3])
 				else:
-					gt_filename = filename.split("/")[-1].split(".")[0].split("_")[-1]
+					gt_filename = os.path.split(filename)[-1].split(".")[0].split("_")[-1]
 
 				inf_file = load_mat(filename)
 				gt_file = load_mat(os.path.join(GT_PATH, gt_filename + ".mat"))

@@ -29,9 +29,9 @@ def main():
 
 			for filename in sorted(glob(os.path.join(INF_PATH, "resnext", "*1925_f.mat"))):
 				if(illumination == "cfl_led"):
-					gt_filename = "_".join(filename.split("/")[-1].split(".")[0].split("_")[1:3])
+					gt_filename = "_".join(os.path.split(filename)[-1].split(".")[0].split("_")[1:3])
 				else:
-					gt_filename = filename.split("/")[-1].split(".")[0].split("_")[-1]
+					gt_filename = os.path.split(filename)[-1].split(".")[0].split("_")[-1]
 
 				print(gt_filename + ".mat")
 

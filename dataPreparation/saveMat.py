@@ -77,7 +77,7 @@ def main():
 			# plotImages(rgb_image, nir_image, hypercube, rgb_secondary_image)
 
 			print("[%30s] Hypercube Shape: %s [Range: %d - %3d], RGB Image Shape: %s [Range: %d - %3d], NIR Image Shape: %s [Range: %d - %3d], RGB Secondary: [Range: %d - %3d]"
-	 			% (os.path.join(output_hypercube_directory.split("/")[-1], "%s.mat" % hs_filenumber), hypercube[var_name].shape, hypercube[var_name].min(), hypercube[var_name].max(),
+	 			% (os.path.join(os.path.split(output_hypercube_directory)[-1], "%s.mat" % hs_filenumber), hypercube[var_name].shape, hypercube[var_name].min(), hypercube[var_name].max(),
 				   rgb_image.shape, np.min(rgb_image), np.max(rgb_image), nir_image.shape, np.min(nir_image), np.max(nir_image), np.min(rgb_secondary_image), np.max(rgb_secondary_image)))
 
 			savemat(os.path.join(output_hypercube_directory, "%s.mat" % hs_filenumber), hypercube)

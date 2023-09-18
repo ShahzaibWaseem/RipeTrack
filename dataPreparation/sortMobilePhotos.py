@@ -81,8 +81,8 @@ def main():
 			plot_title = "Date %s-%s, FID: %s, Fruit Short Name: %s" % (date, month, mobile_fid, fruit_name_short)
 			viewImages(rgb_image, nir_image, rgb_image_aligned, plot_title, dataset_name, hs_filename)
 
-			print("Copied %s -> %s [Glob Len: %d]" % (mobile_rgb.split("/")[-1], "%s_RGB.png" % hs_filename, rgb_glob_len), "\tNumber of Files per day: %d\t" % check_number_of_files_per_day, "Fruit Name: %s\t" % fruit_name_short, "FID: %s\t" % mobile_fid, "Date: %s-%s" % (date, month))
-			print("Copied %s -> %s [Glob Len: %d]" % (mobile_nir.split("/")[-1], "%s_NIR.png" % hs_filename, nir_glob_len), "\tNumber of Files per day: %d\t" % check_number_of_files_per_day, "Fruit Name: %s\t" % fruit_name_short, "FID: %s\t" % mobile_fid, "Date: %s-%s" % (date, month))
+			print("Copied %s -> %s [Glob Len: %d]" % (os.path.split(mobile_rgb)[-1], "%s_RGB.png" % hs_filename, rgb_glob_len), "\tNumber of Files per day: %d\t" % check_number_of_files_per_day, "Fruit Name: %s\t" % fruit_name_short, "FID: %s\t" % mobile_fid, "Date: %s-%s" % (date, month))
+			print("Copied %s -> %s [Glob Len: %d]" % (os.path.split(mobile_nir)[-1], "%s_NIR.png" % hs_filename, nir_glob_len), "\tNumber of Files per day: %d\t" % check_number_of_files_per_day, "Fruit Name: %s\t" % fruit_name_short, "FID: %s\t" % mobile_fid, "Date: %s-%s" % (date, month))
 
 			nir_image = np.expand_dims(np.asarray(nir_image[:,:,0]), axis=-1)
 
