@@ -108,10 +108,10 @@ def test_sid(img_pred, img_gt):
 	assert len(img_pred_flat) == len(img_gt_flat)
 	return np.mean([spectral_divergence(img_pred_flat[i]/NORMALIZATION_FACTOR, img_gt_flat[i]/NORMALIZATION_FACTOR) for i in range(len(img_pred_flat))])
 
-def test_psnr(img_pred, img_gt):
+def test_psnr(img_pred, img_gt, max_p=1):
 	""" Calculate the peak signal to noise ratio (NumPy - Test Error) """
-	return 10 * np.log10(NORMALIZATION_FACTOR**2 / mse(img_pred, img_gt))
+	return 10 * np.log10(max_p**2 / mse(img_pred, img_gt))
 
-def test_ssim(img_pred, img_gt, max_p=NORMALIZATION_FACTOR):
+def test_ssim(img_pred, img_gt, max_p=1):
 	""" Calculate the structural simularity index measure (NumPy - Test Error) """
 	return structural_similarity(img_gt, img_pred, data_range=max_p, channel_axis=True)
