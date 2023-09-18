@@ -11,7 +11,7 @@ from torchvision import transforms
 from torch.utils.data import Dataset, DataLoader, random_split
 
 from utils import load_mat, read_image, data_augmentation, get_normalization_parameters, visualize_data_item
-from config import APPEND_SECONDARY_RGB_CAM_INPUT, GT_SECONDARY_RGB_CAM_DIR_NAME, BAND_SPACING, RGBN_BANDS, BANDS, TEST_DATASETS, GT_RGBN_DIR_NAME, TRAIN_DATASET_DIR, TRAIN_DATASET_FILES, VALID_DATASET_FILES, TEST_ROOT_DATASET_DIR, APPLICATION_NAME, PATCH_SIZE, RECONSTRUCTED_HS_DIR_NAME, batch_size, device
+from config import APPEND_SECONDARY_RGB_CAM_INPUT, GT_SECONDARY_RGB_CAM_DIR_NAME, BAND_SPACING, RGBN_BANDS, BANDS, TEST_DATASETS, GT_RGBN_DIR_NAME, TRAIN_DATASET_DIR, TRAIN_DATASET_FILES, VALID_DATASET_FILES, TEST_ROOT_DATASET_DIR, APPLICATION_NAME, PATCH_SIZE, RECONSTRUCTED_HS_DIR_NAME, EPS, batch_size, device
 
 def get_dataloaders(input_transform, label_transform, task, load_from_h5=False, trainset_size=0.7):
 	if load_from_h5:
@@ -234,9 +234,9 @@ class DatasetFromDirectory(Dataset):
 				print(" " * 25, directory, "\t{} and {}".format(GT_RGBN_DIR_NAME, GT_SECONDARY_RGB_CAM_DIR_NAME) if append_secondary_input else GT_RGBN_DIR_NAME) if self.verbose else None
 				for append_dir in directories_considered:
 					for rgb_filename in sorted(glob(os.path.join(directory, append_dir, "*_RGB.png"))):
-						classlabel = directory.split("/")[-1].split("_")[0]
+						classlabel = os.path.split(directory)[-1].split("_")[0]
 						actual_classlabel = classlabel
-						nir_filename = os.path.join(directory, append_dir, rgb_filename.split("/")[-1].replace("RGB", "NIR"))
+						nir_filename = os.path.join(directory, append_dir, os.path.split(rgb_filename)[-1].replace("RGB", "NIR"))
 						orig_image = read_image(rgb_filename, nir_filename)
 						# image = crop_image(image, start=self.crop_size, end=self.IMAGE_SIZE-self.crop_size) if task == "classification" and self.crop_size>0 else image
 						for aug_mode in range(self.augment_factor):			# Augment the dataset
@@ -471,7 +471,7 @@ class DatasetFromDirectoryReconstruction(Dataset):
 		secondary_rgb_image = self.secondary_rgb_images[data_idx][patch_i:patch_i+self.patch_size, patch_j:patch_j+self.patch_size, :]
 		hypercube = self.hypercubes[data_idx][patch_i:patch_i+self.patch_size, patch_j:patch_j+self.patch_size, :]
 
-		# visualize_data_item(rgb_image, hypercube, 12, "0")
+		visualize_data_item(rgb_image, hypercube, secondary_rgb_image, 12, "0")
 
 		rgb_image = np.transpose(rgb_image, [2, 0, 1])
 		nir_image = np.transpose(nir_image, [2, 0, 1])
@@ -487,4 +487,61 @@ class DatasetFromDirectoryReconstruction(Dataset):
 
 		# print("Image Min: %f\tMax: %f\tHypercube Min: %f\tMax: %f" % (image.min(), image.max(), hypercube.min(), hypercube.max()))
 
-		return image, hypercube + 0.00001
+		return image, hypercube + EPS
+
+class DatasetFromDirectoryClassification(Dataset):
+	hypercubes, labels = [], []
+	def __init__(self, root, application_name=APPLICATION_NAME, augmentation_factor=0, mobile_reconstructed_folder=None, verbose=False):
+		self.augmentation_factor = augmentation_factor
+
+		image_width, image_height = 512, 512
+		hypercube_counter = 0
+
+		print("Reading Images from:") if verbose else None
+
+		for dataset in TEST_DATASETS:
+			directory = os.path.join(root, application_name, "{}_204ch".format(dataset))
+			directory = os.path.join(directory, mobile_reconstructed_folder) if mobile_reconstructed_folder != None else directory
+			print(" " * 19, "{0:62}".format(directory))
+			for filename in glob(os.path.join(directory, "*.mat")):
+				hypercube = load_mat(filename)
+				hypercube = hypercube[:, :, BANDS]
+				hypercube = (hypercube - hypercube.min()) / (hypercube.max() - hypercube.min())
+
+				# TODO: Load only the patch of hypercube which is needed (from the Shelflife.csv file)
+
+				self.hypercubes.append(hypercube)
+
+				# TODO: Load the labels from the Shelflife.csv file
+
+				image_width, image_height = hypercube.shape[0:2]
+
+				hypercube_counter += 1
+
+		self.dataset_size = len(self.hypercubes)
+
+		if verbose:
+			print("\nBands used:\t\t\t\t{}\nNumber of Bands:\t\t\t{}".format(BANDS, len(BANDS)))
+			print("Number of Hypercubes Files:\t\t{}".format(hypercube_counter))
+			print("Hypercube Dataset Size:\t\t\t{}".format(len(self.hypercubes)))
+			print("Hypercubes Shape:\t\t\t\t{}\nLabels Shape:\t\t\t{}".format(list(self.hypercubes[0].shape), list(self.labels[0].shape)))
+
+		assert len(self.hypercubes) == len(self.labels), "Number of hypercubes and labels do not match."
+
+	def __len__(self):
+		return self.dataset_size
+
+	def __getitem__(self, index):
+		hypercube = self.hypercubes[index]
+		label = self.labels[index]
+
+		# visualize_data_item(rgb_image, hypercube, None, 12, "0")
+
+		hypercube = np.transpose(hypercube, [2, 0, 1])
+		hypercube = torch.from_numpy(hypercube.copy()).float()
+
+		label = torch.from_numpy(label.copy()).long()
+
+		# print("Image Min: %f\tMax: %f\tHypercube Min: %f\tMax: %f" % (image.min(), image.max(), hypercube.min(), hypercube.max()))
+
+		return hypercube + EPS, label

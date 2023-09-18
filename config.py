@@ -3,6 +3,7 @@ import torch
 
 var_name = "hcube"					# key for the dictionary which are saved in the files
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+EPS = 0.00001
 
 SHELF_LIFE_GROUND_TRUTH_FILENAME = "ShelfLifeGroundTruth.csv"
 
@@ -23,7 +24,7 @@ RECONSTRUCTED_HS_DIR_NAME = "reconstructed"
 MOBILE_RECONSTRUCTED_HS_DIR_NAME = "mobile-reconstructed"
 VISUALIZATION_DIR_NAME = "visualizations"
 
-APPEND_SECONDARY_RGB_CAM_INPUT = False
+APPEND_SECONDARY_RGB_CAM_INPUT = True
 
 PREDEF_TRANSFORMS_FILENAME = "transforms{}.pth".format("_appended" if APPEND_SECONDARY_RGB_CAM_INPUT else "")
 
@@ -81,7 +82,7 @@ classicication_run_title = "Model: %s\tDataset: %s\tIllumination: %s\tNumber of 
 ### to create the checkpoint of the model ###
 checkpoint_fileprestring = "%s_%s" % (MODEL_NAME, APPLICATION_NAME)
 classification_checkpoint_fileprestring = "%s_%s" % (CLASSIFIER_MODEL_NAME, APPLICATION_NAME)
-checkpoint_file = "SLP_%s_500.pkl" % checkpoint_fileprestring
+checkpoint_file = "MSLP_%s_499.pkl" % checkpoint_fileprestring
 # checkpoint_file = "HS_model_%d.pkl" % end_epoch
 run_pretrained = False					# if True, the model is loaded from the checkpoint_file
 
