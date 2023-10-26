@@ -28,6 +28,7 @@ MOBILE_DATASET_DIR_NAME = "mobile-rgbn"
 RECONSTRUCTED_HS_DIR_NAME = "reconstructed"
 MOBILE_RECONSTRUCTED_HS_DIR_NAME = "mobile-reconstructed"
 VISUALIZATION_DIR_NAME = "visualizations"
+MOBILE_MODELS_DIR_NAME = "mobileModels"
 
 APPEND_SECONDARY_RGB_CAM_INPUT = True
 
