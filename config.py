@@ -1,11 +1,14 @@
 import os
 import torch
+from collections import OrderedDict
 
 var_name = "hcube"					# key for the dictionary which are saved in the files
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 EPS = 0.00001
 
 SHELF_LIFE_GROUND_TRUTH_FILENAME = "ShelfLifeGroundTruth.csv"
+MOBILE_DATASET_CROPS_FILENAME = "mobileShelfLifeCrops.csv"
+GT_DATASET_CROPS_FILENAME = "gtShelfLifeCrops.csv"
 
 ### Datagenerator Directories ###
 CAMERA_OUTPUT_ROOT_PATH = os.path.join("..", "Catalog")
@@ -14,8 +17,10 @@ CAMERA_EXTRACT_DATASETS = ["pear-bosc", "pear-williams", "avocado-organic", "avo
 ### Root directories for train and test dataset loading ###
 TRAIN_DATASET_DIR = os.path.join("..", "data_preparation", "h5datasets")
 TEST_ROOT_DATASET_DIR = os.path.join(os.path.dirname(TRAIN_DATASET_DIR), "datasets")
-TEST_DATASETS = ["pear-bosc", "pear-williams", "avocado-organic", "avocado-emp"]
-LABELS = {"SlightlyUnripe": 0, "Ripe": 1, "Dangerous": 2, "Expired": 3}
+TEST_DATASETS = ["pear-bosc", "pear-williams", "avocado-organic", "avocado-emp"]	# Unripe: 28, Ripe: 210, Dangerous: 64, Expired: 101
+# TEST_DATASETS = ["pear-williams"]
+# LABELS_DICT = OrderedDict([("Pear Bosc Ripe", 0), ("Pear Bosc Dangerous", 1), ("Pear Bosc Expired", 2), ("Pear Williams Ripe", 3), ("Pear Williams Dangerous", 4), ("Pear Williams Expired", 5), ("Avocado Organic Ripe", 6), ("Avocado Organic Dangerous", 7), ("Avocado Organic Expired", 8), ("Avocado Emp Ripe", 9), ("Avocado Emp Dangerous", 10), ("Avocado Emp Expired", 11)])
+LABELS_DICT = OrderedDict([("Ripe", 0), ("Dangerous", 1), ("Expired", 2)])
 
 GT_RGBN_DIR_NAME = "rgbn"
 GT_SECONDARY_RGB_CAM_DIR_NAME = "secondary-rgbn"
@@ -29,18 +34,13 @@ APPEND_SECONDARY_RGB_CAM_INPUT = True
 PREDEF_TRANSFORMS_FILENAME = "transforms{}.pth".format("_appended" if APPEND_SECONDARY_RGB_CAM_INPUT else "")
 
 # used only in train.py (these h5 files contain patches of the datasets) ###
-TRAIN_DATASET_FILES = ["train_avocado_halogen_4to51bands.h5",
-					   "train_apple_halogen_4to51bands.h5",
-					   "train_apple_cfl_led_4to51bands.h5",
-					   "train_avocado_cfl_led_4to51bands.h5"]
-VALID_DATASET_FILES = ["valid_avocado_halogen_4to51bands.h5",
-					   "valid_apple_halogen_4to51bands.h5",
-					   "valid_apple_cfl_led_4to51bands.h5",
-					   "valid_avocado_cfl_led_4to51bands.h5"]
+TRAIN_DATASET_FILES = []
+VALID_DATASET_FILES = []
 
 ### Directories for logs and model checkpoints ###
 MODEL_PATH = os.path.join(".", "checkpoints")
 LOGS_PATH = os.path.join(".", "logs")
+DATA_PREP_PATH = os.path.join(".", "dataPreparation")
 
 ### Parameters for Data reading ###
 BAND_SPACING = 1						# used only if reading data from directories dataset.DatasetFromDirectory
@@ -52,11 +52,11 @@ NORMALIZATION_FACTOR = 4096				# max value of the captured hypercube (dependent 
 RGBN_BANDS = [18, 47, 80, 183]			# correspond to B 454, G 541, R 640, N 949 bands
 # BANDS = [RGBN_BANDS, range(104, 204, 2)]
 # Bands: (450, 650, 5), (670, 690, 5), (750, 900, 5), (900, 1000, 5)
-BANDS = [range(19, 87, 5), range(94, 102, 5), range(120, 170, 5), range(170, 204, 5)]
-# BANDS = [range(0, 204, 3)]
+# BANDS = [range(19, 87, 5), range(94, 102, 5), range(120, 170, 5), range(170, 204, 5)]
+BANDS = [range(0, 204, 3)]
 
 ### Hyperparamters for the model ###
-batch_size = 16
+batch_size = 32
 end_epoch = 501
 init_lr = 0.0001
 
@@ -77,14 +77,14 @@ lossfunctions_considered = ["MRAE", "SAM", "SID"]
 model_run_title = "Model: %s\tDataset: %s\tIllumination: %s\tLosses: %s\tFull Image or Patches: %s\n" \
 	% (MODEL_NAME, APPLICATION_NAME, illumination_string, lossfunctions_considered, "Full Image" if PATCH_SIZE == IMAGE_SIZE else "Patches")
 classicication_run_title = "Model: %s\tDataset: %s\tIllumination: %s\tNumber of Classes: %d\tFull Image or Patches: %s\n" \
-	% (CLASSIFIER_MODEL_NAME, APPLICATION_NAME, illumination_string, len(TEST_DATASETS), "Full Image" if PATCH_SIZE == IMAGE_SIZE else "Patches")
+	% (CLASSIFIER_MODEL_NAME, APPLICATION_NAME, illumination_string, len(LABELS_DICT), "Full Image" if PATCH_SIZE == IMAGE_SIZE else "Patches")
 
 ### to create the checkpoint of the model ###
 checkpoint_fileprestring = "%s_%s" % (MODEL_NAME, APPLICATION_NAME)
 classification_checkpoint_fileprestring = "%s_%s" % (CLASSIFIER_MODEL_NAME, APPLICATION_NAME)
 checkpoint_file = "MSLP_%s_499.pkl" % checkpoint_fileprestring
 # checkpoint_file = "HS_model_%d.pkl" % end_epoch
-run_pretrained = False					# if True, the model is loaded from the checkpoint_file
+run_pretrained = True					# if True, the model is loaded from the checkpoint_file
 
 mobile_model_file = "model_%s.pth" % APPLICATION_NAME
 onnx_file_name = "model.onnx"

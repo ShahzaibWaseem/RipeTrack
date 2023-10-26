@@ -13,27 +13,27 @@ from models.MST import MST_Plus_Plus
 from loss import mrae_loss, sam_loss, sid_loss
 
 from dataset import get_required_transforms, get_dataloaders_reconstruction
-from utils import AverageMeter, initialize_logger, save_checkpoint, get_best_checkpoint, record_loss, poly_lr_scheduler
-from config import MODEL_PATH, LOGS_PATH, BANDS, PREDEF_TRANSFORMS_FILENAME, batch_size, device, end_epoch, init_lr, model_run_title, run_pretrained, lossfunctions_considered, create_directory
+from utils import AverageMeter, initialize_logger, save_checkpoint, get_best_checkpoint, record_loss, poly_lr_scheduler, optimizer_to
+from config import MODEL_PATH, LOGS_PATH, DATA_PREP_PATH, BANDS, PREDEF_TRANSFORMS_FILENAME, batch_size, device, end_epoch, init_lr, model_run_title, run_pretrained, lossfunctions_considered, create_directory
 
 torch.autograd.set_detect_anomaly(False)
 
 def get_and_save_predef_transforms():
-	if os.path.exists(os.path.join("dataPreparation", PREDEF_TRANSFORMS_FILENAME)):
+	if os.path.exists(os.path.join(DATA_PREP_PATH, PREDEF_TRANSFORMS_FILENAME)):
 		print("Loading Pre-defined Transforms...")
-		transforms = torch.load(os.path.join("dataPreparation", PREDEF_TRANSFORMS_FILENAME))
+		transforms = torch.load(os.path.join(DATA_PREP_PATH, PREDEF_TRANSFORMS_FILENAME))
 		input_transform, label_transform = transforms["rgbn"], transforms["hypercube"]
 		if BANDS == transforms["bands"]:
 			return input_transform, label_transform
 		else:
 			input_transform, label_transform = get_required_transforms()
 			transforms = {"rgbn": input_transform, "hypercube": label_transform, "bands": BANDS}
-			torch.save(transforms, os.path.join("dataPreparation", PREDEF_TRANSFORMS_FILENAME))
+			torch.save(transforms, os.path.join(DATA_PREP_PATH, PREDEF_TRANSFORMS_FILENAME))
 			return input_transform, label_transform
 	else:
 		input_transform, label_transform = get_required_transforms()
 		transforms = {"rgbn": input_transform, "hypercube": label_transform, "bands": BANDS}
-		torch.save(transforms, os.path.join("dataPreparation", PREDEF_TRANSFORMS_FILENAME))
+		torch.save(transforms, os.path.join(DATA_PREP_PATH, PREDEF_TRANSFORMS_FILENAME))
 		return input_transform, label_transform
 
 def main():
@@ -41,16 +41,17 @@ def main():
 	trainset_size=0.8
 	# input_transform, label_transform = get_and_save_predef_transforms()
 
-	# train_data_loader, val_data_loader, whole_dataset_loader = get_dataloaders(input_transform, label_transform, task="reconstruction", trainset_size=trainset_size)
-	# train_data_loader, val_data_loader = train_data_loader.to(device), val_data_loader.to(device)
+	# train_data_loader, valid_data_loader, whole_dataset_loader = get_dataloaders(input_transform, label_transform, task="reconstruction", trainset_size=trainset_size)
+	# train_data_loader, valid_data_loader = train_data_loader.to(device), valid_data_loader.to(device)
 
-	train_data_loader, val_data_loader = get_dataloaders_reconstruction(trainset_size=trainset_size)
+	train_data_loader, valid_data_loader = get_dataloaders_reconstruction(trainset_size=trainset_size)
 
-	whole_dataset_size = len(train_data_loader.dataset) + len(val_data_loader.dataset)
+	whole_dataset_size = len(train_data_loader.dataset) + len(valid_data_loader.dataset)
 
 	# Parameters, Loss and Optimizer
 	start_epoch = 0
 	iteration = 0
+	best_val_loss = 0
 	criterion_mrae = mrae_loss
 	criterion_sam = sam_loss
 	criterion_sid = sid_loss
@@ -61,7 +62,7 @@ def main():
 	logger = initialize_logger(filename="train.log")
 	loss_csv = open(os.path.join(LOGS_PATH, "loss.csv"), "w+")
 
-	log_string = "Epoch [%3d], Iter[%5d], Time: %.9f, Learning Rate: %.9f, Train Loss: %.9f (%.9f, %.9f, %.9f), Validation Loss: %.9f (%.9f, %.9f, %.9f)"
+	log_string = "Epoch [%3d], Iter[%6d], Time: %.9f, Learning Rate: %.9f, Train Loss: %.9f (%.9f, %.9f, %.9f), Validation Loss: %.9f (%.9f, %.9f, %.9f)"
 
 	# make model
 	model = MST_Plus_Plus(in_channels=4, out_channels=len(BANDS), n_feat=len(BANDS), stage=3)
@@ -69,12 +70,13 @@ def main():
 	# print(summary(model, (4, 64, 64), verbose=1))
 
 	if run_pretrained:
-		epoch, iter, state_dict, optimizer, val_loss, val_acc = get_best_checkpoint(task="reconstruction")
+		best_checkpoint_file, epoch, iter, state_dict, opt_state, val_loss, val_acc = get_best_checkpoint(task="reconstruction")
 		model.load_state_dict(state_dict)
-		optimizer.load_state_dict(optimizer)
+		optimizer.load_state_dict(opt_state)
+		start_epoch = epoch
 
-	# Multi Device Cuda
 	model.to(device)
+	optimizer_to(optimizer, device)
 
 	print("\n" + model_run_title)
 	logger.info(model_run_title)
@@ -83,12 +85,15 @@ def main():
 		start_time = time.time()
 
 		train_loss, train_losses_ind, iteration, lr = train(train_data_loader, model, criterions, optimizer, iteration, init_lr, int(trainset_size*whole_dataset_size)*end_epoch/batch_size)
-		val_loss, val_losses_ind = validate(val_data_loader, model, criterions)
+		val_loss, val_losses_ind = validate(valid_data_loader, model, criterions)
 
 		train_loss_mrae, train_loss_sam, train_loss_sid = train_losses_ind
 		val_loss_mrae, val_loss_sam, val_loss_sid = val_losses_ind
-
-		save_checkpoint(epoch, iteration, model, optimizer, val_loss, 0, task="reconstruction")
+		if (best_val_loss) < (val_loss):
+			best_val_loss = val_loss
+			best_epoch = epoch
+		if epoch % 10 == 0:
+			save_checkpoint(best_epoch, iteration, model, optimizer, best_val_loss, 0, bands=BANDS, task="reconstruction")
 		epoch_time = time.time() - start_time
 
 		# Printing and saving losses
@@ -137,14 +142,14 @@ def train(train_data_loader, model, criterions, optimizer, iteration, init_lr, m
 
 	return losses.avg, (losses_mrae.avg, losses_sam.avg, losses_sid.avg), iteration, lr
 
-def validate(val_data_loader, model, criterions):
+def validate(valid_data_loader, model, criterions):
 	""" Validates the model on the dataloader provided """
 	model.eval()
 	losses = AverageMeter()
 	criterion_mrae, criterion_sam, criterion_sid = criterions
 	losses_mrae, losses_sam, losses_sid = AverageMeter(), AverageMeter(), AverageMeter()
 
-	for images, labels in tqdm(val_data_loader, desc="Valid", total=len(val_data_loader)):
+	for images, labels in tqdm(valid_data_loader, desc="Valid", total=len(valid_data_loader)):
 		images = images.cuda()
 		labels = labels.cuda()
 

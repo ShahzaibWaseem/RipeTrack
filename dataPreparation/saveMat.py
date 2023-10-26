@@ -51,7 +51,7 @@ def main():
 		create_directory(output_rgbn_directory)
 		create_directory(output_secondary_rgbn_directory)
 
-		input_catalog_directory = os.path.join(root_directory, "working_%s" % APPLICATION_NAME)
+		input_catalog_directory = os.path.join(root_directory, "%s" % APPLICATION_NAME)
 
 		for hs_filenumber in hs_filenumbers:
 			hs_filepath = os.path.join(input_catalog_directory, "%d" % hs_filenumber, "results", "REFLECTANCE_%s.hdr" % hs_filenumber)

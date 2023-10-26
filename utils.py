@@ -2,6 +2,7 @@ from __future__ import division
 
 import os
 import json
+import random
 import numpy as np
 
 import h5py
@@ -17,7 +18,7 @@ from torch.utils.mobile_optimizer import optimize_for_mobile
 
 from models.model import Network
 from models.resblock import ResNeXtBottleneck
-from config import TEST_DATASETS, BAND_SPACING, MODEL_PATH, LOGS_PATH, MODEL_PATH, NORMALIZATION_FACTOR, NUMBER_OF_BANDS, checkpoint_fileprestring, classification_checkpoint_fileprestring, checkpoint_file, mobile_model_file, var_name, onnx_file_name, tf_model_dir, tflite_filename, create_directory
+from config import TEST_DATASETS, BANDS, BAND_SPACING, MODEL_PATH, LOGS_PATH, MODEL_PATH, NORMALIZATION_FACTOR, NUMBER_OF_BANDS, checkpoint_fileprestring, classification_checkpoint_fileprestring, checkpoint_file, mobile_model_file, var_name, onnx_file_name, tf_model_dir, tflite_filename, device, create_directory
 
 import matplotlib.pyplot as plt
 
@@ -97,7 +98,7 @@ def scale_image(image, range=(0, 1)):
 	return image
 
 def visualize_data_item(image, hypercube, secondary_rgb_image=None, band=12, classlabel=""):
-	fig, ax = plt.subplots(1, 3, figsize=(10, 5)) if secondary_rgb_image is not None else plt.subplots(1, 2, figsize=(10, 5))
+	fig, ax = plt.subplots(1, 3, figsize=(10, 5)) if (secondary_rgb_image is not None and image is not None) else plt.subplots(1, 2, figsize=(10, 5))
 	# fig.suptitle("Class: %s" % TEST_DATASETS[classlabel])
 
 	ax[0].imshow(hypercube[:, :, band])
@@ -105,9 +106,10 @@ def visualize_data_item(image, hypercube, secondary_rgb_image=None, band=12, cla
 	ax[0].set_title("Hypercube - %i" % band)
 
 	# visualizing it in RGB (instead of BGR)
-	ax[1].imshow(image)
-	ax[1].set_xlabel(image.shape)
-	ax[1].set_title("RGBN - 0:3 (RGB)")
+	if image is not None:
+		ax[1].imshow(image)
+		ax[1].set_xlabel(image.shape)
+		ax[1].set_title("RGBN - 0:3 (RGB)")
 	if secondary_rgb_image is not None:
 		ax[2].imshow(secondary_rgb_image)
 		ax[2].set_xlabel(secondary_rgb_image.shape)
@@ -155,21 +157,32 @@ def data_augmentation(image, aug_mode=0):
 	if aug_mode == 0:
 		return image								# original image
 	elif aug_mode == 1:
-		return np.flipud(image)						# flip up and down
+		return np.flipud(image.copy())				# flip up and down
 	elif aug_mode == 2:
-		return np.rot90(image)						# rotate counterwise 90 degree
+		return np.rot90(image.copy())				# rotate counterwise 90 degree
 	elif aug_mode == 3:
-		return np.flipud(np.rot90(image))			# rotate 90 degree and flip up and down
+		return np.flipud(np.rot90(image.copy()))	# rotate 90 degree and flip up and down
 	elif aug_mode == 4:
-		return np.rot90(image, k=2)					# rotate 180 degree
+		return np.rot90(image.copy(), k=2)					# rotate 180 degree
 	elif aug_mode == 5:
-		return np.flipud(np.rot90(image, k=2))		# rotate 180 degree and flip
+		return np.flipud(np.rot90(image.copy(), k=2))		# rotate 180 degree and flip
 	elif aug_mode == 6:
-		return np.rot90(image, k=3)					# rotate 270 degree
+		return np.rot90(image.copy(), k=3)					# rotate 270 degree
 	elif aug_mode == 7:
-		return np.flipud(np.rot90(image, k=3))		# rotate 270 degree and flip
+		return np.flipud(np.rot90(image.copy(), k=3))		# rotate 270 degree and flip
 	else:
-		return
+		return image
+
+def augmentation(image):
+	# Random rotation
+	for _ in range(random.randint(0, 3)):
+		image = np.rot90(image.copy(), axes=(0, 1))
+	# Random flips
+	for _ in range(random.randint(0, 1)):
+		image = image[::-1, :, :].copy()
+	for _ in range(random.randint(0, 1)):
+		image = image[:, ::-1, :].copy()
+	return image
 
 def initialize_logger(filename):
 	"""Print the results in the log file."""
@@ -181,14 +194,15 @@ def initialize_logger(filename):
 	logger.setLevel(logging.INFO)
 	return logger
 
-def save_checkpoint(epoch, iteration, model, optimizer, val_loss, val_acc, task="reconstruction"):
+def save_checkpoint(epoch, iteration, model, optimizer, val_loss, val_acc, bands=BANDS, task="reconstruction"):
 	"""Save the checkpoint."""
 	state = {"epoch": epoch,
 			 "iter": iteration,
 			 "state_dict": model.state_dict(),
 			 "optimizer": optimizer.state_dict(),
 			 "val_loss": val_loss,
-			 "val_acc": val_acc}
+			 "val_acc": val_acc,
+			 "bands": bands}
 
 	torch.save(state, os.path.join(MODEL_PATH, task, "MSLP_%s_%s.pkl" % (checkpoint_fileprestring if task=="reconstruction" else classification_checkpoint_fileprestring, str(epoch).zfill(3))))
 
@@ -214,8 +228,23 @@ def get_best_checkpoint(task="reconstruction"):
 	print("\nThe best checkpoint file, is loaded, for %s task and it is %s with validation loss value %.9f and validation accuracy %.2f%%" %
 		  (task, best_checkpoint_file, best_val_loss, best_val_acc), end="\n\n")
 
-	loaded_model = torch.load(os.path.join(MODEL_PATH, task, best_checkpoint_file))
+	loaded_model = torch.load(os.path.join(MODEL_PATH, task, best_checkpoint_file), map_location=device)
+	# assert loaded_model["bands"] != BANDS, "The bands of the loaded model and the current bands are not the same. Please check the bands in the config file."	
 	return best_checkpoint_file, loaded_model["epoch"], loaded_model["iter"], loaded_model["state_dict"], loaded_model["optimizer"], loaded_model["val_loss"], loaded_model["val_acc"]
+
+def optimizer_to(optim, device):
+	for param in optim.state.values():
+		# Not sure there are any global tensors in the state dict
+		if isinstance(param, torch.Tensor):
+			param.data = param.data.to(device)
+			if param._grad is not None:
+				param._grad.data = param._grad.data.to(device)
+		elif isinstance(param, dict):
+			for subparam in param.values():
+				if isinstance(subparam, torch.Tensor):
+					subparam.data = subparam.data.to(device)
+					if subparam._grad is not None:
+						subparam._grad.data = subparam._grad.data.to(device)
 
 def save_mat(mat_filename, hypercube):
 	hdf5storage.savemat(mat_filename, {var_name: hypercube}, format="7.3", store_python_metadata=True)

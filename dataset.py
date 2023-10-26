@@ -1,6 +1,7 @@
 import os
 import random
 import numpy as np
+import pandas as pd
 
 import h5py
 from glob import glob
@@ -8,10 +9,11 @@ from imageio import imread
 
 import torch
 from torchvision import transforms
-from torch.utils.data import Dataset, DataLoader, random_split
+from torchsampler import ImbalancedDatasetSampler
+from torch.utils.data import Dataset, DataLoader, random_split, WeightedRandomSampler, Subset
 
-from utils import load_mat, read_image, data_augmentation, get_normalization_parameters, visualize_data_item
-from config import APPEND_SECONDARY_RGB_CAM_INPUT, GT_SECONDARY_RGB_CAM_DIR_NAME, BAND_SPACING, RGBN_BANDS, BANDS, TEST_DATASETS, GT_RGBN_DIR_NAME, TRAIN_DATASET_DIR, TRAIN_DATASET_FILES, VALID_DATASET_FILES, TEST_ROOT_DATASET_DIR, APPLICATION_NAME, PATCH_SIZE, RECONSTRUCTED_HS_DIR_NAME, EPS, batch_size, device
+from utils import load_mat, read_image, data_augmentation, augmentation, get_normalization_parameters, visualize_data_item
+from config import APPEND_SECONDARY_RGB_CAM_INPUT, GT_SECONDARY_RGB_CAM_DIR_NAME, BAND_SPACING, RGBN_BANDS, BANDS, TEST_DATASETS, GT_RGBN_DIR_NAME, TRAIN_DATASET_DIR, TRAIN_DATASET_FILES, VALID_DATASET_FILES, TEST_ROOT_DATASET_DIR, APPLICATION_NAME, PATCH_SIZE, RECONSTRUCTED_HS_DIR_NAME, EPS, DATA_PREP_PATH, MOBILE_DATASET_CROPS_FILENAME, SHELF_LIFE_GROUND_TRUTH_FILENAME, LABELS_DICT, batch_size, device
 
 def get_dataloaders(input_transform, label_transform, task, load_from_h5=False, trainset_size=0.7):
 	if load_from_h5:
@@ -377,7 +379,6 @@ def get_dataloaders_reconstruction(trainset_size=0.7):
 		application_name=APPLICATION_NAME,
 		patch_size=PATCH_SIZE,
 		append_secondary_input=APPEND_SECONDARY_RGB_CAM_INPUT,
-		augmentation_factor=0,
 		verbose=True
 	)
 	train_data, valid_data = random_split(dataset, [int(trainset_size*len(dataset)), len(dataset) - int(len(dataset)*trainset_size)])
@@ -389,21 +390,20 @@ def get_dataloaders_reconstruction(trainset_size=0.7):
 								   num_workers=4,
 								   batch_size=batch_size,
 								   shuffle=True,
-								   pin_memory=True)
+								   pin_memory=False)
 
 	valid_data_loader = DataLoader(dataset=valid_data,
 								   num_workers=4,
 								   batch_size=4,
 								   shuffle=False,
-								   pin_memory=True)
+								   pin_memory=False)
 
 	return train_data_loader, valid_data_loader
 
 class DatasetFromDirectoryReconstruction(Dataset):
 	rgb_images, nir_images, secondary_rgb_images, hypercubes, patch_indices = [], [], [], [], {}
-	def __init__(self, root, application_name=APPLICATION_NAME, patch_size=64, append_secondary_input=False, augmentation_factor=0, verbose=False):
+	def __init__(self, root, application_name=APPLICATION_NAME, patch_size=64, append_secondary_input=False, verbose=False):
 		self.patch_size = patch_size
-		self.augmentation_factor = augmentation_factor
 		self.append_secondary_input = append_secondary_input
 
 		image_width, image_height = 512, 512
@@ -451,13 +451,18 @@ class DatasetFromDirectoryReconstruction(Dataset):
 		self.dataset_size *= (image_height // self.patch_size)
 
 		if verbose:
-			print("\nBands used:\t\t\t\t{}\nNumber of Bands:\t\t\t{}".format(BANDS, len(BANDS)))
-			print("Number of RGBN Files:\t\t\t{}\nNumber of Hypercubes Files:\t\t{}".format(rgbn_counter, hypercube_counter))
-			print("RGB Image Dataset Size:\t\t\t{}\nHypercube Dataset Size:\t\t\t{}".format(len(self.rgb_images), len(self.hypercubes)))
-			print("Appended Secondary Input:\t\t{}".format("yes" if append_secondary_input else "no"))
-			print("Images Shape:\t\t\t\t{}\nHypercubes Shape:\t\t\t{}".format(list(self.rgb_images[0].shape), list(self.hypercubes[0].shape)))
+			print("Bands used:".ljust(40), BANDS)
+			print("Number of Bands:".ljust(40), len(BANDS))
+			print("Number of RGBN Files:".ljust(40), rgbn_counter)
+			print("Number of Hypercubes Files:".ljust(40), hypercube_counter)
+			print("RGB Image Dataset Size:".ljust(40), len(self.rgb_images))
+			print("Hypercube Dataset Size:".ljust(40), len(self.hypercubes))
+			print("Appended Secondary Input:".ljust(40), ("yes" if append_secondary_input else "no"))
+			print("Images Shape:".ljust(40), list(self.rgb_images[0].shape))
+			print("Hypercubes Shape:".ljust(40), list(self.hypercubes[0].shape))
 			if self.patch_size != image_height and self.patch_size != image_width and self.patch_size > 0:
-				print("Patch Size:\t\t\t\t{}\nNumber of Patches ({}/{} * {}):\t{}".format(self.patch_size, min(image_width, image_height), self.patch_size, rgbn_counter, self.dataset_size))
+				print("Patch Size:".ljust(40), self.patch_size)
+				print("Number of Patches ({:<3}/{:<2} * {:<3}):".ljust(40).format(self.patch_size, min(image_width, image_height), self.patch_size, rgbn_counter), self.dataset_size)
 
 		assert len(self.rgb_images) == len(self.nir_images) == len(self.secondary_rgb_images) == len(self.hypercubes), "Number of images and hypercubes do not match."
 
@@ -471,7 +476,7 @@ class DatasetFromDirectoryReconstruction(Dataset):
 		secondary_rgb_image = self.secondary_rgb_images[data_idx][patch_i:patch_i+self.patch_size, patch_j:patch_j+self.patch_size, :]
 		hypercube = self.hypercubes[data_idx][patch_i:patch_i+self.patch_size, patch_j:patch_j+self.patch_size, :]
 
-		visualize_data_item(rgb_image, hypercube, secondary_rgb_image, 12, "0")
+		# visualize_data_item(rgb_image, hypercube, secondary_rgb_image, 12, "0")
 
 		rgb_image = np.transpose(rgb_image, [2, 0, 1])
 		nir_image = np.transpose(nir_image, [2, 0, 1])
@@ -488,60 +493,183 @@ class DatasetFromDirectoryReconstruction(Dataset):
 		# print("Image Min: %f\tMax: %f\tHypercube Min: %f\tMax: %f" % (image.min(), image.max(), hypercube.min(), hypercube.max()))
 
 		return image, hypercube + EPS
+from collections import OrderedDict
+
+class_sizes = OrderedDict([(label, 0) for label in LABELS_DICT.keys()])
+
+def get_dataloaders_classification(trainset_size=0.7):
+	global class_sizes
+
+	classificationTransforms = transforms.Compose([FlipHorizontal(), FlipVertical(), Rotate()])
+
+	dataset = DatasetFromDirectoryClassification(
+		root=TEST_ROOT_DATASET_DIR,
+		application_name=APPLICATION_NAME,
+		mobile_reconstructed_folder=None,
+		transforms=classificationTransforms,
+		verbose=True
+	)
+	train_indices, valid_indices = dataset.divide_train_test(trainset_size)
+	train_data = Subset(dataset, train_indices)
+	valid_data = Subset(dataset, valid_indices)
+	class_weights = [1 / i for i in list(class_sizes.values())]
+	print("Class Weights Random Sampler:".ljust(40), class_weights)
+	print("Class Counts:".ljust(40), class_sizes)
+
+	sampler = WeightedRandomSampler(weights=class_weights, num_samples=dataset.__len__(), replacement=True)
+
+	train_data_loader = DataLoader(dataset=train_data,
+								   num_workers=4,
+								   batch_size=1,
+								   shuffle=False,
+								   pin_memory=True)
+
+	valid_data_loader = DataLoader(dataset=valid_data,
+								   num_workers=4,
+								   batch_size=1,
+								   shuffle=False,
+								   pin_memory=True)
+
+	return train_data_loader, valid_data_loader
 
 class DatasetFromDirectoryClassification(Dataset):
-	hypercubes, labels = [], []
-	def __init__(self, root, application_name=APPLICATION_NAME, augmentation_factor=0, mobile_reconstructed_folder=None, verbose=False):
-		self.augmentation_factor = augmentation_factor
+	hypercubes, labels, fruits = [], [], []
+	def __init__(self, root, application_name=APPLICATION_NAME, mobile_reconstructed_folder=None, transforms=None, verbose=False):
+		global class_sizes
+		self.transforms = transforms
 
 		image_width, image_height = 512, 512
 		hypercube_counter = 0
+		crops_df = pd.read_csv(os.path.join(DATA_PREP_PATH, MOBILE_DATASET_CROPS_FILENAME))
+		shelflife_df = pd.read_csv(os.path.join(DATA_PREP_PATH, SHELF_LIFE_GROUND_TRUTH_FILENAME))
+
+		crops_df["w"] = crops_df["xmax"] - crops_df["xmin"]
+		crops_df["h"] = crops_df["ymax"] - crops_df["ymin"]
+		min_w, min_h = int(crops_df["w"].min()), int(crops_df["h"].min())			# Min Width:  89, Min Height:  90
+		max_w, max_h = int(crops_df["w"].max()), int(crops_df["h"].max())			# Max Width: 214, Max Height: 220
+		crop_size = 40
+		stride = 10
 
 		print("Reading Images from:") if verbose else None
 
 		for dataset in TEST_DATASETS:
 			directory = os.path.join(root, application_name, "{}_204ch".format(dataset))
 			directory = os.path.join(directory, mobile_reconstructed_folder) if mobile_reconstructed_folder != None else directory
-			print(" " * 19, "{0:62}".format(directory))
+			print(" " * 19, "{0:62}".format(directory), end="\t")
+			print(shelflife_df[(shelflife_df["Fruit"].str.contains(dataset.split("-")[0].capitalize())) & (shelflife_df["Type"].str.contains(dataset.split("-")[1].capitalize()))]["Shelf Life Label"].value_counts().to_dict())
 			for filename in glob(os.path.join(directory, "*.mat")):
 				hypercube = load_mat(filename)
 				hypercube = hypercube[:, :, BANDS]
 				hypercube = (hypercube - hypercube.min()) / (hypercube.max() - hypercube.min())
 
-				# TODO: Load only the patch of hypercube which is needed (from the Shelflife.csv file)
+				hypercube_number = os.path.split(filename)[-1].split(".")[0].split("_")[0]
 
-				self.hypercubes.append(hypercube)
+				crop_record = crops_df[crops_df["image"].isin(["{}_RGB.png".format(hypercube_number)])]
 
-				# TODO: Load the labels from the Shelflife.csv file
+				xmin = int(crop_record["xmin"].iloc[0])
+				ymin = int(crop_record["ymin"].iloc[0])
+				xmax = int(crop_record["xmax"].iloc[0])
+				ymax = int(crop_record["ymax"].iloc[0])
+				# print("(xmin: %s ymin: %s) (xmax: %s ymax: %s)" % (xmin, ymin, xmax, ymax))
 
-				image_width, image_height = hypercube.shape[0:2]
+				shelflife_record = shelflife_df[shelflife_df["HS Files"].str.contains(hypercube_number)].iloc[0]
+				# label_name = "{} {} {}".format(shelflife_record["Fruit"], shelflife_record["Type"], shelflife_record["Shelf Life Label"])
+				label_name = shelflife_record["Shelf Life Label"]
+				label = LABELS_DICT.get(label_name)
+				fruit_name = "{} {}".format(shelflife_record["Fruit"], shelflife_record["Type"])
+				# print(" " * 25, "{0:62}".format("Record: {}, HS Number: {}, Label Number: {}, Label: {}".format(shelflife_record, hypercube_number, label_name, label))) if verbose else None
+
+				for x_crop in range(xmin, xmax, stride):
+					if x_crop+crop_size > xmax: continue
+					for y_crop in range(ymin, ymax, stride):
+						if y_crop+crop_size > ymax: continue
+						hypercubeCrop = hypercube[x_crop : x_crop+crop_size, y_crop : y_crop+crop_size, :]
+						if (hypercubeCrop.shape[0:2] != (crop_size, crop_size)):
+							continue
+						# print("X Crop Prev: {}, X Crop: {}, Y Crop Prev: {}, Y Crop: {}".format(x_crop-crop_size, x_crop, y_crop-crop_size, y_crop))
+						self.hypercubes.append(hypercubeCrop)
+						self.labels.append(label)
+						self.fruits.append(fruit_name)
+						class_sizes[label_name] += 1
 
 				hypercube_counter += 1
 
 		self.dataset_size = len(self.hypercubes)
 
 		if verbose:
-			print("\nBands used:\t\t\t\t{}\nNumber of Bands:\t\t\t{}".format(BANDS, len(BANDS)))
-			print("Number of Hypercubes Files:\t\t{}".format(hypercube_counter))
-			print("Hypercube Dataset Size:\t\t\t{}".format(len(self.hypercubes)))
-			print("Hypercubes Shape:\t\t\t\t{}\nLabels Shape:\t\t\t{}".format(list(self.hypercubes[0].shape), list(self.labels[0].shape)))
+			print("\nBands used:".ljust(40), BANDS)
+			print("Number of Bands:".ljust(40), len(BANDS))
+			print("Number of Hypercubes Files:".ljust(40), hypercube_counter)
+			print("Hypercube Dataset Size:".ljust(40), len(self.hypercubes))
+			print("Labels Dataset Size:".ljust(40), len(self.labels))
+			print("Hypercubes Shape:".ljust(40), list(self.hypercubes[0].shape))
+			print("Width Range:".ljust(40), "{} - {}".format(min_w, max_w))
+			print("Height Range:".ljust(40), "{} - {}".format(min_h, max_h))
+			print("Class Label Sizes:".ljust(40), class_sizes)
 
 		assert len(self.hypercubes) == len(self.labels), "Number of hypercubes and labels do not match."
+
+	def divide_train_test(self, trainset_size=0.7):
+		indices = list(range(len(self.hypercubes)))
+		train_data, valid_data = random_split(indices, [int(trainset_size*len(indices)), len(indices) - int(len(indices)*trainset_size)])
+		self.train_indices, self.valid_indices = train_data.indices, valid_data.indices
+		print("Length of Training Set ({:<2}%):".ljust(40).format(round(trainset_size * 100)), len(train_data))
+		print("Length of Validation Set ({:<2}%):".ljust(40).format(round((1-trainset_size) * 100)), len(valid_data))
+		# train_labels = list(map(train_data.dataset.getLabels().__getitem__, train_data.indices))
+		# valid_labels = list(map(valid_data.dataset.getLabels().__getitem__, valid_data.indices))
+
+		return train_data, valid_data
 
 	def __len__(self):
 		return self.dataset_size
 
+	def getLabels(self):
+		return self.labels
+
 	def __getitem__(self, index):
 		hypercube = self.hypercubes[index]
+		if self.transforms is not None and index in self.train_indices:
+			hypercube = self.transforms(hypercube)
+		# hypercube = data_augmentation(hypercube, random.randint(0, self.augmentation_factor-1))
+		# hypercube = augmentation(hypercube)
 		label = self.labels[index]
+		fruit = self.fruits[index]
 
-		# visualize_data_item(rgb_image, hypercube, None, 12, "0")
+		# visualize_data_item(None, hypercube, None, 12, "0")
 
 		hypercube = np.transpose(hypercube, [2, 0, 1])
 		hypercube = torch.from_numpy(hypercube.copy()).float()
 
-		label = torch.from_numpy(label.copy()).long()
+		label = torch.tensor(label)
 
 		# print("Image Min: %f\tMax: %f\tHypercube Min: %f\tMax: %f" % (image.min(), image.max(), hypercube.min(), hypercube.max()))
 
-		return hypercube + EPS, label
+		return hypercube + EPS, label, fruit
+
+class FlipHorizontal(object):
+	def __init__(self, p=0.5):
+		self.p = p
+
+	def __call__(self, image):
+		if random.random() < self.p:
+			return image[:, ::-1, :].copy()
+		return image
+
+class FlipVertical(object):
+	def __init__(self, p=0.5):
+		self.p = p
+
+	def __call__(self, image):
+		if random.random() < self.p:
+			return image[::-1, :, :].copy()
+		return image
+
+class Rotate(object):
+	def __init__(self, p=0.5):
+		self.p = p
+
+	def __call__(self, image):
+		if random.random() < self.p:
+			for _ in range(random.randint(0, 3)):
+				return np.rot90(image.copy(), axes=(0, 1))
+		return image
