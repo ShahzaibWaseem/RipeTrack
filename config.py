@@ -4,7 +4,7 @@ from collections import OrderedDict
 
 var_name = "hcube"					# key for the dictionary which are saved in the files
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-EPS = 0.00001
+EPS = torch.tensor(0.00001).float()
 
 SHELF_LIFE_GROUND_TRUTH_FILENAME = "ShelfLifeGroundTruth.csv"
 MOBILE_DATASET_CROPS_FILENAME = "mobileShelfLifeCrops.csv"
