@@ -23,7 +23,7 @@ from config import TEST_DATASETS, BANDS, BAND_SPACING, MODEL_PATH, LOGS_PATH, MO
 import matplotlib.pyplot as plt
 
 class AverageMeter(object):
-	"""Computes and stores the average and current value."""
+	""" Computes and stores the average and current value. """
 	def __init__(self):
 		self.reset()
 
@@ -49,8 +49,7 @@ def get_activation(name):
 	return hook
 
 def poly_lr_scheduler(optimizer, init_lr, iteraion, lr_decay_iter=1, max_iter=100, power=0.9):
-	"""
-	Polynomial decay of learning rate
+	""" Polynomial decay of learning rate
 		init_lr:		base learning rate
 		iter:			current iteration
 		lr_decay_iter:	how frequently decay occurs, default is 1
@@ -68,7 +67,7 @@ def poly_lr_scheduler(optimizer, init_lr, iteraion, lr_decay_iter=1, max_iter=10
 	return lr
 
 def read_image(rgb_filename, nir_filename, normalize=False):
-	""" Reads the two images and stack them together while maintaining the order BGR-NIR """
+	""" Reads the two images and stack them together while maintaining the order BGR-NIR. """
 	rgb = imread(rgb_filename)
 	rgb[:,:, [0, 2]] = rgb[:,:, [2, 0]]	# flipping red and blue channels (shape used for training)
 
@@ -99,7 +98,7 @@ def scale_image(image, range=(0, 1)):
 
 def visualize_data_item(image, hypercube, secondary_rgb_image=None, band=12, classlabel=""):
 	fig, ax = plt.subplots(1, 3, figsize=(10, 5)) if (secondary_rgb_image is not None and image is not None) else plt.subplots(1, 2, figsize=(10, 5))
-	# fig.suptitle("Class: %s" % TEST_DATASETS[classlabel])
+	fig.suptitle("Class: %s" % TEST_DATASETS[classlabel])
 
 	ax[0].imshow(hypercube[:, :, band])
 	ax[0].set_xlabel(hypercube.shape)
@@ -130,7 +129,8 @@ def visualize_gt_pred_hs_data(gt_hypercube, pred_hypercube, band):
 
 def get_normalization_parameters(dataloader):
 	""" Give Dataloader and recieve the mean and std of the dataset.
-		Note: Make sure that the dataloader is Tensordataset and its not already normalized. """
+		Note: Make sure that the dataloader is Tensordataset and its not already normalized.
+		Depreciated: Will be removed in the future. """
 	image_channels_sum, image_channels_squared_sum = 0, 0
 	hypercube_channels_sum, hypercube_channels_squared_sum, num_batches = 0, 0, 0
 
@@ -155,13 +155,13 @@ def get_normalization_parameters(dataloader):
 
 def data_augmentation(image, aug_mode=0):
 	if aug_mode == 0:
-		return image								# original image
+		return image										# original image
 	elif aug_mode == 1:
-		return np.flipud(image.copy())				# flip up and down
+		return np.flipud(image.copy())						# flip up and down
 	elif aug_mode == 2:
-		return np.rot90(image.copy())				# rotate counterwise 90 degree
+		return np.rot90(image.copy())						# rotate counterwise 90 degree
 	elif aug_mode == 3:
-		return np.flipud(np.rot90(image.copy()))	# rotate 90 degree and flip up and down
+		return np.flipud(np.rot90(image.copy()))			# rotate 90 degree and flip up and down
 	elif aug_mode == 4:
 		return np.rot90(image.copy(), k=2)					# rotate 180 degree
 	elif aug_mode == 5:
@@ -185,7 +185,7 @@ def augmentation(image):
 	return image
 
 def initialize_logger(filename):
-	"""Print the results in the log file."""
+	""" Initializes the logger file which logs results of all models (Reconstruction and Classification). """
 	logger = logging.getLogger()
 	fhandler = logging.FileHandler(filename=os.path.join(LOGS_PATH, filename), mode="a")
 	formatter = logging.Formatter("%(asctime)s - %(message)s", "%Y-%m-%d %H:%M:%S")
@@ -195,7 +195,7 @@ def initialize_logger(filename):
 	return logger
 
 def save_checkpoint(epoch, iteration, model, optimizer, val_loss, val_acc, bands=BANDS, task="reconstruction"):
-	"""Save the checkpoint."""
+	""" Save the model checkpoint with other variables as well. """
 	state = {"epoch": epoch,
 			 "iter": iteration,
 			 "state_dict": model.state_dict(),
@@ -207,7 +207,7 @@ def save_checkpoint(epoch, iteration, model, optimizer, val_loss, val_acc, bands
 	torch.save(state, os.path.join(MODEL_PATH, task, "MSLP_%s_%s.pkl" % (checkpoint_fileprestring if task=="reconstruction" else classification_checkpoint_fileprestring, str(epoch).zfill(3))))
 
 def get_best_checkpoint(task="reconstruction"):
-	"""Get the model with best validation loss and validation accuracy."""
+	""" Get the model with best validation loss and validation accuracy. """
 	global MODEL_PATH
 	best_val_loss, best_val_acc = 100, 0
 	best_checkpoint_file = None
@@ -229,10 +229,12 @@ def get_best_checkpoint(task="reconstruction"):
 		  (task, best_checkpoint_file, best_val_loss, best_val_acc), end="\n\n")
 
 	loaded_model = torch.load(os.path.join(MODEL_PATH, task, best_checkpoint_file), map_location=device)
-	# assert loaded_model["bands"] != BANDS, "The bands of the loaded model and the current bands are not the same. Please check the bands in the config file."	
+	assert loaded_model["bands"] != BANDS, "The bands of the loaded model and the current bands are not the same. Please check the bands in the config file."	
 	return best_checkpoint_file, loaded_model["epoch"], loaded_model["iter"], loaded_model["state_dict"], loaded_model["optimizer"], loaded_model["val_loss"], loaded_model["val_acc"]
 
 def optimizer_to(optim, device):
+	""" Move the optimizer state to CPU or GPU.
+		Useful when running a pretrained model with a pretrained optimizer. """
 	for param in optim.state.values():
 		# Not sure there are any global tensors in the state dict
 		if isinstance(param, torch.Tensor):
@@ -256,13 +258,13 @@ class NumpyEncoder(json.JSONEncoder):
 		return json.JSONEncoder.default(self, obj)
 
 def record_loss(loss_csv, epoch, iteration, epoch_time, lr, train_loss, test_loss):
-	""" Record many results."""
+	""" Record loss values in a file. """
 	loss_csv.write("{}, {}, {}, {}, {}, {}\n".format(epoch, iteration, epoch_time, lr, train_loss, test_loss))
 	loss_csv.flush()
 	loss_csv.close
 
 def get_reconstruction(input, num_split, dimension, model):
-	"""As the limited GPU memory split the input."""
+	""" As the limited GPU memory split the input. """
 	input_split = torch.split(input, int(input.shape[3]/num_split), dim=dimension)
 	output_split = []
 	for i in range(num_split):
@@ -277,7 +279,7 @@ def get_reconstruction(input, num_split, dimension, model):
 	return output
 
 def reconstruction(rgb, model, normalize=False):
-	"""Output the final reconstructed hyperspectral images."""
+	""" Output the final reconstructed hyperspectral images. """
 	img_res = get_reconstruction(rgb.float(), 1, 3, model)
 	img_res = img_res.cpu().numpy()
 	img_res = np.transpose(np.squeeze(img_res))
