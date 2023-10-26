@@ -8,7 +8,7 @@ from skl2onnx.common.data_types import FloatTensorType
 from torch.utils.mobile_optimizer import optimize_for_mobile
 
 from utils import get_best_checkpoint
-from models.MST_Plus_Plus import MST_Plus_Plus
+from models.MST import MST_Plus_Plus
 from config import MODEL_PATH, BANDS, MOBILE_MODELS_DIR_NAME
 
 def makeMobileModel(torch_mobile_model_filename="mobile_mst_68.pt"):
