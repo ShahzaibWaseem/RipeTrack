@@ -10,3 +10,5 @@ images/
 tfmodel/
 dataPreparation/HSI_Annotations/
 dataPreparation/anomalies.txt
+*.ipynb
+models/ViT.py
