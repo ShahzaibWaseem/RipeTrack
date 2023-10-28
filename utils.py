@@ -18,7 +18,7 @@ from torch.utils.mobile_optimizer import optimize_for_mobile
 
 from models.model import Network
 from models.resblock import ResNeXtBottleneck
-from config import TEST_DATASETS, BANDS, BAND_SPACING, MODEL_PATH, LOGS_PATH, MODEL_PATH, NORMALIZATION_FACTOR, NUMBER_OF_BANDS, checkpoint_fileprestring, classification_checkpoint_fileprestring, checkpoint_file, mobile_model_file, var_name, onnx_file_name, tf_model_dir, tflite_filename, device, create_directory
+from config import LABELS_DICT, BANDS, BAND_SPACING, MODEL_PATH, LOGS_PATH, MODEL_PATH, NORMALIZATION_FACTOR, NUMBER_OF_BANDS, checkpoint_fileprestring, classification_checkpoint_fileprestring, checkpoint_file, mobile_model_file, var_name, onnx_file_name, tf_model_dir, tflite_filename, device, create_directory
 
 import matplotlib.pyplot as plt
 
@@ -96,9 +96,9 @@ def scale_image(image, range=(0, 1)):
 	image.mul_(range[1] - range[0]).add_(range[0])
 	return image
 
-def visualize_data_item(image, hypercube, secondary_rgb_image=None, band=12, classlabel=""):
+def visualize_data_item(image, hypercube, secondary_rgb_image=None, band=12, classlabel=0):
 	fig, ax = plt.subplots(1, 3, figsize=(10, 5)) if (secondary_rgb_image is not None and image is not None) else plt.subplots(1, 2, figsize=(10, 5))
-	fig.suptitle("Class: %s" % TEST_DATASETS[classlabel])
+	fig.suptitle("Class: %s" % list(LABELS_DICT.keys())[classlabel])
 
 	ax[0].imshow(hypercube[:, :, band])
 	ax[0].set_xlabel(hypercube.shape)
@@ -115,6 +115,7 @@ def visualize_data_item(image, hypercube, secondary_rgb_image=None, band=12, cla
 		ax[2].set_title("Secondary RGB - 0:3 (RGB)")
 
 	plt.show()
+	# plt.savefig(os.path.join(LOGS_PATH, "visualize_data_item.png"))
 
 def visualize_gt_pred_hs_data(gt_hypercube, pred_hypercube, band):
 	fig, ax = plt.subplots(1, 2, figsize=(10, 5))
@@ -229,7 +230,7 @@ def get_best_checkpoint(task="reconstruction"):
 		  (task, best_checkpoint_file, best_val_loss, best_val_acc), end="\n\n")
 
 	loaded_model = torch.load(os.path.join(MODEL_PATH, task, best_checkpoint_file), map_location=device)
-	assert loaded_model["bands"] != BANDS, "The bands of the loaded model and the current bands are not the same. Please check the bands in the config file."	
+	# assert loaded_model["bands"] != BANDS, "The bands of the loaded model and the current bands are not the same. Please check the bands in the config file."	
 	return best_checkpoint_file, loaded_model["epoch"], loaded_model["iter"], loaded_model["state_dict"], loaded_model["optimizer"], loaded_model["val_loss"], loaded_model["val_acc"]
 
 def optimizer_to(optim, device):
@@ -238,15 +239,15 @@ def optimizer_to(optim, device):
 	for param in optim.state.values():
 		# Not sure there are any global tensors in the state dict
 		if isinstance(param, torch.Tensor):
-			param.data = param.data.to(device)
+			param.data = param.data.to(device, non_blocking=True)
 			if param._grad is not None:
-				param._grad.data = param._grad.data.to(device)
+				param._grad.data = param._grad.data.to(device, non_blocking=True)
 		elif isinstance(param, dict):
 			for subparam in param.values():
 				if isinstance(subparam, torch.Tensor):
-					subparam.data = subparam.data.to(device)
+					subparam.data = subparam.data.to(device, non_blocking=True)
 					if subparam._grad is not None:
-						subparam._grad.data = subparam._grad.data.to(device)
+						subparam._grad.data = subparam._grad.data.to(device, non_blocking=True)
 
 def save_mat(mat_filename, hypercube):
 	hdf5storage.savemat(mat_filename, {var_name: hypercube}, format="7.3", store_python_metadata=True)
@@ -361,16 +362,16 @@ def ONNXtotf():
 	tf_model = onnx_tf.backend.prepare(model)
 	tf_model.export_graph(tf_model_dir)
 
-def tf_to_tflite():
-	import tensorflow as tf
+# def tf_to_tflite():
+# 	import tensorflow as tf
 
-	converter = tf.lite.TFLiteConverter.from_saved_model(tf_model_dir)		# path to the SavedModel directory
-	converter.target_spec.supported_ops = [
-		tf.lite.OpsSet.TFLITE_BUILTINS,		# enable TFLite ops
-		tf.lite.OpsSet.SELECT_TF_OPS		# enable TF ops
-	]
-	tflite_model = converter.convert()
+# 	converter = tf.lite.TFLiteConverter.from_saved_model(tf_model_dir)		# path to the SavedModel directory
+# 	converter.target_spec.supported_ops = [
+# 		tf.lite.OpsSet.TFLITE_BUILTINS,		# enable TFLite ops
+# 		tf.lite.OpsSet.SELECT_TF_OPS		# enable TF ops
+# 	]
+# 	tflite_model = converter.convert()
 
-	# Save the model
-	with open(os.path.join(LOGS_PATH, tflite_filename), "wb") as f:
-		f.write(tflite_model)
+# 	# Save the model
+# 	with open(os.path.join(LOGS_PATH, tflite_filename), "wb") as f:
+# 		f.write(tflite_model)
