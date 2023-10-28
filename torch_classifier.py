@@ -83,8 +83,11 @@ def main():
 			best_val_acc = val_acc
 			best_val_loss = val_loss
 			best_epoch = epoch
+			best_model = model
+			best_optimizer = optimizer
+			iteration_passed = iteration
 		if epoch % 10 == 0:
-			save_checkpoint(best_epoch, iteration, model, optimizer, best_val_loss, best_val_acc, bands=BANDS, task="classification")
+			save_checkpoint(best_epoch, iteration_passed, best_model, best_optimizer, best_val_loss, best_val_acc, bands=BANDS, task="classification")
 		if epoch % 100 == 0:
 			test_loss, test_acc = test(valid_data_loader, model, criterion)
 		# scheduler.step(val_loss)
