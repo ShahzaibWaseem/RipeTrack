@@ -1,4 +1,5 @@
 import os
+import time
 import random
 import numpy as np
 import pandas as pd
@@ -13,7 +14,7 @@ from torchsampler import ImbalancedDatasetSampler
 from torch.utils.data import Dataset, DataLoader, random_split, WeightedRandomSampler, Subset
 
 from utils import load_mat, read_image, data_augmentation, augmentation, get_normalization_parameters, visualize_data_item
-from config import APPEND_SECONDARY_RGB_CAM_INPUT, GT_SECONDARY_RGB_CAM_DIR_NAME, BAND_SPACING, RGBN_BANDS, BANDS, TEST_DATASETS, GT_RGBN_DIR_NAME, TRAIN_DATASET_DIR, TRAIN_DATASET_FILES, VALID_DATASET_FILES, TEST_ROOT_DATASET_DIR, APPLICATION_NAME, PATCH_SIZE, RECONSTRUCTED_HS_DIR_NAME, EPS, DATA_PREP_PATH, MOBILE_DATASET_CROPS_FILENAME, SHELF_LIFE_GROUND_TRUTH_FILENAME, LABELS_DICT, batch_size, device
+from config import APPEND_SECONDARY_RGB_CAM_INPUT, GT_SECONDARY_RGB_CAM_DIR_NAME, BAND_SPACING, RGBN_BANDS, BANDS, BANDS_WAVELENGTHS, TEST_DATASETS, GT_RGBN_DIR_NAME, TRAIN_DATASET_DIR, TRAIN_DATASET_FILES, VALID_DATASET_FILES, TEST_ROOT_DATASET_DIR, APPLICATION_NAME, IMAGE_SIZE, PATCH_SIZE, RECONSTRUCTED_HS_DIR_NAME, EPS, DATA_PREP_PATH, MOBILE_DATASET_CROPS_FILENAME, SHELF_LIFE_GROUND_TRUTH_FILENAME, LABELS_DICT, batch_size, device
 
 def get_dataloaders(input_transform, label_transform, task, load_from_h5=False, trainset_size=0.7):
 	if load_from_h5:
@@ -383,86 +384,122 @@ def get_dataloaders_reconstruction(trainset_size=0.7):
 	)
 	train_data, valid_data = random_split(dataset, [int(trainset_size*len(dataset)), len(dataset) - int(len(dataset)*trainset_size)])
 
-	print("Length of Training Set ({}%):\t\t{}".format(round(trainset_size * 100), len(train_data)))
-	print("Length of Validation Set ({}%):\t\t{}".format(round((1-trainset_size) * 100), len(valid_data)))
+	print("Length of Training Set ({}%):\t\t{}".ljust(40).format(round(trainset_size * 100), len(train_data)))
+	print("Length of Validation Set ({}%):\t\t{}".ljust(40).format(round((1-trainset_size) * 100), len(valid_data)))
 
 	train_data_loader = DataLoader(dataset=train_data,
 								   num_workers=4,
 								   batch_size=batch_size,
 								   shuffle=True,
-								   pin_memory=False)
+								   persistent_workers=True,
+								   pin_memory=True)
 
 	valid_data_loader = DataLoader(dataset=valid_data,
 								   num_workers=4,
-								   batch_size=4,
+								   batch_size=16,
 								   shuffle=False,
-								   pin_memory=False)
+								   persistent_workers=True,
+								   pin_memory=True)
 
 	return train_data_loader, valid_data_loader
 
 class DatasetFromDirectoryReconstruction(Dataset):
-	rgb_images, nir_images, secondary_rgb_images, hypercubes, patch_indices = [], [], [], [], {}
+	rgb_images, nir_images, secondary_rgb_images, hypercubes, patch_indices = np.array([]), np.array([]), np.array([]), np.array([]), {}
+
+	def pre_calculate_number_of_datapoints(self, root_path, test_datasets, patch_size=64):
+		datapoints = 0
+		if patch_size <= 0 or patch_size > IMAGE_SIZE:
+			patch_size = IMAGE_SIZE
+		for dataset in test_datasets:
+			hs_path = glob(os.path.join(root_path, "{}_204ch".format(dataset), "*.mat"))
+			hs_cube = load_mat(hs_path[0])
+			image_width, image_height = hs_cube.shape[0], hs_cube.shape[1]
+			datapoints += len(hs_path) * ((image_width // patch_size) * (image_height // patch_size))
+		return datapoints
+
 	def __init__(self, root, application_name=APPLICATION_NAME, patch_size=64, append_secondary_input=False, verbose=False):
 		self.patch_size = patch_size
 		self.append_secondary_input = append_secondary_input
 
-		image_width, image_height = 512, 512
-		rgbn_counter, hypercube_counter, patch_index = 0, 0, 0
-
+		image_width, image_height = IMAGE_SIZE, IMAGE_SIZE
+		rgbn_counter, hypercube_counter, patch_index, data_idx = 0, 0, 0, 0
+		# datapoints = self.pre_calculate_number_of_datapoints(os.path.join(root, application_name), TEST_DATASETS, patch_size)		# Datapoints: 51584
+		# self.rgb_images = np.empty(shape=(datapoints, 3, patch_size, patch_size))
+		# self.nir_images = np.empty(shape=(datapoints, 1, patch_size, patch_size))
+		# self.secondary_rgb_images = np.empty(shape=(datapoints, 3, patch_size, patch_size))
+		# self.hypercubes = np.empty(shape=(datapoints, len(BANDS), patch_size, patch_size))
 		print("Reading Images from:") if verbose else None
 
 		for dataset in TEST_DATASETS:
 			directory = os.path.join(root, application_name, "{}_204ch".format(dataset))
-			print(" " * 19, "{0:62}".format(directory), "{} and {}".format(GT_RGBN_DIR_NAME, GT_SECONDARY_RGB_CAM_DIR_NAME) if append_secondary_input else GT_RGBN_DIR_NAME) if verbose else None
+			print(" " * 19, "{0:62}".format(directory), "{} and {}".format(GT_RGBN_DIR_NAME, GT_SECONDARY_RGB_CAM_DIR_NAME) if append_secondary_input else GT_RGBN_DIR_NAME, end="\t") if verbose else None
+			dataset_load_time = time.time()
 			for filename in glob(os.path.join(directory, "*.mat")):
 				hypercube = load_mat(filename)
 				hypercube = hypercube[:, :, BANDS]
 				hypercube = (hypercube - hypercube.min()) / (hypercube.max() - hypercube.min())
+				hypercube = np.transpose(hypercube, [2, 0, 1]) + EPS
+				hypercube = np.expand_dims(hypercube, axis=0)
 
 				rgb_image = imread(os.path.join(directory, GT_RGBN_DIR_NAME, os.path.split(filename)[-1].replace(".mat", "_RGB.png")))
-				nir_image = imread(os.path.join(directory, GT_RGBN_DIR_NAME, os.path.split(filename)[-1].replace(".mat", "_NIR.png")))
-				secondary_rgb_image = imread(os.path.join(directory, GT_SECONDARY_RGB_CAM_DIR_NAME, os.path.split(filename)[-1].replace(".mat", "_RGB.png")))
-
 				rgb_image = (rgb_image - rgb_image.min()) / (rgb_image.max() - rgb_image.min())
+				rgb_image = np.transpose(rgb_image, [2, 0, 1])
+				rgb_image = np.expand_dims(rgb_image, axis=0)
+
+				nir_image = imread(os.path.join(directory, GT_RGBN_DIR_NAME, os.path.split(filename)[-1].replace(".mat", "_NIR.png")))
 				nir_image = (nir_image - nir_image.min()) / (nir_image.max() - nir_image.min())
-				secondary_rgb_image = (secondary_rgb_image - secondary_rgb_image.min()) / (secondary_rgb_image.max() - secondary_rgb_image.min())
+				nir_image = np.expand_dims(np.asarray(nir_image), 2)
+				nir_image = np.transpose(nir_image, [2, 0, 1])
+				nir_image = np.expand_dims(nir_image, axis=0)
 
-				self.rgb_images.append(rgb_image)
-				self.nir_images.append(nir_image)
-				self.secondary_rgb_images.append(secondary_rgb_image)
-				self.hypercubes.append(hypercube)
+				if append_secondary_input:
+					secondary_rgb_image = imread(os.path.join(directory, GT_SECONDARY_RGB_CAM_DIR_NAME, os.path.split(filename)[-1].replace(".mat", "_RGB.png")))
+					secondary_rgb_image = (secondary_rgb_image - secondary_rgb_image.min()) / (secondary_rgb_image.max() - secondary_rgb_image.min())
+					secondary_rgb_image = np.transpose(secondary_rgb_image, [2, 0, 1])
+					secondary_rgb_image = np.expand_dims(secondary_rgb_image, axis=0)
 
-				image_width, image_height = rgb_image.shape[0:2]
+				image_width, image_height = rgb_image.shape[1:3]
 
 				for patch_i in range(0, image_width, self.patch_size):
 					for patch_j in range(0, image_height, self.patch_size):
-						self.patch_indices[patch_index] = (rgbn_counter, patch_i, patch_j)
-						patch_index += 1
+						if self.rgb_images.shape[0] == 0:
+							self.rgb_images = rgb_image[:, :, patch_i:patch_i+self.patch_size, patch_j:patch_j+self.patch_size]
+							self.nir_images = nir_image[:, :, patch_i:patch_i+self.patch_size, patch_j:patch_j+self.patch_size]
+							self.hypercubes = hypercube[:, :, patch_i:patch_i+self.patch_size, patch_j:patch_j+self.patch_size]
+							self.secondary_rgb_images = secondary_rgb_image[:, :, patch_i:patch_i+self.patch_size, patch_j:patch_j+self.patch_size] if self.append_secondary_input else None
+						
+						self.rgb_images = np.append(self.rgb_images, rgb_image[:, :, patch_i:patch_i+self.patch_size, patch_j:patch_j+self.patch_size], axis=0)
+						self.nir_images = np.append(self.nir_images, nir_image[:, :, patch_i:patch_i+self.patch_size, patch_j:patch_j+self.patch_size], axis=0)
+						self.hypercubes = np.append(self.hypercubes, hypercube[:, :, patch_i:patch_i+self.patch_size, patch_j:patch_j+self.patch_size], axis=0)
+						self.secondary_rgb_images = np.append(self.secondary_rgb_images, secondary_rgb_image[:, :, patch_i:patch_i+self.patch_size, patch_j:patch_j+self.patch_size], axis=0) if self.append_secondary_input else None
 
+						# self.rgb_images[data_idx, :, :, :] = rgb_image[:, :, patch_i:patch_i+self.patch_size, patch_j:patch_j+self.patch_size]
+						# self.nir_images[data_idx, :, :, :] = nir_image[:, :, patch_i:patch_i+self.patch_size, patch_j:patch_j+self.patch_size]
+						# self.hypercubes[data_idx, :, :, :] = hypercube[:, :, patch_i:patch_i+self.patch_size, patch_j:patch_j+self.patch_size]
+						# self.secondary_rgb_images[data_idx, :, :, :] = secondary_rgb_image[:, :, patch_i:patch_i+self.patch_size, patch_j:patch_j+self.patch_size] if self.append_secondary_input else None
+						# data_idx += 1
 				rgbn_counter += 1
 				hypercube_counter += 1
+			print("{:>4} s".format(round(time.time()-dataset_load_time)))
 
 		self.dataset_size = len(self.rgb_images)
 
-		self.patch_size = image_width if (self.patch_size <= 0 or self.patch_size > image_width) else self.patch_size
-		self.dataset_size *= (image_width // self.patch_size)
-
-		self.patch_size = image_height if (self.patch_size <= 0 or self.patch_size > image_height) else self.patch_size
-		self.dataset_size *= (image_height // self.patch_size)
-
 		if verbose:
 			print("Bands used:".ljust(40), BANDS)
+			print("Actual Bands:".ljust(40), BANDS_WAVELENGTHS)
 			print("Number of Bands:".ljust(40), len(BANDS))
 			print("Number of RGBN Files:".ljust(40), rgbn_counter)
 			print("Number of Hypercubes Files:".ljust(40), hypercube_counter)
+			# print("Precalculated Number of datapoints:".ljust(40), datapoints) if verbose else None
 			print("RGB Image Dataset Size:".ljust(40), len(self.rgb_images))
 			print("Hypercube Dataset Size:".ljust(40), len(self.hypercubes))
 			print("Appended Secondary Input:".ljust(40), ("yes" if append_secondary_input else "no"))
-			print("Images Shape:".ljust(40), list(self.rgb_images[0].shape))
+			print("RGB Image Shape:".ljust(40), list(self.rgb_images[0].shape))
+			print("NIR Image Shape:".ljust(40), list(self.nir_images[0].shape))
 			print("Hypercubes Shape:".ljust(40), list(self.hypercubes[0].shape))
 			if self.patch_size != image_height and self.patch_size != image_width and self.patch_size > 0:
 				print("Patch Size:".ljust(40), self.patch_size)
-				print("Number of Patches ({:<3}/{:<2} * {:<3}):".ljust(40).format(self.patch_size, min(image_width, image_height), self.patch_size, rgbn_counter), self.dataset_size)
+				print("Number of Patches ({:<2}/{:<3} * {:<2}):\t".ljust(40).format(self.patch_size, min(image_width, image_height), self.patch_size, rgbn_counter), self.dataset_size)
 
 		assert len(self.rgb_images) == len(self.nir_images) == len(self.secondary_rgb_images) == len(self.hypercubes), "Number of images and hypercubes do not match."
 
@@ -470,29 +507,23 @@ class DatasetFromDirectoryReconstruction(Dataset):
 		return self.dataset_size
 
 	def __getitem__(self, index):
-		data_idx, patch_i, patch_j = self.patch_indices[index]
-		rgb_image = self.rgb_images[data_idx][patch_i:patch_i+self.patch_size, patch_j:patch_j+self.patch_size, :]
-		nir_image = np.expand_dims(np.asarray(self.nir_images[data_idx]), 2)[patch_i:patch_i+self.patch_size, patch_j:patch_j+self.patch_size, :]
-		secondary_rgb_image = self.secondary_rgb_images[data_idx][patch_i:patch_i+self.patch_size, patch_j:patch_j+self.patch_size, :]
-		hypercube = self.hypercubes[data_idx][patch_i:patch_i+self.patch_size, patch_j:patch_j+self.patch_size, :]
-
-		# visualize_data_item(rgb_image, hypercube, secondary_rgb_image, 12, "0")
-
-		rgb_image = np.transpose(rgb_image, [2, 0, 1])
-		nir_image = np.transpose(nir_image, [2, 0, 1])
-		secondary_rgb_image = np.transpose(secondary_rgb_image, [2, 0, 1])
-		hypercube = np.transpose(hypercube, [2, 0, 1])
+		rgb_image = self.rgb_images[index]
+		nir_image = self.nir_images[index]
+		hypercube = self.hypercubes[index]
+		secondary_rgb_image = self.secondary_rgb_images[index] if self.append_secondary_input else None
 
 		use_secondary = bool(random.getrandbits(1)) if self.append_secondary_input else False
-
 		image = np.concatenate((secondary_rgb_image, nir_image), axis=0) if use_secondary else np.concatenate((rgb_image, nir_image), axis=0)
 
-		image = torch.from_numpy(image.copy()).float()
-		hypercube = torch.from_numpy(hypercube.copy()).float()
+		image = torch.Tensor(image).float()
+		hypercube = torch.Tensor(hypercube).float()
 
+		# visualize_data_item(np.transpose(rgb_image.numpy(), [1, 2, 0]), np.transpose(hypercube.numpy(), [1, 2, 0]), np.transpose(secondary_rgb_image.numpy(), [1, 2, 0]), 12, 0)
+		# print(rgb_image.shape, nir_image.shape, secondary_rgb_image.shape if self.append_secondary_input else None, hypercube.shape)
 		# print("Image Min: %f\tMax: %f\tHypercube Min: %f\tMax: %f" % (image.min(), image.max(), hypercube.min(), hypercube.max()))
 
-		return image, hypercube + EPS
+		return image, hypercube
+
 from collections import OrderedDict
 
 class_sizes = OrderedDict([(label, 0) for label in LABELS_DICT.keys()])
@@ -597,7 +628,8 @@ class DatasetFromDirectoryClassification(Dataset):
 		self.dataset_size = len(self.hypercubes)
 
 		if verbose:
-			print("\nBands used:".ljust(40), BANDS)
+			print("Bands used:".ljust(40), BANDS)
+			print("Actual Bands:".ljust(40), BANDS_WAVELENGTHS)
 			print("Number of Bands:".ljust(40), len(BANDS))
 			print("Number of Hypercubes Files:".ljust(40), hypercube_counter)
 			print("Hypercube Dataset Size:".ljust(40), len(self.hypercubes))
@@ -644,7 +676,7 @@ class DatasetFromDirectoryClassification(Dataset):
 
 		# print("Image Min: %f\tMax: %f\tHypercube Min: %f\tMax: %f" % (image.min(), image.max(), hypercube.min(), hypercube.max()))
 
-		return hypercube + EPS, label, fruit
+		return torch.add(hypercube, EPS), label, fruit
 
 class FlipHorizontal(object):
 	def __init__(self, p=0.5):

@@ -60,7 +60,6 @@ def main():
 
 	# Log files
 	logger = initialize_logger(filename="train.log")
-	loss_csv = open(os.path.join(LOGS_PATH, "loss.csv"), "w+")
 
 	log_string = "Epoch [%3d], Iter[%6d], Time: %.9f, Learning Rate: %.9f, Train Loss: %.9f (%.9f, %.9f, %.9f), Validation Loss: %.9f (%.9f, %.9f, %.9f)"
 
@@ -75,7 +74,7 @@ def main():
 		optimizer.load_state_dict(opt_state)
 		start_epoch = epoch
 
-	model.to(device)
+	model.to(device, non_blocking=True)
 	optimizer_to(optimizer, device)
 
 	print("\n" + model_run_title)
@@ -89,11 +88,15 @@ def main():
 
 		train_loss_mrae, train_loss_sam, train_loss_sid = train_losses_ind
 		val_loss_mrae, val_loss_sam, val_loss_sid = val_losses_ind
-		if (best_val_loss) < (val_loss):
-			best_val_loss = val_loss
-			best_epoch = epoch
-		if epoch % 10 == 0:
-			save_checkpoint(best_epoch, iteration, model, optimizer, best_val_loss, 0, bands=BANDS, task="reconstruction")
+		# if best_val_loss < val_loss:
+		# 	best_val_loss = val_loss
+		# 	best_epoch = epoch
+		# 	best_model = model
+		# 	best_optimizer = optimizer
+		# 	iteration_passed = iteration
+		# if epoch % 10 == 0:
+		save_checkpoint(epoch, iteration, model, optimizer, val_loss, 0, bands=BANDS, task="reconstruction")
+
 		epoch_time = time.time() - start_time
 
 		# Printing and saving losses
@@ -115,8 +118,7 @@ def train(train_data_loader, model, criterions, optimizer, iteration, init_lr, m
 
 	for images, labels in tqdm(train_data_loader, desc="Train", total=len(train_data_loader)):
 		# print(torch.min(images), torch.max(images), torch.min(labels), torch.max(labels))
-		images, labels = Variable(images.to(device, non_blocking=True)), Variable(labels.to(device, non_blocking=True))
-
+		images, labels = images.to(device, non_blocking=True), labels.to(device, non_blocking=True)
 		lr = poly_lr_scheduler(optimizer, init_lr, iteration, max_iter=max_iter, power=0.9)
 		iteration = iteration + 1
 
@@ -149,27 +151,23 @@ def validate(valid_data_loader, model, criterions):
 	criterion_mrae, criterion_sam, criterion_sid = criterions
 	losses_mrae, losses_sam, losses_sid = AverageMeter(), AverageMeter(), AverageMeter()
 
-	for images, labels in tqdm(valid_data_loader, desc="Valid", total=len(valid_data_loader)):
-		images = images.cuda()
-		labels = labels.cuda()
+	with torch.no_grad():
+		for images, labels in tqdm(valid_data_loader, desc="Valid", total=len(valid_data_loader)):
+			images, labels = images.to(device, non_blocking=True), labels.to(device, non_blocking=True)
 
-		with torch.no_grad():
-			images = torch.autograd.Variable(images)
-			labels = torch.autograd.Variable(labels)
+			# compute output
+			output = model(images)
 
-		# compute output
-		output = model(images)
+			loss_mrae = criterion_mrae(output, labels)
+			loss_sam = torch.mul(criterion_sam(output, labels), 0.1) if "SAM" in lossfunctions_considered else torch.tensor(0)
+			loss_sid = torch.mul(criterion_sid(output, labels), 0.0001) if "SID" in lossfunctions_considered else torch.tensor(0)
+			loss = loss_mrae + loss_sam + loss_sid
 
-		loss_mrae = criterion_mrae(output, labels)
-		loss_sam = torch.mul(criterion_sam(output, labels), 0.1) if "SAM" in lossfunctions_considered else torch.tensor(0)
-		loss_sid = torch.mul(criterion_sid(output, labels), 0.0001) if "SID" in lossfunctions_considered else torch.tensor(0)
-		loss = loss_mrae + loss_sam + loss_sid
-
-		#  record loss
-		losses.update(loss.item())
-		losses_mrae.update(loss_mrae.item())
-		losses_sam.update(loss_sam.item())
-		losses_sid.update(loss_sid.item())
+			#  record loss
+			losses.update(loss.item())
+			losses_mrae.update(loss_mrae.item())
+			losses_sam.update(loss_sam.item())
+			losses_sid.update(loss_sid.item())
 
 	return losses.avg, (losses_mrae.avg, losses_sam.avg, losses_sid.avg)
 
