@@ -98,10 +98,9 @@ class ModelWithAttention(nn.Module):
 		super().__init__()
 		self.ssattn = SSAttention(input_channels)
 		self.relu = nn.LeakyReLU(inplace=True)
-		self.bottleneck = nn.Linear(in_features=58212, out_features=256)
+		self.bottleneck = nn.Linear(in_features=150212, out_features=256)
 		self.dropout = nn.Dropout(p=0.25)
 		self.fc = nn.Linear(in_features=256, out_features=num_classes)
-	
 		self.apply(self._init_weights)
 
 	def _init_weights(self, module):
@@ -110,7 +109,7 @@ class ModelWithAttention(nn.Module):
 		elif isinstance(module, nn.BatchNorm2d):
 			module.bias.data.zero_()
 			module.weight.data.fill_(1.0)
-	
+
 	def forward(self, x):
 		x = self.ssattn(x)
 		x = x.view(x.size(0), -1)
