@@ -44,16 +44,17 @@ def plot_losses(model, filename):
 
 def get_data(train_data_loader, valid_data_loader):
 	X, y = [], []
-	stride = 5
+	stride = 10
 	for hypercubes, labels, _ in train_data_loader:
 		hypercubes = hypercubes.squeeze().numpy()
 		bands, height, width = hypercubes.shape
+		# print(bands, height, width, hypercubes.shape)
 		hypercubes_sig = hypercubes[:, 0:height:stride, 0:width:stride]
 		for i in range(0, hypercubes_sig.shape[1]):
 			for j in range(0, hypercubes_sig.shape[2]):
 				X.append(hypercubes_sig[:, i, j])
 				y.append(labels.ravel().numpy())
-	
+
 	for hypercubes, labels, _ in valid_data_loader:
 		hypercubes = hypercubes.squeeze().numpy()
 		bands, height, width = hypercubes.shape
