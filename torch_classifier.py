@@ -1,9 +1,11 @@
 import os
 import time
 import json
+import argparse
+from tqdm import tqdm
+
 import numpy as np
 import pandas as pd
-from tqdm import tqdm
 import seaborn as sns
 import matplotlib.pyplot as plt
 
@@ -20,6 +22,11 @@ from config import VISUALIZATION_DIR_NAME, MODEL_PATH, LOGS_PATH, BANDS, LABELS_
 
 init_lr = 0.0005
 y_pred, y_true = [], []
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--disable_tqdm", default=False, required=False, type=bool, help="Disable tqdm progress bar")
+args = parser.parse_args()
+disable_tqdm = args.disable_tqdm
 
 def get_label_weights(train_data_loader, val_data_loader):
 	class_labels = []
@@ -51,7 +58,7 @@ def main():
 
 	print("\n" + classicication_run_title)
 	logger.info(classicication_run_title)
-	trainset_size = 0.7
+	trainset_size = 0.85
 
 	# train_data_loader, valid_data_loader, test_data_loader = get_dataloaders(predef_input_transform, predef_label_transform, task="classification")
 	train_data_loader, valid_data_loader = get_dataloaders_classification(trainset_size)
@@ -132,7 +139,7 @@ def train(train_data_loader, model, criterion, iteration, optimizer):
 	losses = AverageMeter()
 	train_running_correct = 0
 
-	for hypercubes, labels, _ in tqdm(train_data_loader, desc="Train", total=len(train_data_loader)):
+	for hypercubes, labels, _ in tqdm(train_data_loader, desc="Train", total=len(train_data_loader), disable=disable_tqdm):
 		hypercubes = hypercubes.cuda()
 		labels = labels.cuda()
 
@@ -162,7 +169,7 @@ def validate(val_data_loader, model, criterion):
 	losses = AverageMeter()
 	correct_examples = 0
 
-	for hypercubes, labels, _ in tqdm(val_data_loader, desc="Valid", total=len(val_data_loader)):
+	for hypercubes, labels, _ in tqdm(val_data_loader, desc="Valid", total=len(val_data_loader), disable=disable_tqdm):
 		hypercubes = hypercubes.cuda()
 		labels = labels.cuda()
 
