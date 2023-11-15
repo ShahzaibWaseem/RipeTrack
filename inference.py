@@ -25,7 +25,6 @@ def calculate_metrics(img_pred, img_gt):
 
 def inference(model, checkpoint_filename, mobile_reconstruction=False):
 	# input_transform, label_transform = get_required_transforms(task="reconstruction")
-	eps = 1e-5
 	logger = initialize_logger(filename="test.log")
 	log_string = "[%15s] Time: %0.9f, MRAE: %0.9f, RRMSE: %0.9f, SAM: %0.9f, SID: %0.9f, PSNR: %0.9f, SSIM: %0.9f"
 	TEST_DATASET_DIR = os.path.join(TEST_ROOT_DATASET_DIR, APPLICATION_NAME)
@@ -69,7 +68,8 @@ def inference(model, checkpoint_filename, mobile_reconstruction=False):
 
 			image = torch.from_numpy(np.expand_dims(np.concatenate((rgb_image, nir_image), axis=0), axis=0)).float().to(device)
 
-			hypercube_pred = model(image)
+			with torch.no_grad():
+				hypercube_pred = model(image)
 			hypercube_pred = np.transpose(hypercube_pred.squeeze(0).cpu().detach().numpy(), [1, 2, 0])
 			# hypercube_pred = hypercube_pred + EPS			# should work without this line but just in case
 
@@ -95,7 +95,7 @@ def main():
 	model_param = checkpoint["state_dict"]
 	model = MST_Plus_Plus(in_channels=4, out_channels=len(BANDS), n_feat=len(BANDS), stage=3)
 	model.load_state_dict(model_param)
-	model = model.cuda()
+	model = model.to(device)
 	model.eval()
 	print(summary(model=model, input_data=(4, 512, 512)))
 	inference(model, checkpoint_filename, mobile_reconstruction=True)
