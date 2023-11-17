@@ -1,6 +1,7 @@
 import os, sys
 sys.path.append(os.path.join(".."))
 
+import numpy as np
 from glob import glob
 from skimage import exposure
 
@@ -11,77 +12,68 @@ import matplotlib
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
-
-from config import BAND_SPACING, ILLUMINATIONS, MODEL_NAME, TEST_ROOT_DATASET_DIR, TEST_DATASETS, VIEW_BANDS, ACTUAL_BANDS, text_font_dict, title_font_dict, plt_dict, init_directories
+from config import BANDS, APPLICATION_NAME, RECONSTRUCTED_HS_DIR_NAME, MODEL_NAME, TEST_ROOT_DATASET_DIR, TEST_DATASETS, VIEW_BANDS, ACTUAL_BANDS, VISUALIZATION_DIR_NAME, text_font_dict, title_font_dict, plt_dict, create_directory
 
 def main():
-	for test_dataset in TEST_DATASETS:
-		for illumination in ILLUMINATIONS:
-			TEST_DATASET_DIR = os.path.join(TEST_ROOT_DATASET_DIR, "working_%s" % test_dataset, "%s_%s_204ch" % (test_dataset, illumination), "test")
+	for dataset in TEST_DATASETS:
+		directory = os.path.join(TEST_ROOT_DATASET_DIR, APPLICATION_NAME, "{}_204ch".format(dataset))
+		inf_directory = os.path.join(directory, RECONSTRUCTED_HS_DIR_NAME)
+		print(" " * 19, "{0:62}".format(directory), RECONSTRUCTED_HS_DIR_NAME)
+		create_directory(os.path.join(directory, VISUALIZATION_DIR_NAME))
+		for filename in glob(os.path.join(directory, "681.mat")):		# 477, 479, 504, 560, 644, 645, 670, williams: 513, 681, 682
+			inf_hypercube = load_mat(os.path.join(inf_directory, os.path.split(filename)[-1]))
+			inf_hypercube = (inf_hypercube - inf_hypercube.min()) / (inf_hypercube.max() - inf_hypercube.min())
+			gt_hypercube = load_mat(filename)
+			gt_hypercube = gt_hypercube[:,:,BANDS]
+			gt_hypercube = (gt_hypercube - gt_hypercube.min()) / (gt_hypercube.max() - gt_hypercube.min())
 
-			GT_PATH = os.path.join(TEST_DATASET_DIR, "mat")
-			PLOTS_PATH = os.path.join(TEST_DATASET_DIR, "images")
-			INF_PATH = os.path.join(TEST_DATASET_DIR, "inference")
-			cfl_file = load_mat(os.path.join(TEST_ROOT_DATASET_DIR, "working_%s" % test_dataset, "%s_nh_204ch" % test_dataset, "1924.mat"))
-			cfl_file = cfl_file[:,:, ::BAND_SPACING]
+			fig, axs = plt.subplots(nrows=3, ncols=len(VIEW_BANDS), figsize=(15, 11))
 
-			print("\nDataset: %s\nIllumination: %s\n" % (test_dataset, illumination))
+			for j in range(axs.shape[1]):
+				# Reconstructed Hypercube (gamma adjustment)
+				inf_band = inf_hypercube[:,:,VIEW_BANDS[j]].reshape(512, 512)
+				gt_band = gt_hypercube[:,:,VIEW_BANDS[j]].reshape(512, 512)
 
-			for filename in sorted(glob(os.path.join(INF_PATH, "resnext", "*1925_f.mat"))):
-				if(illumination == "cfl_led"):
-					gt_filename = "_".join(os.path.split(filename)[-1].split(".")[0].split("_")[1:3])
-				else:
-					gt_filename = os.path.split(filename)[-1].split(".")[0].split("_")[-1]
+				# Difference b/w the two hypercubes
+				diff_band = np.abs(gt_band - inf_band)
+				psnr = test_psnr(gt_band, inf_band)			# "PSNR=%.2f" % psnr	cmap="hot_r"
 
-				print(gt_filename + ".mat")
+				inf_band = exposure.adjust_gamma(inf_band, 0.25)
+				axs[0, j].imshow(inf_band, interpolation="nearest", cmap="gray")
+				axs[0, j].set_title(str(ACTUAL_BANDS[j]) + " nm", **title_font_dict)
+				axs[0, j].set_xticks([])
+				axs[0, j].set_yticks([])
 
-				inf_file = load_mat(filename)
-				gt_file = load_mat(os.path.join(GT_PATH, gt_filename + ".mat"))
-				gt_file = gt_file[:,:, ::BAND_SPACING]
+				# Ground Truth Hypercube (gamma adjustment)
+				gt_band = exposure.adjust_gamma(gt_band, 0.25)
+				axs[1, j].imshow(gt_band, interpolation="nearest", cmap="gray")
+				axs[1, j].set_xticks([])
+				axs[1, j].set_yticks([])
 
-				fig, axs = plt.subplots(nrows=3, ncols=len(VIEW_BANDS), figsize=(15, 11))
+				axs[2, j].imshow(diff_band, interpolation="nearest", cmap="hot_r")
+				axs[2, j].set_xticks([])
+				axs[2, j].set_yticks([])
+				axs[2, j].set_xlabel("PSNR=%.2f" % psnr, **text_font_dict)
 
-				for j in range(axs.shape[1]):
-					# Reconstructed Hypercube (gamma adjustment)
-					img = inf_file[:,:,VIEW_BANDS[j]].reshape(512, 512)
-					axs[0, j].imshow(exposure.adjust_gamma(img, 0.25), interpolation="nearest", cmap="gray")
-					axs[0, j].set_title(str(ACTUAL_BANDS[j]) + " nm", **title_font_dict)
-					axs[0, j].set_xticks([])
-					axs[0, j].set_yticks([])
+			# inserting colorbar showing the range of errors
+			norm = matplotlib.colors.Normalize(0, 1)
+			axin = inset_axes(axs[2, len(VIEW_BANDS) - 1], height="100%", width="7%", loc="right", borderpad=-1.5)
+			axin.tick_params(labelsize=18)
+			matplotlib.colorbar.ColorbarBase(axin, cmap=plt.get_cmap("hot_r"), norm=norm)
 
-					# Ground Truth Hypercube (gamma adjustment)
-					lab = gt_file[:,:,VIEW_BANDS[j]].reshape(512, 512)
-					axs[1, j].imshow(exposure.adjust_gamma(lab, 0.25), interpolation="nearest", cmap="gray")
-					axs[1, j].set_xticks([])
-					axs[1, j].set_yticks([])
+			# showing texts for axs
+			axs[0, len(VIEW_BANDS) - 1].yaxis.set_label_position("right")
+			axs[0, len(VIEW_BANDS) - 1].set_ylabel("MobiSLP", loc="center", rotation=-90, labelpad=30, **text_font_dict)
+			axs[1, len(VIEW_BANDS) - 1].yaxis.set_label_position("right")
+			axs[1, len(VIEW_BANDS) - 1].set_ylabel("Ground Truth", loc="center", rotation=-90, labelpad=30, **text_font_dict)
+			axs[2, len(VIEW_BANDS) - 1].yaxis.set_label_position("right")
+			# axs[2, len(VIEW_BANDS) - 1].set_ylabel("Error Map", loc="center", rotation=-90, labelpad=30, **text_font_dict)
 
-					# Difference b/w the two hypercubes
-					# diff = np.abs(lab - img)
-					# psnr = test_psnr(lab, img)	"PSNR=%.2f" % psnr	cmap="hot_r"
-
-					cfl = cfl_file[:,:,VIEW_BANDS[j]].reshape(512, 512)
-					axs[2, j].imshow(exposure.adjust_gamma(cfl, 0.25), interpolation="nearest", cmap="gray")
-					axs[2, j].set_xlabel(" ", loc="center", fontsize=25)
-					axs[2, j].set_xticks([])
-					axs[2, j].set_yticks([])
-
-				# norm = matplotlib.colors.Normalize(0, 1)
-				# axin = inset_axes(axs[2, len(VIEW_BANDS) - 1], height="100%", width="5%", loc="right", borderpad=-1.5)
-				# axin.tick_params(labelsize=18)
-				# matplotlib.colorbar.ColorbarBase(axin, cmap=plt.get_cmap("hot_r"), norm=norm)
-				axs[0, len(VIEW_BANDS) - 1].yaxis.set_label_position("right")
-				axs[0, len(VIEW_BANDS) - 1].set_ylabel("MobiSLP", loc="center", rotation=-90, labelpad=30, **text_font_dict)
-				axs[1, len(VIEW_BANDS) - 1].yaxis.set_label_position("right")
-				axs[1, len(VIEW_BANDS) - 1].set_ylabel("Ground Truth", loc="center", rotation=-90, labelpad=30, **text_font_dict)
-				axs[2, len(VIEW_BANDS) - 1].yaxis.set_label_position("right")
-				axs[2, len(VIEW_BANDS) - 1].set_ylabel("CFL", loc="center", rotation=-90, labelpad=30, **text_font_dict)
-
-				fig.tight_layout(pad=1, h_pad=1, w_pad=-5)
-				fig.savefig(os.path.join(PLOTS_PATH, MODEL_NAME, "%s.pdf" % (gt_filename)), dpi=fig.dpi*2, bbox_inches="tight")
-				plt.show()
+			fig.tight_layout(pad=1, h_pad=1, w_pad=-5)
+			fig.savefig(os.path.join(directory, VISUALIZATION_DIR_NAME, "%s.pdf" % (os.path.split(filename)[-1].split(".")[0])), dpi=fig.dpi*2, bbox_inches="tight")
+			plt.show()
 
 if __name__ == "__main__":
 	os.chdir("..")
 	plt.rcParams.update(plt_dict)
-	init_directories()
 	main()
