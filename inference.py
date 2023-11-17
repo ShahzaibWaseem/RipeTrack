@@ -12,7 +12,7 @@ from models.MST import MST_Plus_Plus
 
 from utils import save_mat, load_mat, initialize_logger, visualize_gt_pred_hs_data, get_best_checkpoint
 from loss import test_mrae, test_rrmse, test_msam, test_sid, test_psnr, test_ssim
-from config import MODEL_PATH, TEST_ROOT_DATASET_DIR, TEST_DATASETS, APPLICATION_NAME, BANDS, MOBILE_DATASET_DIR_NAME, RECONSTRUCTED_HS_DIR_NAME, GT_RGBN_DIR_NAME, MOBILE_RECONSTRUCTED_HS_DIR_NAME, EPS, model_run_title, checkpoint_file, device, create_directory
+from config import MODEL_PATH, TEST_ROOT_DATASET_DIR, TEST_DATASETS, APPLICATION_NAME, BANDS, MOBILE_DATASET_DIR_NAME, RECONSTRUCTED_HS_DIR_NAME, GT_RGBN_DIR_NAME, GT_SECONDARY_RGB_CAM_DIR_NAME, MOBILE_RECONSTRUCTED_HS_DIR_NAME, EPS, model_run_title, checkpoint_file, device, create_directory
 
 def calculate_metrics(img_pred, img_gt):
 	mrae = test_mrae(img_pred, img_gt)
@@ -54,19 +54,19 @@ def inference(model, checkpoint_filename, mobile_reconstruction=False):
 			hypercube = hypercube + EPS
 
 			rgb_filename = mat_filename.replace(".mat", "_RGB.png")
-			nir_filename = mat_filename.replace(".mat", "_NIR.png")
-
 			rgb_image = imread(os.path.join(directory, GT_RGBN_DIR_NAME if not mobile_reconstruction else MOBILE_DATASET_DIR_NAME, rgb_filename))
-			nir_image = imread(os.path.join(directory, GT_RGBN_DIR_NAME if not mobile_reconstruction else MOBILE_DATASET_DIR_NAME, nir_filename))
-			nir_image = np.expand_dims(np.asarray(nir_image), axis=-1)
-
 			rgb_image = (rgb_image - rgb_image.min()) / (rgb_image.max() - rgb_image.min())
-			nir_image = (nir_image - nir_image.min()) / (nir_image.max() - nir_image.min())
-
 			rgb_image = np.transpose(rgb_image, [2, 0, 1])
-			nir_image = np.transpose(nir_image, [2, 0, 1])
+			rgb_image = np.expand_dims(rgb_image, axis=0)
 
-			image = torch.from_numpy(np.expand_dims(np.concatenate((rgb_image, nir_image), axis=0), axis=0)).float().to(device)
+			nir_filename = mat_filename.replace(".mat", "_NIR.png")
+			nir_image = imread(os.path.join(directory, GT_RGBN_DIR_NAME if not mobile_reconstruction else MOBILE_DATASET_DIR_NAME, nir_filename))
+			nir_image = (nir_image - nir_image.min()) / (nir_image.max() - nir_image.min())
+			nir_image = np.expand_dims(np.asarray(nir_image), axis=-1)
+			nir_image = np.transpose(nir_image, [2, 0, 1])
+			nir_image = np.expand_dims(nir_image, axis=0)
+
+			image = torch.Tensor(np.concatenate((rgb_image, nir_image), axis=1)).float().to(device)
 
 			with torch.no_grad():
 				hypercube_pred = model(image)
@@ -74,7 +74,6 @@ def inference(model, checkpoint_filename, mobile_reconstruction=False):
 			# hypercube_pred = hypercube_pred + EPS			# should work without this line but just in case
 
 			end_time = time.time() - start_time
-
 			hypercube_pred_filepath = os.path.join(OUT_PATH, mat_filename)
 			save_mat(hypercube_pred_filepath, hypercube_pred)
 
@@ -98,7 +97,7 @@ def main():
 	model = model.to(device)
 	model.eval()
 	print(summary(model=model, input_data=(4, 512, 512)))
-	inference(model, checkpoint_filename, mobile_reconstruction=True)
+	inference(model, checkpoint_filename, mobile_reconstruction=False)
 
 if __name__ == "__main__":
 	main()
