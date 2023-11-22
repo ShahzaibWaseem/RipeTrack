@@ -115,7 +115,7 @@ def main():
 	plt.ylabel("Loss")
 	plt.xlabel("Epoch")
 	plt.legend(["Train", "Validation"], loc="upper left")
-	plt.savefig(os.path.join(LOGS_PATH, "losses.png"))
+	plt.savefig(os.path.join(VISUALIZATION_DIR_NAME, "losses.png"))
 	plt.show()
 
 	plt.plot(history["train_acc"])
@@ -124,7 +124,7 @@ def main():
 	plt.ylabel("Accuracy")
 	plt.xlabel("Epoch")
 	plt.legend(["Train", "Validation"], loc="upper left")
-	plt.savefig(os.path.join(LOGS_PATH, "accuracy.png"))
+	plt.savefig(os.path.join(VISUALIZATION_DIR_NAME, "accuracy.png"))
 	plt.show()
 	# test_loss, test_acc, json_data = test(test_data_loader, model, criterion)
 	# print("Test Loss: %.9f, Test Accuracy: %.2f%%" % (test_loss, test_acc))
@@ -238,8 +238,9 @@ def classification_evaluate(y_true, y_pred, title):
 	print("Title: {}, Accuracy: {}".format(title, accuracy_score(y_true, y_pred)))
 	print(classification_report(y_true, y_pred, target_names=[key for key, value in LABELS_DICT.items()]))
 	print(df_confusion_mat)
-	plt.savefig(os.path.join(VISUALIZATION_DIR_NAME, "confusion_matrix_{}.png".format(title)))
+	plt.savefig(os.path.join(VISUALIZATION_DIR_NAME, "confusion_matrix_{}.pdf".format(title)))
 	plt.show()
+	plt.close()
 
 if __name__ == "__main__":
 	create_directory(os.path.join(VISUALIZATION_DIR_NAME))
