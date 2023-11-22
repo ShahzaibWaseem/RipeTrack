@@ -590,7 +590,7 @@ class DatasetFromDirectoryClassification(Dataset):
 			directory = os.path.join(root, application_name, "{}_204ch".format(dataset))
 			directory = os.path.join(directory, mobile_reconstructed_folder) if mobile_reconstructed_folder != None else directory
 			print(" " * 19, "{0:62}".format(directory), end="\t")
-			print(shelflife_df[(shelflife_df["Fruit"].str.contains(dataset.split("-")[0].capitalize())) & (shelflife_df["Type"].str.contains(dataset.split("-")[1].capitalize()))]["Shelf Life Label"].value_counts().to_dict(), end="\t")
+			print(shelflife_df[(shelflife_df["Fruit"].str.contains(dataset.split("-")[0].capitalize())) & (shelflife_df["Type"].str.contains(dataset.split("-")[1].capitalize()))]["Shelf Life Label"].value_counts()[shelflife_df["Shelf Life Label"].unique()].to_dict(), end="\t")
 			dataset_load_time = time.time()
 			for filename in glob(os.path.join(directory, "*.mat")):
 				hypercube_number = os.path.split(filename)[-1].split(".")[0].split("_")[0]
