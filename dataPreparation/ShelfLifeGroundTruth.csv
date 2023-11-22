@@ -94,7 +94,7 @@ Date,Fruit,Type,HS Files,Mobile FID,Fruit ID,Abs Ethylene,Ethylene,Atm Ethylene,
 20-Aug,Avocado,Organic,"658, 659",1,8,4,9,5,Ripe,,no
 20-Aug,Avocado,Organic,"660, 661",2,9,4,7,3,Ripe,,no
 20-Aug,Avocado,Organic,"662, 663",3,10,3,6,3,Ripe,,no
-20-Aug,Avocado,Emp,"664, 665",4,11,2,6,4,Unripe,,no
+20-Aug,Avocado,Emp,"664, 665",4,11,2,6,4,Ripe,,no
 20-Aug,Avocado,Emp,"666, 667",5,12,2,6,4,Unripe,,no
 20-Aug,Avocado,Emp,"668, 669",6,13,3,6,3,Ripe,,no
 21-Aug,Pear,Bosc,"670, 671",0,0,0,0,0,Unripe,,yes
@@ -282,7 +282,7 @@ Date,Fruit,Type,HS Files,Mobile FID,Fruit ID,Abs Ethylene,Ethylene,Atm Ethylene,
 05-Sep,Pear,Bosc,"1036, 1037",0,0,0,0,0,Unripe,,no
 05-Sep,Pear,Bosc,"1038, 1039",1,1,0,0,0,Unripe,,no
 05-Sep,Pear,Bosc,"1040, 1041",2,2,0,0,0,Unripe,,no
-05-Sep,Avocado,Emp,"1042, 1043",0,11,0,1,1,Ripe,,no
+05-Sep,Avocado,Emp,"1042, 1043",0,11,0,1,1,Expired,,no
 05-Sep,Avocado,Emp,"1044, 1045",1,12,9,9,0,Ripe,,no
 05-Sep,Avocado,Emp,"1046, 1047",2,13,1,1,0,Expired,,no
 06-Sep,Pear,Bosc,"1048, 1049",0,0,0,0,0,Unripe,,yes
