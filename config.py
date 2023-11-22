@@ -99,10 +99,6 @@ plt_dict = {"mathtext.default": "regular", "axes.linewidth": 2}
 text_font_dict = {"family": "serif", "size": 25}
 title_font_dict = {"fontname": "serif", "size": 25}
 
-### Bands for text in the visualizations ###
-VIEW_BANDS = [11, 21, 36, 44]
-ACTUAL_BANDS = [520, 640, 820, 910]
-
 def sampler():
 	global BANDS, NUMBER_OF_BANDS, BANDS_WAVELENGTHS
 	sampled_bands = []
@@ -116,6 +112,10 @@ def sampler():
 	return BANDS
 
 sampler()
+
+### Bands for text in the visualizations ###
+VIEW_BANDS = [7, 16, 53, 61]
+ACTUAL_BANDS = [BANDS_WAVELENGTHS[band] for band in VIEW_BANDS]
 
 def create_directory(directory):
 	if not os.path.exists(directory):

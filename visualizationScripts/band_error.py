@@ -6,47 +6,55 @@ import numpy as np
 from glob import glob
 
 from utils import load_mat, average
-from loss import test_mrae, test_rrmse, spectral_angle, spectral_divergence, test_psnr, test_ssim
+from loss import test_mrae, test_rrmse, test_msam, test_sid, test_psnr, test_ssim
 
 import matplotlib
 import matplotlib.pyplot as plt
 
-from config import BAND_SPACING, ILLUMINATIONS, MODEL_NAME, NORMALIZATION_FACTOR, TEST_ROOT_DATASET_DIR, TEST_DATASETS, LOGS_PATH, text_font_dict, plt_dict
+from config import BANDS, APPLICATION_NAME, RECONSTRUCTED_HS_DIR_NAME, VISUALIZATION_DIR_NAME, TEST_ROOT_DATASET_DIR, TEST_DATASETS, LOGS_PATH, text_font_dict, plt_dict
+
+def calculate_metrics(img_pred, img_gt, expand=False):
+	img_pred_flat = np.expand_dims(img_pred, axis=0) if expand else img_pred
+	img_gt_flat = np.expand_dims(img_gt, axis=0) if expand else img_gt
+	mrae = test_mrae(img_pred, img_gt)
+	rrmse = test_rrmse(img_pred, img_gt)
+	msam = test_msam(img_pred_flat, img_gt_flat)
+	sid = test_sid(img_pred_flat, img_gt_flat)
+	psnr = test_psnr(img_pred, img_gt, max_p=1)		# max_p = 1 for 0-1 normalized images
+	ssim = test_ssim(img_pred, img_gt, max_p=1)		# max_p = 1 for 0-1 normalized images
+	return mrae, rrmse, msam, sid, psnr, ssim
 
 def getBandErrors():
 	""" returns a dictionary containing band wise errors for all evaluated results eg: {'avocado_1111': {}} """
 	errors = {}
-	log_string = "[%7s.mat] MRAE=%0.9f, RRMSE=%0.9f, SAM=%0.9f, SID=%0.9f, PSNR=%0.9f, SSIM=%0.9f"
+	log_string = "[%15s] MRAE=%0.9f, RRMSE=%0.9f, SAM=%0.9f, SID=%0.9f, PSNR=%0.9f, SSIM=%0.9f"
 
-	for test_dataset in TEST_DATASETS:
-		for illumination in ILLUMINATIONS:
-			TEST_DATASET_DIR = os.path.join(TEST_ROOT_DATASET_DIR, "working_%s" % test_dataset, "%s_%s_204ch" % (test_dataset, illumination), "test")
-			GT_PATH = os.path.join(TEST_DATASET_DIR, "mat")
-			INF_PATH = os.path.join("..", "AWAN", "test", "inference", "AWAN_4to51_%s_%s" % (test_dataset, illumination))
+	for dataset in TEST_DATASETS:
+		directory = os.path.join(TEST_ROOT_DATASET_DIR, APPLICATION_NAME, "{}_204ch".format(dataset))
+		inf_directory = os.path.join(directory, RECONSTRUCTED_HS_DIR_NAME)
+		print(" " * 19, "{0:62}".format(directory), RECONSTRUCTED_HS_DIR_NAME)
+		for filename in sorted(glob(os.path.join(directory, "*.mat"))):
+			mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors = [], [], [], [], [], []
 
-			print("\nDataset: %s\nIllumination: %s\n" % (test_dataset, illumination))
+			inf_hypercube = load_mat(os.path.join(inf_directory, os.path.split(filename)[-1]))
+			inf_hypercube = (inf_hypercube - inf_hypercube.min()) / (inf_hypercube.max() - inf_hypercube.min())
+			gt_hypercube = load_mat(filename)
+			gt_hypercube = gt_hypercube[:,:,BANDS]
+			gt_hypercube = (gt_hypercube - gt_hypercube.min()) / (gt_hypercube.max() - gt_hypercube.min())
 
-			for filename in sorted(glob(os.path.join(INF_PATH, "*.mat"))):
-				mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors = [], [], [], [], [], []
-				if(illumination == "cfl_led"):
-					gt_filename = "_".join(os.path.split(filename)[-1].split(".")[0].split("_")[1:3])
-				else:
-					gt_filename = os.path.split(filename)[-1].split(".")[0].split("_")[-1]
+			for band in range(len(BANDS)):
+				inf_band = inf_hypercube[:,:,band]
+				gt_band = gt_hypercube[:,:,band]
+				mrae, rrmse, msam, sid, psnr, ssim = calculate_metrics(inf_band, gt_band, expand=True)
+				mrae_errors.append(mrae if not np.isinf(mrae) else 0)
+				rrmse_errors.append(rrmse if not np.isinf(rrmse) else 0)
+				sam_errors.append(msam)
+				sid_errors.append(sid)
+				psnr_errors.append(psnr)
+				ssim_errors.append(ssim)
 
-				inf_file = load_mat(filename)
-				gt_file = load_mat(os.path.join(GT_PATH, gt_filename + ".mat"))
-				gt_file = gt_file[:,:, ::BAND_SPACING]
-
-				for band in range(51):
-					mrae_errors.append(float(test_mrae(inf_file[:,:, band], gt_file[:,:, band])))
-					rrmse_errors.append(float(test_rrmse(inf_file[:,:, band], gt_file[:,:, band])))
-					sam_errors.append(float(spectral_angle(inf_file[:,:, band].reshape(-1,)/NORMALIZATION_FACTOR, gt_file[:,:, band].reshape(-1,)/NORMALIZATION_FACTOR)))
-					sid_errors.append(float(spectral_divergence(inf_file[:,:, band].reshape(-1,)/NORMALIZATION_FACTOR, gt_file[:,:, band].reshape(-1,)/NORMALIZATION_FACTOR)))
-					psnr_errors.append(float(test_psnr(inf_file[:,:, band], gt_file[:,:, band])))
-					ssim_errors.append(float(test_ssim(inf_file[:,:, band], gt_file[:,:, band])))
-
-				print(log_string % (gt_filename, average(mrae_errors), average(rrmse_errors), average(sam_errors), average(sid_errors), average(psnr_errors), average(ssim_errors)))
-				errors.update({test_dataset + "_" + gt_filename: {"MRAE": mrae_errors, "RRMSE": rrmse_errors, "SAM": sam_errors, "SID": sid_errors, "PSNR": psnr_errors, "SSIM": ssim_errors}})
+			print(log_string % (os.path.split(filename)[-1], average(mrae_errors), average(rrmse_errors), average(sam_errors), average(sid_errors), average(psnr_errors), average(ssim_errors)))
+			errors.update({dataset + "_" + filename: {"MRAE": mrae_errors, "RRMSE": rrmse_errors, "SAM": sam_errors, "SID": sid_errors, "PSNR": psnr_errors, "SSIM": ssim_errors}})
 	return errors
 
 def populateNumpyArrays(errors):
@@ -76,18 +84,16 @@ def meanErrors(errors):
 
 def readDataFromFile(json_file):
 	""" reads dictionary form a json file """
-	errors = json.load(open(os.path.join(LOGS_PATH, json_file), "r"))
+	errors = json.load(open(os.path.join(VISUALIZATION_DIR_NAME, json_file), "r"))
 	mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors = populateNumpyArrays(errors)
 	return mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors
 
 def plotSingleMetric(error, row, ax, ylim, ylabel, xlabel="Wavelength (nm)", legend_loc="upper right"):
 	""" plots error metrics on axis """
-	x=range(400, 1001, 12)
+	x=range(400, 1004, 9)
 	xlim=[400, 1000]
 
-	ax.plot(x, error[:, row + 0], "k-", linewidth=2, label="HSCNN")
-	ax.plot(x, error[:, row + 2], "b-", linewidth=2, label="AWAN")
-	ax.plot(x, error[:, row + 4], "r-", linewidth=2, label="MobiSLP")
+	ax.plot(x, error, "r-", linewidth=2, label="MobiSLP")
 	ax.legend(loc=legend_loc)
 	ax.set_ylabel(ylabel)
 	ax.set_xlabel(xlabel)
@@ -101,21 +107,18 @@ def plotBandErrors(mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_error
 	plt.rcParams["axes.grid"] = True
 	plt.rcParams["axes.spines.right"] = False
 	plt.rcParams["axes.spines.top"] = False
-	rows = len(["Meat", "Fruit"])
+	rows = len(["Fruit"])
 
 	_, axs = plt.subplots(nrows=rows, ncols=6, figsize=(45, 15))
 
-	for row in range(rows):
-		plotSingleMetric(mrae_errors, row, axs[row][0], ylim=[0, 0.5], ylabel="MRAE")
-		plotSingleMetric(rrmse_errors, row, axs[row][1], ylim=[0, 0.4], ylabel="RRMSE")
-		plotSingleMetric(sam_errors, row, axs[row][2], ylim=[0, 0.5], ylabel="SAM")
-		plotSingleMetric(sid_errors, row, axs[row][3], ylim=[0, 0.2], ylabel="SID")
-		plotSingleMetric(psnr_errors, row, axs[row][4], ylim=[20, 65], ylabel="PSNR", legend_loc="upper center")
-		plotSingleMetric(ssim_errors, row, axs[row][5], ylim=[0.8, 1], ylabel="SSIM", legend_loc="lower right")
-		axs[row][0].text(200, 0.205, "Meat" if row == 0 else "Fruit", rotation=90, weight="bold", size=36)
-
+	plotSingleMetric(mrae_errors, rows, axs[0], ylim=[0, 0.5], ylabel="MRAE")
+	plotSingleMetric(rrmse_errors, rows, axs[1], ylim=[0, 0.4], ylabel="RRMSE")
+	plotSingleMetric(sam_errors, rows, axs[2], ylim=[0, 0.5], ylabel="SAM")
+	plotSingleMetric(sid_errors, rows, axs[3], ylim=[0, 0.2], ylabel="SID")
+	plotSingleMetric(psnr_errors, rows, axs[4], ylim=[20, 65], ylabel="PSNR", legend_loc="upper center")
+	plotSingleMetric(ssim_errors, rows, axs[5], ylim=[0.8, 1], ylabel="SSIM", legend_loc="lower right")
 	plt.tight_layout()
-	plt.savefig(os.path.join(LOGS_PATH, filename), bbox_inches="tight")
+	plt.savefig(os.path.join(VISUALIZATION_DIR_NAME, filename), bbox_inches="tight")
 
 if __name__ == "__main__":
 	os.chdir("..")
@@ -124,10 +127,14 @@ if __name__ == "__main__":
 	# print(errors.keys())
 	# mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors = meanErrors(errors)
 
-	# errors = {}
-	# errors.update({"AWAN - Fruit - CFL-LED": {"MRAE": mrae_errors.tolist(), "RRMSE": rrmse_errors.tolist(), "SAM": sam_errors.tolist(), "SID": sid_errors.tolist(), "PSNR": psnr_errors.tolist(), "SSIM": ssim_errors.tolist()}})
+	# jsonFile = open(os.path.join(VISUALIZATION_DIR_NAME, "errorsRaw.json"), "w")
+	# jsonFile.write(json.dumps(errors, indent=4))
+	# jsonFile.close()
 
-	# jsonFile = open(os.path.join(LOGS_PATH, "errors_fruit.json"), "w")
+	# errors = {}
+	# errors.update({"MSLP": {"MRAE": mrae_errors.tolist(), "RRMSE": rrmse_errors.tolist(), "SAM": sam_errors.tolist(), "SID": sid_errors.tolist(), "PSNR": psnr_errors.tolist(), "SSIM": ssim_errors.tolist()}})
+
+	# jsonFile = open(os.path.join(VISUALIZATION_DIR_NAME, "errors.json"), "w")
 	# jsonFile.write(json.dumps(errors, indent=4))
 	# jsonFile.close()
 

@@ -12,7 +12,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
-from config import BANDS, APPLICATION_NAME, RECONSTRUCTED_HS_DIR_NAME, MODEL_NAME, TEST_ROOT_DATASET_DIR, TEST_DATASETS, VIEW_BANDS, ACTUAL_BANDS, VISUALIZATION_DIR_NAME, text_font_dict, title_font_dict, plt_dict, create_directory
+from config import BANDS, APPLICATION_NAME, RECONSTRUCTED_HS_DIR_NAME, IMAGE_SIZE, TEST_ROOT_DATASET_DIR, TEST_DATASETS, VIEW_BANDS, ACTUAL_BANDS, VISUALIZATION_DIR_NAME, text_font_dict, title_font_dict, plt_dict, create_directory
 
 def main():
 	for dataset in TEST_DATASETS:
@@ -20,7 +20,8 @@ def main():
 		inf_directory = os.path.join(directory, RECONSTRUCTED_HS_DIR_NAME)
 		print(" " * 19, "{0:62}".format(directory), RECONSTRUCTED_HS_DIR_NAME)
 		create_directory(os.path.join(directory, VISUALIZATION_DIR_NAME))
-		for filename in glob(os.path.join(directory, "681.mat")):		# 477, 479, 504, 560, 644, 645, 670, williams: 513, 681, 682
+		# bosc: 477, 479, 504, 560, 644, 645, 670, williams: 508, 513, 570, 624, 655, 681, 682, 737, 765, 766, 793, 795, 820, 851, 907, organic: 495, 516*, 521, 574, 603, 604, 632, 635, 661, 659, 663*, 718, 772, 796, 824, 825*, 852, 881, 909, emp: 498, 500, 524, 526*, 608, 612, 636, 637, 640*, 641, 664*, 665*, 666*, 667*, 696, 697*, 749, 753, 772, 777, 778, 860, 861, 889, 1006, 1007,
+		for filename in glob(os.path.join(directory, "664.mat")):
 			inf_hypercube = load_mat(os.path.join(inf_directory, os.path.split(filename)[-1]))
 			inf_hypercube = (inf_hypercube - inf_hypercube.min()) / (inf_hypercube.max() - inf_hypercube.min())
 			gt_hypercube = load_mat(filename)
@@ -31,12 +32,12 @@ def main():
 
 			for j in range(axs.shape[1]):
 				# Reconstructed Hypercube (gamma adjustment)
-				inf_band = inf_hypercube[:,:,VIEW_BANDS[j]].reshape(512, 512)
-				gt_band = gt_hypercube[:,:,VIEW_BANDS[j]].reshape(512, 512)
+				inf_band = inf_hypercube[:,:,VIEW_BANDS[j]].reshape(IMAGE_SIZE, IMAGE_SIZE)
+				gt_band = gt_hypercube[:,:,VIEW_BANDS[j]].reshape(IMAGE_SIZE, IMAGE_SIZE)
 
 				# Difference b/w the two hypercubes
 				diff_band = np.abs(gt_band - inf_band)
-				psnr = test_psnr(gt_band, inf_band)			# "PSNR=%.2f" % psnr	cmap="hot_r"
+				psnr = test_psnr(gt_band, inf_band)
 
 				inf_band = exposure.adjust_gamma(inf_band, 0.25)
 				axs[0, j].imshow(inf_band, interpolation="nearest", cmap="gray")
