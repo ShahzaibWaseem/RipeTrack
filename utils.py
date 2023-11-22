@@ -82,7 +82,7 @@ def read_image(rgb_filename, nir_filename, normalize=False):
 	return image
 
 def crop_image(image, start, end):
-	""" Crops the image to the desired range. 
+	""" Crops the image to the desired range.
 		Note: This function expects the image to be in the format [C, H, W] and H = W. """
 	return image[:, start:end, start:end]
 
@@ -209,7 +209,6 @@ def save_checkpoint(epoch, iteration, model, optimizer, val_loss, val_acc, bands
 
 def get_best_checkpoint(task="reconstruction"):
 	""" Get the model with best validation loss and validation accuracy. """
-	global MODEL_PATH
 	best_val_loss, best_val_acc = 100, 0
 	best_checkpoint_file = None
 	print("\nLoading the best checkpoint...", end="\n\n")
@@ -230,7 +229,7 @@ def get_best_checkpoint(task="reconstruction"):
 		  (task, best_checkpoint_file, best_val_loss, best_val_acc), end="\n\n")
 
 	loaded_model = torch.load(os.path.join(MODEL_PATH, task, best_checkpoint_file), map_location=device)
-	# assert loaded_model["bands"] != BANDS, "The bands of the loaded model and the current bands are not the same. Please check the bands in the config file."	
+	assert loaded_model["bands"] != BANDS, "The bands of the loaded model and the current bands are not the same. Please check the bands in the config file."
 	return best_checkpoint_file, loaded_model["epoch"], loaded_model["iter"], loaded_model["state_dict"], loaded_model["optimizer"], loaded_model["val_loss"], loaded_model["val_acc"]
 
 def optimizer_to(optim, device):
