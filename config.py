@@ -21,7 +21,8 @@ TEST_DATASETS = ["pear-bosc", "pear-williams", "avocado-organic", "avocado-emp"]
 FRUITS_DICT = OrderedDict([("Pear Bosc", 0), ("Pear Williams", 1), ("Avocado Organic", 2), ("Avocado Emp", 3)])
 # TEST_DATASETS = ["pear-williams"]
 # LABELS_DICT = OrderedDict([("Pear Bosc Ripe", 0), ("Pear Bosc Dangerous", 1), ("Pear Bosc Expired", 2), ("Pear Williams Ripe", 3), ("Pear Williams Dangerous", 4), ("Pear Williams Expired", 5), ("Avocado Organic Ripe", 6), ("Avocado Organic Dangerous", 7), ("Avocado Organic Expired", 8), ("Avocado Emp Ripe", 9), ("Avocado Emp Dangerous", 10), ("Avocado Emp Expired", 11)])
-LABELS_DICT = OrderedDict([("Ripe", 0), ("Dangerous", 1), ("Expired", 2)])
+LABELS_DICT = OrderedDict([("Unripe", 0), ("Ripe", 1), ("Expired", 2)])
+SUB_LABELS_DICT = OrderedDict([("Pretty Unripe", 0), ("Almost Ripe", 1), ("Ripe", 2), ("Perfectly Ripe", 3), ("Almost Expired", 4), ("Just Expired", 5), ("Rotten", 6)])
 
 GT_RGBN_DIR_NAME = "rgbn"
 GT_SECONDARY_RGB_CAM_DIR_NAME = "secondary-rgbn"
@@ -66,7 +67,7 @@ init_lr = 0.0001
 ### Variables used for printing the results in the logs ###
 APPLICATION_NAME = "shelflife"
 MODEL_NAME = "MST++"
-CLASSIFIER_MODEL_NAME = "efficientnet-b4"
+CLASSIFIER_MODEL_NAME = "ModelWithAttention"
 ILLUMINATIONS = ["h"]
 
 if "h" in ILLUMINATIONS and "cfl_led" in ILLUMINATIONS:
@@ -79,8 +80,8 @@ elif "cfl_led" in ILLUMINATIONS:
 lossfunctions_considered = ["MRAE", "SAM", "SID"]
 model_run_title = "Model: %s\tDataset: %s\tIllumination: %s\tLosses: %s\tFull Image or Patches: %s\n" \
 	% (MODEL_NAME, APPLICATION_NAME, illumination_string, lossfunctions_considered, "Full Image" if PATCH_SIZE == IMAGE_SIZE else "Patches")
-classicication_run_title = "Model: %s\tDataset: %s\tIllumination: %s\tNumber of Classes: %d\tFull Image or Patches: %s\n" \
-	% (CLASSIFIER_MODEL_NAME, APPLICATION_NAME, illumination_string, len(LABELS_DICT), "Full Image" if PATCH_SIZE == IMAGE_SIZE else "Patches")
+classicication_run_title = "Model: %s\tDataset: %s\tNumber of Classes: %d\tSub Classes: %s\tFull Image or Patches: %s\n" \
+	% (CLASSIFIER_MODEL_NAME, APPLICATION_NAME, len(LABELS_DICT), len(SUB_LABELS_DICT), "Full Image" if PATCH_SIZE == IMAGE_SIZE else "Patches")
 
 ### to create the checkpoint of the model ###
 checkpoint_fileprestring = "%s_%s" % (MODEL_NAME, APPLICATION_NAME)
