@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from efficientnet_pytorch import EfficientNet
 
-from config import BANDS, LABELS_DICT, CLASSIFIER_MODEL_NAME, PATCH_SIZE
+from config import BANDS, LABELS_DICT, SUB_LABELS_DICT, CLASSIFIER_MODEL_NAME
 
 class TorchClassifier(nn.Module):
 	def __init__(self, fine_tune=True, in_channels=len(BANDS), num_classes=len(LABELS_DICT)):
@@ -94,13 +94,14 @@ class MultiHeadClassification(nn.Module):
 		return x
 
 class ModelWithAttention(nn.Module):
-	def __init__(self, input_channels=3, num_classes=len(LABELS_DICT)):
+	def __init__(self, input_channels=3, num_classes=len(LABELS_DICT), num_subclasses=len(SUB_LABELS_DICT)):
 		super().__init__()
 		self.ssattn = SSAttention(input_channels)
 		self.relu = nn.LeakyReLU(inplace=True)
 		self.bottleneck = nn.Linear(in_features=150212, out_features=256)
 		self.dropout = nn.Dropout(p=0.25)
-		self.fc = nn.Linear(in_features=256, out_features=num_classes)
+		self.fc_class = nn.Linear(in_features=256, out_features=num_classes)
+		self.fc_subclass = nn.Linear(in_features=256, out_features=num_subclasses)
 		self.apply(self._init_weights)
 
 	def _init_weights(self, module):
@@ -116,8 +117,9 @@ class ModelWithAttention(nn.Module):
 		x = self.bottleneck(x)
 		x = self.relu(x)
 		x = self.dropout(x)
-		x = self.fc(x)
-		return x
+		class_out = self.fc_class(x)
+		subclass_out = self.fc_subclass(x)
+		return class_out, subclass_out
 
 class SSAttention(nn.Module):
 	def __init__(self, channels_in):

@@ -195,21 +195,21 @@ def initialize_logger(filename):
 	logger.setLevel(logging.INFO)
 	return logger
 
-def save_checkpoint(epoch, iteration, model, optimizer, val_loss, val_acc, bands=BANDS, task="reconstruction"):
+def save_checkpoint(epoch, iteration, model, optimizer, val_loss, val_acc_labels, val_acc_sublabels, bands=BANDS, task="reconstruction"):
 	""" Save the model checkpoint with other variables as well. """
 	state = {"epoch": epoch,
 			 "iter": iteration,
 			 "state_dict": model.state_dict(),
 			 "optimizer": optimizer.state_dict(),
 			 "val_loss": val_loss,
-			 "val_acc": val_acc,
+			 "val_acc": (val_acc_labels, val_acc_sublabels),
 			 "bands": bands}
 
 	torch.save(state, os.path.join(MODEL_PATH, task, "MSLP_%s_%s.pkl" % (checkpoint_fileprestring if task=="reconstruction" else classification_checkpoint_fileprestring, str(epoch).zfill(3))))
 
 def get_best_checkpoint(task="reconstruction"):
 	""" Get the model with best validation loss and validation accuracy. """
-	best_val_loss, best_val_acc = 100, 0
+	best_val_loss, best_val_acc_labels, best_val_acc_sublabels = 100, 0, 0
 	best_checkpoint_file = None
 	print("\nLoading the best checkpoint...", end="\n\n")
 
@@ -217,20 +217,21 @@ def get_best_checkpoint(task="reconstruction"):
 		if os.path.isfile(checkpoint_file):
 			save_point = torch.load(checkpoint_file)
 			val_loss = save_point["val_loss"]
-			val_acc = save_point["val_acc"]
-			print("Checkpoint: %s\tValidation Loss: %.9f\tValidation Accuracy: %.2f%%" % (os.path.split(checkpoint_file)[-1], val_loss, val_acc), end="\t")
-			if (100 - best_val_loss + best_val_acc) < (100 - val_loss + val_acc):
+			(val_acc_labels, val_acc_sublabels) = save_point["val_acc"]
+			print("Checkpoint: %s\tValidation Loss: %.9f\tValidation Accuracy: %.2f%%, %.2f%%" % (os.path.split(checkpoint_file)[-1], val_loss, val_acc_labels, val_acc_sublabels), end="\t")
+			if (100 - best_val_loss + best_val_acc_labels + best_val_acc_sublabels) < (100 - val_loss + val_acc_labels + val_acc_sublabels):
 				print("<- Best checkpoint yet. Updating the best checkpoint.", end="")
 				best_val_loss = val_loss
-				best_val_acc = val_acc
+				best_val_acc_labels = val_acc_labels
+				best_val_acc_sublabels = val_acc_sublabels
 				best_checkpoint_file = os.path.split(checkpoint_file)[-1]
 			print()
-	print("\nThe best checkpoint file, is loaded, for %s task and it is %s with validation loss value %.9f and validation accuracy %.2f%%" %
-		  (task, best_checkpoint_file, best_val_loss, best_val_acc), end="\n\n")
+	print("\nThe best checkpoint file, is loaded, for %s task and it is %s with validation loss value %.9f and validation accuracy %.2f%%, %.2f%%" %
+		  (task, best_checkpoint_file, best_val_loss, best_val_acc_labels, best_val_acc_sublabels), end="\n\n")
 
 	loaded_model = torch.load(os.path.join(MODEL_PATH, task, best_checkpoint_file), map_location=device)
-	assert loaded_model["bands"] != BANDS, "The bands of the loaded model and the current bands are not the same. Please check the bands in the config file."
-	return best_checkpoint_file, loaded_model["epoch"], loaded_model["iter"], loaded_model["state_dict"], loaded_model["optimizer"], loaded_model["val_loss"], loaded_model["val_acc"]
+	assert loaded_model["bands"] == BANDS, "The bands of the loaded model and the current bands are not the same. Please check the bands in the config file."
+	return best_checkpoint_file, loaded_model["epoch"], loaded_model["iter"], loaded_model["state_dict"], loaded_model["optimizer"], loaded_model["val_loss"], (loaded_model["val_acc"][0], loaded_model["val_acc"][1])
 
 def optimizer_to(optim, device):
 	""" Move the optimizer state to CPU or GPU.

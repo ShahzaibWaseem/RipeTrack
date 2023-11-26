@@ -14,7 +14,7 @@ from torchsampler import ImbalancedDatasetSampler
 from torch.utils.data import Dataset, DataLoader, random_split, WeightedRandomSampler, Subset
 
 from utils import load_mat, read_image, data_augmentation, augmentation, get_normalization_parameters, visualize_data_item
-from config import APPEND_SECONDARY_RGB_CAM_INPUT, GT_SECONDARY_RGB_CAM_DIR_NAME, BAND_SPACING, RGBN_BANDS, BANDS, BANDS_WAVELENGTHS, TEST_DATASETS, GT_RGBN_DIR_NAME, TRAIN_DATASET_DIR, TRAIN_DATASET_FILES, VALID_DATASET_FILES, TEST_ROOT_DATASET_DIR, APPLICATION_NAME, IMAGE_SIZE, PATCH_SIZE, RECONSTRUCTED_HS_DIR_NAME, EPS, DATA_PREP_PATH, MOBILE_DATASET_CROPS_FILENAME, SHELF_LIFE_GROUND_TRUTH_FILENAME, LABELS_DICT, FRUITS_DICT, batch_size, device
+from config import APPEND_SECONDARY_RGB_CAM_INPUT, GT_SECONDARY_RGB_CAM_DIR_NAME, BAND_SPACING, RGBN_BANDS, BANDS, BANDS_WAVELENGTHS, TEST_DATASETS, GT_RGBN_DIR_NAME, TRAIN_DATASET_DIR, TRAIN_DATASET_FILES, VALID_DATASET_FILES, TEST_ROOT_DATASET_DIR, APPLICATION_NAME, IMAGE_SIZE, PATCH_SIZE, RECONSTRUCTED_HS_DIR_NAME, EPS, DATA_PREP_PATH, MOBILE_DATASET_CROPS_FILENAME, SHELF_LIFE_GROUND_TRUTH_FILENAME, LABELS_DICT, SUB_LABELS_DICT, FRUITS_DICT, batch_size, device
 
 def get_dataloaders(input_transform, label_transform, task, load_from_h5=False, trainset_size=0.7):
 	if load_from_h5:
@@ -527,6 +527,7 @@ class DatasetFromDirectoryReconstruction(Dataset):
 from collections import OrderedDict
 
 class_sizes = OrderedDict([(label, 0) for label in LABELS_DICT.keys()])
+subclass_sizes = OrderedDict([(label, 0) for label in SUB_LABELS_DICT.keys()])
 
 def get_dataloaders_classification(trainset_size=0.7):
 	global class_sizes
@@ -540,6 +541,7 @@ def get_dataloaders_classification(trainset_size=0.7):
 		transforms=classificationTransforms,
 		verbose=True
 	)
+	train_indices, valid_indices = dataset.divide_train_test(trainset_size)
 
 	dataset_size = len(dataset)
 	train_data, valid_data = random_split(dataset, [int(trainset_size*dataset_size), dataset_size - int(dataset_size*trainset_size)])
@@ -566,10 +568,10 @@ def get_dataloaders_classification(trainset_size=0.7):
 	return train_data_loader, valid_data_loader
 
 class DatasetFromDirectoryClassification(Dataset):
-	hypercubes, labels, fruits = [], [], []
+	hypercubes, labels, sublabels, fruits = [], [], [], []
 
 	def __init__(self, root, application_name=APPLICATION_NAME, mobile_reconstructed_folder=None, transforms=None, verbose=False):
-		global class_sizes
+		global class_sizes, subclass_sizes
 		self.transforms = transforms
 
 		image_width, image_height = 512, 512
@@ -585,12 +587,12 @@ class DatasetFromDirectoryClassification(Dataset):
 		max_w, max_h = int(crops_df["w"].max()), int(crops_df["h"].max())			# Max Width: 214, Max Height: 220
 
 		print("Reading Images from:") if verbose else None
-
 		for dataset in TEST_DATASETS:
 			directory = os.path.join(root, application_name, "{}_204ch".format(dataset))
 			directory = os.path.join(directory, mobile_reconstructed_folder) if mobile_reconstructed_folder != None else directory
-			print(" " * 19, "{0:62}".format(directory), end="\t")
-			print(shelflife_df[(shelflife_df["Fruit"].str.contains(dataset.split("-")[0].capitalize())) & (shelflife_df["Type"].str.contains(dataset.split("-")[1].capitalize()))]["Shelf Life Label"].value_counts()[shelflife_df["Shelf Life Label"].unique()].to_dict(), end="\t")
+			print("{0:21}".format(os.path.split(directory)[-1]), end=":")
+			print(shelflife_df[(shelflife_df["Fruit"].str.contains(dataset.split("-")[0].capitalize())) & (shelflife_df["Type"].str.contains(dataset.split("-")[1].capitalize()))]["Shelf Life Label"].value_counts()[shelflife_df["Shelf Life Label"].unique()].to_dict(), end=", ")
+			print(shelflife_df[(shelflife_df["Fruit"].str.contains(dataset.split("-")[0].capitalize())) & (shelflife_df["Type"].str.contains(dataset.split("-")[1].capitalize()))]["SubLabel"].value_counts()[shelflife_df["SubLabel"].unique()].to_dict(), end=", ")
 			dataset_load_time = time.time()
 			for filename in glob(os.path.join(directory, "*.mat")):
 				hypercube_number = os.path.split(filename)[-1].split(".")[0].split("_")[0]
@@ -609,7 +611,9 @@ class DatasetFromDirectoryClassification(Dataset):
 				ymax = int(crop_record["ymax"].iloc[0])
 
 				label_name = shelflife_record["Shelf Life Label"]
+				sublabel_name = shelflife_record["SubLabel"]
 				label = LABELS_DICT.get(label_name)
+				sublabel = SUB_LABELS_DICT.get(sublabel_name)
 				fruit_name = "{} {}".format(shelflife_record["Fruit"], shelflife_record["Type"])
 
 				for patch_i in range(xmin, xmax, self.stride):
@@ -621,10 +625,12 @@ class DatasetFromDirectoryClassification(Dataset):
 							continue
 						self.hypercubes.append(hypercubeCrop)
 						self.labels.append(label)
+						self.sublabels.append(sublabel)
 						self.fruits.append(fruit_name)
 						class_sizes[label_name] += 1
+						subclass_sizes[sublabel_name] += 1
 				hypercube_counter += 1
-			print("{:>4} s".format(round(time.time()-dataset_load_time)))
+			print("{:>3}s".format(round(time.time()-dataset_load_time)))
 
 		self.dataset_size = len(self.hypercubes)
 
@@ -635,10 +641,12 @@ class DatasetFromDirectoryClassification(Dataset):
 			print("Number of Hypercubes Files:".ljust(40), hypercube_counter)
 			print("Hypercube Dataset Size:".ljust(40), len(self.hypercubes))
 			print("Labels Dataset Size:".ljust(40), len(self.labels))
+			print("Sublabels Dataset Size:".ljust(40), len(self.sublabels))
 			print("Hypercubes Shape:".ljust(40), list(self.hypercubes[0].shape))
 			print("Width Range:".ljust(40), "{} - {}".format(min_w, max_w))
 			print("Height Range:".ljust(40), "{} - {}".format(min_h, max_h))
 			print("Class Label Sizes:".ljust(40), class_sizes)
+			print("Subclass Label Sizes:".ljust(40), subclass_sizes)
 
 		assert len(self.hypercubes) == len(self.labels), "Number of hypercubes and labels do not match."
 
@@ -659,13 +667,14 @@ class DatasetFromDirectoryClassification(Dataset):
 		if self.transforms is not None and index in self.train_indices:
 			hypercube = self.transforms(hypercube)
 		label = self.labels[index]
+		sublabel = self.sublabels[index]
 		fruit = self.fruits[index]
 
 		# visualize_data_item(None, hypercube, None, 12, "0")
 		hypercube = torch.tensor(hypercube.copy()).float()
 		# print("Image Min: %f\tMax: %f\tHypercube Min: %f\tMax: %f" % (image.min(), image.max(), hypercube.min(), hypercube.max()))
 
-		return hypercube, label, fruit
+		return hypercube, label, sublabel, fruit
 
 class FlipHorizontal(object):
 	def __init__(self, p=0.5):
