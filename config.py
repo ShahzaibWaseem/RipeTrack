@@ -22,7 +22,7 @@ FRUITS_DICT = OrderedDict([("Pear Bosc", 0), ("Pear Williams", 1), ("Avocado Org
 # TEST_DATASETS = ["pear-williams"]
 # LABELS_DICT = OrderedDict([("Pear Bosc Ripe", 0), ("Pear Bosc Dangerous", 1), ("Pear Bosc Expired", 2), ("Pear Williams Ripe", 3), ("Pear Williams Dangerous", 4), ("Pear Williams Expired", 5), ("Avocado Organic Ripe", 6), ("Avocado Organic Dangerous", 7), ("Avocado Organic Expired", 8), ("Avocado Emp Ripe", 9), ("Avocado Emp Dangerous", 10), ("Avocado Emp Expired", 11)])
 LABELS_DICT = OrderedDict([("Unripe", 0), ("Ripe", 1), ("Expired", 2)])
-SUB_LABELS_DICT = OrderedDict([("Pretty Unripe", 0), ("Almost Ripe", 1), ("Ripe", 2), ("Perfectly Ripe", 3), ("Almost Expired", 4), ("Just Expired", 5), ("Rotten", 6)])
+SUB_LABELS_DICT = OrderedDict([("Pretty Unripe", 0), ("Almost Ripe", 1), ("Ripening", 2), ("Perfectly Ripe", 3), ("Almost Expired", 4), ("Just Expired", 5), ("Rotten", 6)])
 
 GT_RGBN_DIR_NAME = "rgbn"
 GT_SECONDARY_RGB_CAM_DIR_NAME = "secondary-rgbn"

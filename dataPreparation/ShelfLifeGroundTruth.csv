@@ -51,7 +51,7 @@ Date,Fruit,Type,HS Files,Mobile FID,Fruit ID,Abs Ethylene,Ethylene,Atm Ethylene,
 17-Aug,Avocado,Organic,"572, 573",0,7,2,3,1,Unripe,Almost Ripe,no
 17-Aug,Avocado,Organic,"574, 575",1,8,2,4,2,Unripe,Almost Ripe,no
 17-Aug,Avocado,Organic,"576, 577",2,9,3,3,0,Unripe,Almost Ripe,no
-17-Aug,Avocado,Organic,"578, 579",3,10,3,3,0,Ripe,Ripe,no
+17-Aug,Avocado,Organic,"578, 579",3,10,3,3,0,Ripe,Ripening,no
 17-Aug,Avocado,Emp,"580, 581",4,11,1,1,0,Unripe,Almost Ripe,no
 17-Aug,Avocado,Emp,"582, 583",5,12,2,2,0,Unripe,Pretty Unripe,no
 17-Aug,Avocado,Emp,"584, 585",6,13,1,2,1,Unripe,Almost Ripe,no
@@ -64,20 +64,20 @@ Date,Fruit,Type,HS Files,Mobile FID,Fruit ID,Abs Ethylene,Ethylene,Atm Ethylene,
 18-Aug,Pear,Williams,"598, 599",6,6,3,5,2,Unripe,Almost Ripe,no
 18-Aug,Avocado,Organic,"600, 601",0,7,2,3,1,Unripe,Almost Ripe,no
 18-Aug,Avocado,Organic,"602, 603",1,8,2,3,1,Unripe,Almost Ripe,no
-18-Aug,Avocado,Organic,"604, 605",2,9,3,4,1,Ripe,Ripe,no
+18-Aug,Avocado,Organic,"604, 605",2,9,3,4,1,Ripe,Ripening,no
 18-Aug,Avocado,Organic,"606, 607",3,10,3,3,0,Ripe,Perfectly Ripe,no
 18-Aug,Avocado,Emp,"608, 609",4,11,1,1,0,Unripe,Almost Ripe,no
 18-Aug,Avocado,Emp,"610, 611",5,12,2,2,0,Unripe,Pretty Unripe,no
-18-Aug,Avocado,Emp,"612, 613",6,13,1,2,1,Unripe,Ripe,no
+18-Aug,Avocado,Emp,"612, 613",6,13,1,2,1,Unripe,Ripening,no
 19-Aug,Pear,Bosc,"614, 615",0,0,0,0,0,Unripe,Pretty Unripe,yes
 19-Aug,Pear,Bosc,"616, 617",1,1,0,0,0,Unripe,Pretty Unripe,yes
 19-Aug,Pear,Bosc,"618, 619",2,2,0,0,0,Unripe,Pretty Unripe,yes
 19-Aug,Pear,Williams,"620, 621",3,3,18,21,3,Unripe,Almost Ripe,no
 19-Aug,Pear,Williams,"622, 623",4,4,12,19,7,Unripe,Almost Ripe,no
-19-Aug,Pear,Williams,"624, 625",5,5,4,7,3,Ripe,Ripe,no
-19-Aug,Pear,Williams,"626, 627",6,6,4,7,3,Ripe,Ripe,no
+19-Aug,Pear,Williams,"624, 625",5,5,4,7,3,Ripe,Ripening,no
+19-Aug,Pear,Williams,"626, 627",6,6,4,7,3,Ripe,Ripening,no
 19-Aug,Avocado,Organic,"628, 629",0,7,2,3,1,Unripe,Almost Ripe,no
-19-Aug,Avocado,Organic,"630, 631",1,8,3,5,2,Ripe,Ripe,no
+19-Aug,Avocado,Organic,"630, 631",1,8,3,5,2,Ripe,Ripening,no
 19-Aug,Avocado,Organic,"632, 633",2,9,5,5,0,Ripe,Perfectly Ripe,no
 19-Aug,Avocado,Organic,"634, 635",3,10,3,4,1,Ripe,Perfectly Ripe,no
 19-Aug,Avocado,Emp,"636, 637",4,11,1,2,1,Unripe,Almost Ripe,no
@@ -90,25 +90,25 @@ Date,Fruit,Type,HS Files,Mobile FID,Fruit ID,Abs Ethylene,Ethylene,Atm Ethylene,
 20-Aug,Pear,Williams,"650, 651",4,4,13,16,3,Unripe,Almost Ripe,no
 20-Aug,Pear,Williams,"652, 653",5,5,13,19,6,Ripe,Perfectly Ripe,no
 20-Aug,Pear,Williams,"654, 655",6,6,12,12,0,Ripe,Perfectly Ripe,no
-20-Aug,Avocado,Organic,"656, 657",0,7,3,9,6,Ripe,Ripe,no
+20-Aug,Avocado,Organic,"656, 657",0,7,3,9,6,Ripe,Ripening,no
 20-Aug,Avocado,Organic,"658, 659",1,8,4,9,5,Ripe,Perfectly Ripe,no
 20-Aug,Avocado,Organic,"660, 661",2,9,4,7,3,Ripe,Perfectly Ripe,no
 20-Aug,Avocado,Organic,"662, 663",3,10,3,6,3,Ripe,Perfectly Ripe,no
-20-Aug,Avocado,Emp,"664, 665",4,11,2,6,4,Ripe,Ripe,no
+20-Aug,Avocado,Emp,"664, 665",4,11,2,6,4,Ripe,Ripening,no
 20-Aug,Avocado,Emp,"666, 667",5,12,2,6,4,Unripe,Pretty Unripe,no
 20-Aug,Avocado,Emp,"668, 669",6,13,3,6,3,Ripe,Perfectly Ripe,no
 21-Aug,Pear,Bosc,"670, 671",0,0,0,0,0,Unripe,Pretty Unripe,yes
 21-Aug,Pear,Bosc,"672, 673",1,1,0,0,0,Unripe,Pretty Unripe,yes
 21-Aug,Pear,Bosc,"674, 675",2,2,0,0,0,Unripe,Pretty Unripe,yes
-21-Aug,Pear,Williams,"676, 677",3,3,29,33,4,Ripe,Ripe,no
-21-Aug,Pear,Williams,"678, 679",4,4,27,27,0,Ripe,Ripe,no
+21-Aug,Pear,Williams,"676, 677",3,3,29,33,4,Ripe,Ripening,no
+21-Aug,Pear,Williams,"678, 679",4,4,27,27,0,Ripe,Ripening,no
 21-Aug,Pear,Williams,"680, 681",5,5,12,12,0,Ripe,Perfectly Ripe,no
 21-Aug,Pear,Williams,"682, 683",6,6,10,12,2,Ripe,Perfectly Ripe,no
-21-Aug,Avocado,Organic,"684, 685",0,7,4,8,4,Ripe,Ripe,no
+21-Aug,Avocado,Organic,"684, 685",0,7,4,8,4,Ripe,Ripening,no
 21-Aug,Avocado,Organic,"686, 687",1,8,3,8,5,Ripe,Almost Expired,no
 21-Aug,Avocado,Organic,"688, 689",2,9,3,5,2,Ripe,Almost Expired,no
 21-Aug,Avocado,Organic,"690, 691",3,10,3,6,3,Ripe,Perfectly Ripe,no
-21-Aug,Avocado,Emp,"692, 693",4,11,3,4,1,Ripe,Ripe,no
+21-Aug,Avocado,Emp,"692, 693",4,11,3,4,1,Ripe,Ripening,no
 21-Aug,Avocado,Emp,"694, 695",5,12,2,4,2,Unripe,Pretty Unripe,no
 21-Aug,Avocado,Emp,"696, 697",6,13,3,4,1,Ripe,Perfectly Ripe,no
 22-Aug,Pear,Bosc,"698, 699",0,0,0,0,0,Unripe,Pretty Unripe,no
@@ -122,7 +122,7 @@ Date,Fruit,Type,HS Files,Mobile FID,Fruit ID,Abs Ethylene,Ethylene,Atm Ethylene,
 22-Aug,Avocado,Organic,"714, 715",1,8,3,6,3,Expired,Just Expired,no
 22-Aug,Avocado,Organic,"716, 717",2,9,3,6,3,Expired,Just Expired,no
 22-Aug,Avocado,Organic,"718, 719",3,10,3,6,3,Ripe,Perfectly Ripe,no
-22-Aug,Avocado,Emp,"720, 721",4,11,3,5,2,Ripe,Ripe,no
+22-Aug,Avocado,Emp,"720, 721",4,11,3,5,2,Ripe,Ripening,no
 22-Aug,Avocado,Emp,"722, 723",5,12,2,5,3,Unripe,Pretty Unripe,no
 22-Aug,Avocado,Emp,"724, 725",6,13,3,4,1,Ripe,Perfectly Ripe,no
 23-Aug,Pear,Bosc,"726, 727",0,0,0,0,0,Unripe,Pretty Unripe,yes
@@ -136,7 +136,7 @@ Date,Fruit,Type,HS Files,Mobile FID,Fruit ID,Abs Ethylene,Ethylene,Atm Ethylene,
 23-Aug,Avocado,Organic,"742, 743",1,8,2,7,5,Expired,Just Expired,no
 23-Aug,Avocado,Organic,"744, 745",2,9,2,6,4,Expired,Just Expired,no
 23-Aug,Avocado,Organic,"746, 747",3,10,2,6,4,Ripe,Almost Expired,no
-23-Aug,Avocado,Emp,"748, 749",4,11,3,6,3,Ripe,Ripe,no
+23-Aug,Avocado,Emp,"748, 749",4,11,3,6,3,Ripe,Ripening,no
 23-Aug,Avocado,Emp,"750, 751",5,12,2,5,3,Unripe,Pretty Unripe,no
 23-Aug,Avocado,Emp,"752, 753",6,13,3,5,2,Ripe,Perfectly Ripe,no
 24-Aug,Pear,Bosc,"754, 755",0,0,0,0,0,Unripe,Pretty Unripe,no
@@ -221,7 +221,7 @@ Date,Fruit,Type,HS Files,Mobile FID,Fruit ID,Abs Ethylene,Ethylene,Atm Ethylene,
 29-Aug,Avocado,Organic,"912, 913",2,9,2,12,10,Expired,Just Expired,no
 29-Aug,Avocado,Organic,"914, 915",3,10,2,9,7,Expired,Just Expired,no
 29-Aug,Avocado,Emp,"916, 917",4,11,4,7,3,Ripe,Perfectly Ripe,no
-29-Aug,Avocado,Emp,"918, 919",5,12,5,11,6,Ripe,Ripe,no
+29-Aug,Avocado,Emp,"918, 919",5,12,5,11,6,Ripe,Ripening,no
 29-Aug,Avocado,Emp,"920, 921",6,13,3,9,6,Ripe,Perfectly Ripe,no
 30-Aug,Pear,Bosc,"923, 924",0,0,0,0,0,Unripe,Almost Ripe,no
 30-Aug,Pear,Bosc,"925, 926",1,1,0,0,0,Unripe,Almost Ripe,no
@@ -235,7 +235,7 @@ Date,Fruit,Type,HS Files,Mobile FID,Fruit ID,Abs Ethylene,Ethylene,Atm Ethylene,
 30-Aug,Avocado,Organic,"941, 942",2,9,3,11,8,Expired,Rotten,no
 30-Aug,Avocado,Organic,"943, 944",3,10,3,9,6,Expired,Rotten,no
 30-Aug,Avocado,Emp,"945, 946",4,11,3,7,4,Ripe,Almost Expired,no
-30-Aug,Avocado,Emp,"947, 948",5,12,5,8,3,Ripe,Ripe,no
+30-Aug,Avocado,Emp,"947, 948",5,12,5,8,3,Ripe,Ripening,no
 30-Aug,Avocado,Emp,"949, 950",6,13,2,6,4,Ripe,Almost Expired,no
 31-Aug,Pear,Bosc,"952, 953",0,0,0,0,0,Unripe,Almost Ripe,yes
 31-Aug,Pear,Bosc,"954, 955",1,1,0,0,0,Unripe,Almost Ripe,yes
@@ -245,7 +245,7 @@ Date,Fruit,Type,HS Files,Mobile FID,Fruit ID,Abs Ethylene,Ethylene,Atm Ethylene,
 31-Aug,Avocado,Organic,"962, 963",2,9,2,2,0,Expired,Rotten,no
 31-Aug,Avocado,Organic,"964, 965",3,10,2,2,0,Expired,Rotten,no
 31-Aug,Avocado,Emp,"966, 967",4,11,3,3,0,Ripe,Almost Expired,no
-31-Aug,Avocado,Emp,"968, 969",5,12,5,5,0,Ripe,Ripe,no
+31-Aug,Avocado,Emp,"968, 969",5,12,5,5,0,Ripe,Ripening,no
 31-Aug,Avocado,Emp,"970, 971",6,13,1,1,0,Ripe,Almost Expired,no
 01-Sep,Pear,Bosc,"972, 973",0,0,0,0,0,Unripe,Almost Ripe,no
 01-Sep,Pear,Bosc,"974, 975",1,1,0,0,0,Unripe,Almost Ripe,no
@@ -315,51 +315,51 @@ Date,Fruit,Type,HS Files,Mobile FID,Fruit ID,Abs Ethylene,Ethylene,Atm Ethylene,
 10-Sep,Avocado,Emp,"1102, 1103",0,11,0,0,0,Expired,Just Expired,no
 10-Sep,Avocado,Emp,"1104, 1105",1,12,4,4,0,Ripe,Almost Expired,no
 10-Sep,Avocado,Emp,"1106, 1107",2,13,0,0,0,Expired,Just Expired,no
-11-Sep,Pear,Bosc,"1108, 1109",0,0,2,2,0,Ripe,Ripe,yes
+11-Sep,Pear,Bosc,"1108, 1109",0,0,2,2,0,Ripe,Ripening,yes
 11-Sep,Pear,Bosc,"1110, 1111",1,1,0,0,0,Unripe,Almost Ripe,yes
 11-Sep,Pear,Bosc,"1112, 1113",2,2,1,1,0,Unripe,Almost Ripe,yes
 11-Sep,Avocado,Emp,"1114, 1115",0,11,1,2,1,Expired,Rotten,no
 11-Sep,Avocado,Emp,"1116, 1117",1,12,4,7,3,Expired,Just Expired,no
 11-Sep,Avocado,Emp,"1118, 1119",2,13,1,1,0,Expired,Just Expired,no
-12-Sep,Pear,Bosc,"1120, 1121",0,0,2,2,0,Ripe,Ripe,no
+12-Sep,Pear,Bosc,"1120, 1121",0,0,2,2,0,Ripe,Ripening,no
 12-Sep,Pear,Bosc,"1122, 1123",1,1,0,0,0,Unripe,Almost Ripe,no
 12-Sep,Pear,Bosc,"1124, 1125",2,2,0,0,0,Unripe,Almost Ripe,no
 12-Sep,Avocado,Emp,"1126, 1127",0,11,1,1,0,Expired,Rotten,no
 12-Sep,Avocado,Emp,"1128, 1129",1,12,5,7,2,Expired,Just Expired,no
 12-Sep,Avocado,Emp,"1130, 1131",2,13,1,1,0,Expired,Just Expired,no
-13-Sep,Pear,Bosc,"1132, 1133",0,0,2,2,0,Ripe,Ripe,yes
+13-Sep,Pear,Bosc,"1132, 1133",0,0,2,2,0,Ripe,Ripening,yes
 13-Sep,Pear,Bosc,"1134, 1135",1,1,0,0,0,Unripe,Almost Ripe,yes
 13-Sep,Pear,Bosc,"1136, 1137",2,2,0,0,0,Unripe,Almost Ripe,yes
 13-Sep,Avocado,Emp,"1138, 1139",0,11,3,4,1,Expired,Rotten,no
 13-Sep,Avocado,Emp,"1140, 1141",1,12,5,6,1,Expired,Just Expired,no
 13-Sep,Avocado,Emp,"1142, 1143",2,13,1,1,0,Expired,Just Expired,no
-14-Sep,Pear,Bosc,"1144, 1145",0,0,2,2,0,Ripe,Ripe,no
-14-Sep,Pear,Bosc,"1146, 1147",1,1,2,2,0,Ripe,Ripe,no
-14-Sep,Pear,Bosc,"1148, 1149",2,2,1,1,0,Ripe,Ripe,no
+14-Sep,Pear,Bosc,"1144, 1145",0,0,2,2,0,Ripe,Ripening,no
+14-Sep,Pear,Bosc,"1146, 1147",1,1,2,2,0,Ripe,Ripening,no
+14-Sep,Pear,Bosc,"1148, 1149",2,2,1,1,0,Ripe,Ripening,no
 14-Sep,Avocado,Emp,"1150, 1151",0,11,4,6,2,Expired,Rotten,no
 14-Sep,Avocado,Emp,"1152, 1153",1,12,6,8,2,Expired,Rotten,no
 14-Sep,Avocado,Emp,"1154, 1155",2,13,2,2,0,Expired,Rotten,no
-15-Sep,Pear,Bosc,"1156, 1157",0,0,3,3,0,Ripe,Ripe,no
-15-Sep,Pear,Bosc,"1158, 1159",1,1,2,2,0,Ripe,Ripe,no
-15-Sep,Pear,Bosc,"1160, 1161",2,2,4,4,0,Ripe,Ripe,no
+15-Sep,Pear,Bosc,"1156, 1157",0,0,3,3,0,Ripe,Ripening,no
+15-Sep,Pear,Bosc,"1158, 1159",1,1,2,2,0,Ripe,Ripening,no
+15-Sep,Pear,Bosc,"1160, 1161",2,2,4,4,0,Ripe,Ripening,no
 15-Sep,Avocado,Emp,"1162, 1163",0,11,5,6,1,Expired,Rotten,no
 15-Sep,Avocado,Emp,"1164, 1165",1,12,7,7,0,Expired,Rotten,no
 15-Sep,Avocado,Emp,"1166, 1167",2,13,2,2,0,Expired,Rotten,no
 16-Sep,Pear,Bosc,"1168, 1169",0,0,10,10,0,Ripe,Perfectly Ripe,no
-16-Sep,Pear,Bosc,"1170, 1171",1,1,4,4,0,Ripe,Ripe,no
-16-Sep,Pear,Bosc,"1172, 1173",2,2,4,4,0,Ripe,Ripe,no
+16-Sep,Pear,Bosc,"1170, 1171",1,1,4,4,0,Ripe,Ripening,no
+16-Sep,Pear,Bosc,"1172, 1173",2,2,4,4,0,Ripe,Ripening,no
 16-Sep,Avocado,Emp,"1174, 1175",0,11,6,8,2,Expired,Rotten,no
 16-Sep,Avocado,Emp,"1176, 1177",1,12,11,15,4,Expired,Rotten,no
 16-Sep,Avocado,Emp,"1178, 1179",2,13,3,4,1,Expired,Rotten,no
 17-Sep,Pear,Bosc,"1180, 1181",0,0,9,9,0,Ripe,Perfectly Ripe,no
 17-Sep,Pear,Bosc,"1182, 1183",1,1,8,8,0,Ripe,Perfectly Ripe,no
-17-Sep,Pear,Bosc,"1184, 1185",2,2,4,4,0,Ripe,Ripe,no
+17-Sep,Pear,Bosc,"1184, 1185",2,2,4,4,0,Ripe,Ripening,no
 17-Sep,Avocado,Emp,"1186, 1187",0,11,6,14,8,Expired,Rotten,no
 17-Sep,Avocado,Emp,"1188, 1189",1,12,7,14,7,Expired,Rotten,no
 17-Sep,Avocado,Emp,"1190, 1191",2,13,3,4,1,Expired,Rotten,no
 18-Sep,Pear,Bosc,"1192, 1193",0,0,12,12,0,Ripe,Perfectly Ripe,no
 18-Sep,Pear,Bosc,"1194, 1195",1,1,8,8,0,Ripe,Perfectly Ripe,no
-18-Sep,Pear,Bosc,"1196, 1197",2,2,4,4,0,Ripe,Ripe,no
+18-Sep,Pear,Bosc,"1196, 1197",2,2,4,4,0,Ripe,Ripening,no
 18-Sep,Avocado,Emp,"1198, 1199",0,11,8,9,1,Expired,Rotten,no
 18-Sep,Avocado,Emp,"1200, 1201",1,12,7,7,0,Expired,Rotten,no
 18-Sep,Avocado,Emp,"1202, 1203",2,13,2,2,0,Expired,Rotten,no
