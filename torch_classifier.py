@@ -1,6 +1,5 @@
 import os
 import time
-import json
 import argparse
 from tqdm import tqdm
 
@@ -12,13 +11,13 @@ import matplotlib.pyplot as plt
 import torch
 from torch.autograd import Variable
 from sklearn.utils.class_weight import compute_class_weight
-from sklearn.metrics import confusion_matrix, classification_report, accuracy_score, auc, roc_curve
+from sklearn.metrics import confusion_matrix, classification_report, accuracy_score
 
 from models.classifier import ModelWithAttention
 
 from dataset import get_dataloaders_classification
 from utils import AverageMeter, initialize_logger, save_checkpoint, get_best_checkpoint
-from config import VISUALIZATION_DIR_NAME, MODEL_PATH, BANDS, LABELS_DICT, SUB_LABELS_DICT, run_pretrained, classicication_run_title, run_pretrained, end_epoch, create_directory
+from config import BANDS, VISUALIZATION_DIR_NAME, MODEL_PATH, LABELS_DICT, SUB_LABELS_DICT, TIME_LEFT_DICT, classicication_run_title, end_epoch, run_pretrained, create_directory
 
 init_lr = 0.0005
 y_pred, y_true = [], []
@@ -41,11 +40,11 @@ def get_label_weights(train_data_loader, val_data_loader):
 	return class_weights
 
 def test_model_only():
+	best_checkpoint_file, epoch, iter, state_dict, optimizer, val_loss, (val_acc_labels, val_acc_sublabels) = get_best_checkpoint(task="classification")
 	test_data_loader, _ = get_dataloaders_classification(trainset_size=1.0)
-	model = ModelWithAttention(input_channels=len(BANDS), num_classes=len(LABELS_DICT), num_subclasses=len(SUB_LABELS_DICT))
+	model = ModelWithAttention(input_channels=len(BANDS), num_classes=len(LABELS_DICT), num_subclasses=len(TIME_LEFT_DICT))
 	model = model.cuda()
 	criterion = (torch.nn.CrossEntropyLoss(reduction="mean"), torch.nn.CrossEntropyLoss(reduction="mean"))
-	best_checkpoint_file, epoch, iter, state_dict, optimizer, val_loss, (val_acc_labels, val_acc_sublabels) = get_best_checkpoint(task="classification")
 	model.load_state_dict(state_dict)
 	test_loss, test_acc = test(test_data_loader, model, criterion)
 
@@ -69,7 +68,7 @@ def main():
 	class_weights = torch.tensor(class_weights, dtype=torch.float32).cuda()
 
 	# model = TorchClassifier(fine_tune=True, in_channels=len(BANDS), num_classes=len(LABELS_DICT))
-	model = ModelWithAttention(input_channels=len(BANDS), num_classes=len(LABELS_DICT), num_subclasses=len(SUB_LABELS_DICT))
+	model = ModelWithAttention(input_channels=len(BANDS), num_classes=len(LABELS_DICT), num_subclasses=len(TIME_LEFT_DICT))
 	# model.bottleneck.register_forward_hook(get_activation("bottleneck"))
 	model = model.cuda()
 
@@ -98,7 +97,10 @@ def main():
 			best_optimizer = optimizer
 			iteration_passed = iteration
 		if epoch % 30 == 0:
-			save_checkpoint(int(round(epoch, -1)), iteration_passed, best_model, best_optimizer, best_val_loss, best_val_acc_labels, best_val_acc_sublabels, bands=BANDS, task="classification")
+			if epoch <= 150:
+				continue
+			else:
+				save_checkpoint(int(round(epoch, -1)), iteration_passed, best_model, best_optimizer, best_val_loss, best_val_acc_labels, best_val_acc_sublabels, bands=BANDS, task="classification")
 		if epoch % 100 == 0:
 			test_loss, test_acc = test(valid_data_loader, model, criterion)
 		# scheduler.step(val_loss)
@@ -273,11 +275,11 @@ def test(test_data_loader, model, criterion):
 	classification_evaluate(y_true_labels[avo_empire_indices], y_pred_labels[avo_empire_indices], "avocado_emp")
 	classification_evaluate(y_true_labels[avo_organic_indices], y_pred_labels[avo_organic_indices], "avocado_organic")
 
-	classification_evaluate(y_true_sublabels, y_pred_sublabels, "all_sublabels", labels_dict=SUB_LABELS_DICT)
-	classification_evaluate(y_true_sublabels[pear_bosc_indices], y_pred_sublabels[pear_bosc_indices], "pear_bosc_sublabels", labels_dict=SUB_LABELS_DICT)
-	classification_evaluate(y_true_sublabels[pear_williams_indices], y_pred_sublabels[pear_williams_indices], "pear_williams_sublabels", labels_dict=SUB_LABELS_DICT)
-	classification_evaluate(y_true_sublabels[avo_empire_indices], y_pred_sublabels[avo_empire_indices], "avocado_emp_sublabels", labels_dict=SUB_LABELS_DICT)
-	classification_evaluate(y_true_sublabels[avo_organic_indices], y_pred_sublabels[avo_organic_indices], "avocado_organic_sublabels", labels_dict=SUB_LABELS_DICT)
+	classification_evaluate(y_true_sublabels, y_pred_sublabels, "all_sublabels", labels_dict=TIME_LEFT_DICT)
+	classification_evaluate(y_true_sublabels[pear_bosc_indices], y_pred_sublabels[pear_bosc_indices], "pear_bosc_sublabels", labels_dict=TIME_LEFT_DICT)
+	classification_evaluate(y_true_sublabels[pear_williams_indices], y_pred_sublabels[pear_williams_indices], "pear_williams_sublabels", labels_dict=TIME_LEFT_DICT)
+	classification_evaluate(y_true_sublabels[avo_empire_indices], y_pred_sublabels[avo_empire_indices], "avocado_emp_sublabels", labels_dict=TIME_LEFT_DICT)
+	classification_evaluate(y_true_sublabels[avo_organic_indices], y_pred_sublabels[avo_organic_indices], "avocado_organic_sublabels", labels_dict=TIME_LEFT_DICT)
 
 	return (losses.avg, losses_class.avg, losses_subclass.avg), (accuracy_labels, accuracy_sublabels)
 
@@ -288,14 +290,26 @@ def get_ovr_roc():
 	""" Gets the ROC curve for One vs Rest classification """
 	pass
 
+import textwrap
+def wrap_labels(ax, width, break_long_words=False):
+	labels = []
+	for label in ax.get_xticklabels():
+		text = label.get_text()
+		labels.append(textwrap.fill(text, width=width, break_long_words=break_long_words))
+	ax.set_xticklabels(labels, rotation=0)
+	ax.set_yticklabels(labels, rotation=90, horizontalalignment="center")
+	ax.tick_params(axis="y", which="major", pad=15)
+
 def classification_evaluate(y_true, y_pred, title, labels_dict=LABELS_DICT):
 	confusion_mat = confusion_matrix(y_true, y_pred)
 	df_confusion_mat = pd.DataFrame(confusion_mat / np.sum(confusion_mat, axis=1)[:, None], index = [key for key, value in labels_dict.items()], columns = [key for key, value in labels_dict.items()])
-	plt.figure()
-	sns.heatmap(df_confusion_mat, annot=True, fmt=".2%")
+	fig, ax = plt.subplots(figsize=(10, 10))
+	sns.heatmap(df_confusion_mat, annot=True, fmt=".2%", cmap="Blues")
+	wrap_labels(ax, 10) if title.split("_")[-1] == "sublabels" else None
 	print("Title: {}, Accuracy: {}".format(title, accuracy_score(y_true, y_pred)))
 	print(classification_report(y_true, y_pred, target_names=[key for key, value in labels_dict.items()]))
-	print(df_confusion_mat)
+	plt.tight_layout()
+	# print(df_confusion_mat)
 	plt.savefig(os.path.join(VISUALIZATION_DIR_NAME, "confusion_matrix_{}.pdf".format(title)))
 	plt.show()
 	plt.close()
@@ -303,5 +317,5 @@ def classification_evaluate(y_true, y_pred, title, labels_dict=LABELS_DICT):
 if __name__ == "__main__":
 	create_directory(os.path.join(VISUALIZATION_DIR_NAME))
 	create_directory(os.path.join(MODEL_PATH, "classification"))
-	main()
-	# test_model_only()
+	# main()
+	test_model_only()

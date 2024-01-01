@@ -23,6 +23,7 @@ FRUITS_DICT = OrderedDict([("Pear Bosc", 0), ("Pear Williams", 1), ("Avocado Org
 # LABELS_DICT = OrderedDict([("Pear Bosc Ripe", 0), ("Pear Bosc Dangerous", 1), ("Pear Bosc Expired", 2), ("Pear Williams Ripe", 3), ("Pear Williams Dangerous", 4), ("Pear Williams Expired", 5), ("Avocado Organic Ripe", 6), ("Avocado Organic Dangerous", 7), ("Avocado Organic Expired", 8), ("Avocado Emp Ripe", 9), ("Avocado Emp Dangerous", 10), ("Avocado Emp Expired", 11)])
 LABELS_DICT = OrderedDict([("Unripe", 0), ("Ripe", 1), ("Expired", 2)])
 SUB_LABELS_DICT = OrderedDict([("Pretty Unripe", 0), ("Almost Ripe", 1), ("Ripening", 2), ("Perfectly Ripe", 3), ("Almost Expired", 4), ("Just Expired", 5), ("Rotten", 6)])
+TIME_LEFT_DICT = OrderedDict([("Under 14%", 0), ("14-28%", 1), ("28-42%", 2), ("42-57%", 3), ("57-71%", 4), ("71-85%", 5), ("85-100%", 6), ("Expired", 7)])
 
 GT_RGBN_DIR_NAME = "rgbn"
 GT_SECONDARY_RGB_CAM_DIR_NAME = "secondary-rgbn"
@@ -81,7 +82,7 @@ lossfunctions_considered = ["MRAE", "SAM", "SID"]
 model_run_title = "Model: %s\tDataset: %s\tIllumination: %s\tLosses: %s\tFull Image or Patches: %s\n" \
 	% (MODEL_NAME, APPLICATION_NAME, illumination_string, lossfunctions_considered, "Full Image" if PATCH_SIZE == IMAGE_SIZE else "Patches")
 classicication_run_title = "Model: %s\tDataset: %s\tNumber of Classes: %d\tSub Classes: %s\tFull Image or Patches: %s\n" \
-	% (CLASSIFIER_MODEL_NAME, APPLICATION_NAME, len(LABELS_DICT), len(SUB_LABELS_DICT), "Full Image" if PATCH_SIZE == IMAGE_SIZE else "Patches")
+	% (CLASSIFIER_MODEL_NAME, APPLICATION_NAME, len(LABELS_DICT), len(TIME_LEFT_DICT), "Full Image" if PATCH_SIZE == IMAGE_SIZE else "Patches")
 
 ### to create the checkpoint of the model ###
 checkpoint_fileprestring = "%s_%s" % (MODEL_NAME, APPLICATION_NAME)
@@ -89,6 +90,7 @@ classification_checkpoint_fileprestring = "%s_%s" % (CLASSIFIER_MODEL_NAME, APPL
 checkpoint_file = "MSLP_%s_500.pkl" % checkpoint_fileprestring
 # checkpoint_file = "HS_model_%d.pkl" % end_epoch
 run_pretrained = False					# if True, the model is loaded from the checkpoint_file
+use_mobile_dataset = True				# if True, the model is trained on the mobile dataset
 
 mobile_model_file = "model_%s.pth" % APPLICATION_NAME
 onnx_file_name = "model.onnx"
@@ -113,6 +115,8 @@ def sampler():
 	return BANDS
 
 sampler()
+
+BANDS = [band for band in range(len(BANDS))] if use_mobile_dataset else BANDS
 
 ### Bands for text in the visualizations ###
 VIEW_BANDS = [7, 16, 53, 61]
