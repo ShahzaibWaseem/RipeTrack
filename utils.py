@@ -215,17 +215,21 @@ def get_best_checkpoint(task="reconstruction"):
 
 	for checkpoint_file in sorted(glob(os.path.join(MODEL_PATH, task, "*.pkl"))):
 		if os.path.isfile(checkpoint_file):
-			save_point = torch.load(checkpoint_file)
-			val_loss = save_point["val_loss"]
-			(val_acc_labels, val_acc_sublabels) = save_point["val_acc"]
-			print("Checkpoint: %s\tValidation Loss: %.9f\tValidation Accuracy: %.2f%%, %.2f%%" % (os.path.split(checkpoint_file)[-1], val_loss, val_acc_labels, val_acc_sublabels), end="\t")
-			if (100 - best_val_loss + best_val_acc_labels + best_val_acc_sublabels) < (100 - val_loss + val_acc_labels + val_acc_sublabels):
-				print("<- Best checkpoint yet. Updating the best checkpoint.", end="")
-				best_val_loss = val_loss
-				best_val_acc_labels = val_acc_labels
-				best_val_acc_sublabels = val_acc_sublabels
-				best_checkpoint_file = os.path.split(checkpoint_file)[-1]
-			print()
+			try:
+				save_point = torch.load(checkpoint_file)
+				val_loss = save_point["val_loss"]
+				(val_acc_labels, val_acc_sublabels) = save_point["val_acc"]
+				print("Checkpoint: %s\tValidation Loss: %.9f\tValidation Accuracy: %.2f%%, %.2f%%" % (os.path.split(checkpoint_file)[-1], val_loss, val_acc_labels, val_acc_sublabels), end="\t")
+				if (100 - best_val_loss + best_val_acc_labels + best_val_acc_sublabels) < (100 - val_loss + val_acc_labels + val_acc_sublabels):
+					print("<- Best checkpoint yet. Updating the best checkpoint.", end="")
+					best_val_loss = val_loss
+					best_val_acc_labels = val_acc_labels
+					best_val_acc_sublabels = val_acc_sublabels
+					best_checkpoint_file = os.path.split(checkpoint_file)[-1]
+				print()
+			except Exception as e:
+				print("Error while reading {}: {}".format(os.path.split(checkpoint_file)[-1], str(e)))
+				continue
 	print("\nThe best checkpoint file, is loaded, for %s task and it is %s with validation loss value %.9f and validation accuracy %.2f%%, %.2f%%" %
 		  (task, best_checkpoint_file, best_val_loss, best_val_acc_labels, best_val_acc_sublabels), end="\n\n")
 
