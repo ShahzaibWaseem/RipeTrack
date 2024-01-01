@@ -12,3 +12,4 @@ dataPreparation/HSI_Annotations/
 dataPreparation/anomalies.txt
 *.ipynb
 models/ViT.py
+dataPreparation/ShelfLifeGroundTruthOld.csv
