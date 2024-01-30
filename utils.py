@@ -256,6 +256,9 @@ def optimizer_to(optim, device):
 def save_mat(mat_filename, hypercube):
 	hdf5storage.savemat(mat_filename, {var_name: hypercube}, format="7.3", store_python_metadata=True)
 
+def save_mat_patched(mat_filename, hypercube):
+	hdf5storage.savemat(mat_filename, hypercube, format="7.3", store_python_metadata=True)
+
 class NumpyEncoder(json.JSONEncoder):
 	def default(self, obj):
 		if isinstance(obj, np.ndarray):
@@ -294,10 +297,18 @@ def reconstruction(rgb, model, normalize=False):
 		img_res = np.maximum(img_res, 0)
 	return img_res
 
-def load_mat(mat_name, normalize=False):
+def load_mat(mat_name, normalize=False, skip_normalization=False):
 	""" Helper function to load mat files (used in making h5 dataset) """
-	data = hdf5storage.loadmat(mat_name, variable_names=[var_name])[var_name]
-	data /= NORMALIZATION_FACTOR if normalize else 1.0
+	data = hdf5storage.loadmat(mat_name, variable_names=[var_name])
+	if not skip_normalization:
+		data = data[var_name]
+		data /= NORMALIZATION_FACTOR if normalize else 1.0
+	return data
+
+def load_mat_patched(mat_name):
+	""" Helper function to load mat files (used in making h5 dataset) """
+	data = hdf5storage.loadmat(mat_name)
+	# data = data[var_name]
 	return data
 
 def make_h5_dataset(DATASET_DIR, h5_filename):
