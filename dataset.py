@@ -424,7 +424,6 @@ class DatasetFromDirectoryReconstruction(Dataset):
 	def __init__(self, root, application_name=APPLICATION_NAME, patch_size=64, append_secondary_input=False, transforms=None, verbose=False):
 		self.patch_size = patch_size
 		self.append_secondary_input = append_secondary_input
-		illuminations_considered = ["", "-cloudy", "-day", "-night", "-sunlight"]
 		image_width, image_height = IMAGE_SIZE, IMAGE_SIZE
 		rgbn_counter, hypercube_counter, patch_index, data_idx = 0, 0, 0, 0
 		self.transforms = transforms
@@ -450,7 +449,7 @@ class DatasetFromDirectoryReconstruction(Dataset):
 				hypercube = np.transpose(hypercube, [2, 0, 1]) + EPS
 				hypercube = np.expand_dims(hypercube, axis=0)
 
-				rgb_image = imread(os.path.join(directory, GT_RGBN_DIR_NAME, os.path.split(filename)[-1].replace(".mat", "_RGB%s.png" % random.choice(illuminations_considered))))
+				rgb_image = imread(os.path.join(directory, GT_RGBN_DIR_NAME, os.path.split(filename)[-1].replace(".mat", "_RGB.png")))
 				rgb_image = self.transforms(rgb_image) if not self.transforms == None else rgb_image
 				rgb_image = (rgb_image - rgb_image.min()) / (rgb_image.max() - rgb_image.min())
 				rgb_image = np.transpose(rgb_image, [2, 0, 1])
@@ -464,7 +463,7 @@ class DatasetFromDirectoryReconstruction(Dataset):
 				nir_image = np.expand_dims(nir_image, axis=0)
 
 				if append_secondary_input:
-					secondary_rgb_image = imread(os.path.join(directory, GT_SECONDARY_RGB_CAM_DIR_NAME, os.path.split(filename)[-1].replace(".mat", "_RGB%s.png" % random.choice(illuminations_considered))))
+					secondary_rgb_image = imread(os.path.join(directory, GT_SECONDARY_RGB_CAM_DIR_NAME, os.path.split(filename)[-1].replace(".mat", "_RGB.png")))
 					secondary_rgb_image = self.transforms(secondary_rgb_image) if not self.transforms == None else secondary_rgb_image
 					secondary_rgb_image = (secondary_rgb_image - secondary_rgb_image.min()) / (secondary_rgb_image.max() - secondary_rgb_image.min())
 					secondary_rgb_image = np.transpose(secondary_rgb_image, [2, 0, 1])
