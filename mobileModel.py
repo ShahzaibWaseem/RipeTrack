@@ -9,14 +9,15 @@ from torch.utils.mobile_optimizer import optimize_for_mobile
 
 from utils import get_best_checkpoint
 from models.MST import MST_Plus_Plus
-from config import MODEL_PATH, BANDS, MOBILE_MODELS_DIR_NAME
+from config import MODEL_PATH, BANDS, MOBILE_MODELS_DIR_NAME, create_directory
 
 def makeMobileModel(torch_mobile_model_filename="mobile_mst_68.pt"):
+	create_directory(os.path.join(MODEL_PATH, MOBILE_MODELS_DIR_NAME))
 	best_checkpoint_file, epoch, iter, state_dict, opt_state, val_loss, val_acc = get_best_checkpoint(task="reconstruction")
 	model = MST_Plus_Plus(in_channels=4, out_channels=len(BANDS), n_feat=len(BANDS), stage=3)
 	model.load_state_dict(state_dict)
 	model.eval()
-	input_tensor = torch.rand(1, 4, 512, 512)
+	input_tensor = torch.rand(1, 4, 45, 45)
 
 	model = torch.quantization.convert(model)
 
