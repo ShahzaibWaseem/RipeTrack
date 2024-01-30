@@ -1,5 +1,6 @@
 import os
 import sys
+from saveMat import CommonLighting
 sys.path.append("..")
 
 import imageio
@@ -47,6 +48,7 @@ def viewImages(rgb_image, nir_image, rgb_image_aligned, plot_title, dataset_name
 def main():
 	ground_truth_df = pd.read_csv(os.path.join(SHELF_LIFE_GROUND_TRUTH_FILENAME))
 	check_filenames = []
+	commonLighting = CommonLighting()
 
 	for index in ground_truth_df.index:
 		date, month = ground_truth_df["Date"][index].split("-")
@@ -85,8 +87,10 @@ def main():
 			print("Copied %s -> %s [Glob Len: %d]" % (os.path.split(mobile_nir)[-1], "%s_NIR.png" % hs_filename, nir_glob_len), "\tNumber of Files per day: %d\t" % check_number_of_files_per_day, "Fruit Name: %s\t" % fruit_name_short, "FID: %s\t" % mobile_fid, "Date: %s-%s" % (date, month))
 
 			nir_image = np.expand_dims(np.asarray(nir_image[:,:,0]), axis=-1)
+			daylight = commonLighting(rgb_image_aligned)
 
 			imageio.imwrite(os.path.join(mobile_dataset_output_directory, "%s_RGB.png" % hs_filename), rgb_image_aligned)
+			imageio.imwrite(os.path.join(mobile_dataset_output_directory, "%s_RGB-D.png" % hs_filename), daylight)
 			imageio.imwrite(os.path.join(mobile_dataset_output_directory, "%s_NIR.png" % hs_filename), nir_image)
 
 	if len(check_filenames) != 0:
