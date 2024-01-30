@@ -6,9 +6,9 @@ var_name = "hcube"					# key for the dictionary which are saved in the files
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 EPS = 0.00001
 
-SHELF_LIFE_GROUND_TRUTH_FILENAME = "ShelfLifeGroundTruth.csv"
-MOBILE_DATASET_CROPS_FILENAME = "mobileShelfLifeCrops.csv"
 GT_DATASET_CROPS_FILENAME = "gtShelfLifeCrops.csv"
+MOBILE_DATASET_CROPS_FILENAME = "mobileShelfLifeCrops.csv"
+SHELF_LIFE_GROUND_TRUTH_FILENAME = "ShelfLifeGroundTruth.csv"
 
 ### Datagenerator Directories ###
 CAMERA_OUTPUT_ROOT_PATH = os.path.join("..", "Catalog")
@@ -23,17 +23,19 @@ FRUITS_DICT = OrderedDict([("Pear Bosc", 0), ("Pear Williams", 1), ("Avocado Org
 # LABELS_DICT = OrderedDict([("Pear Bosc Ripe", 0), ("Pear Bosc Dangerous", 1), ("Pear Bosc Expired", 2), ("Pear Williams Ripe", 3), ("Pear Williams Dangerous", 4), ("Pear Williams Expired", 5), ("Avocado Organic Ripe", 6), ("Avocado Organic Dangerous", 7), ("Avocado Organic Expired", 8), ("Avocado Emp Ripe", 9), ("Avocado Emp Dangerous", 10), ("Avocado Emp Expired", 11)])
 LABELS_DICT = OrderedDict([("Unripe", 0), ("Ripe", 1), ("Expired", 2)])
 SUB_LABELS_DICT = OrderedDict([("Pretty Unripe", 0), ("Almost Ripe", 1), ("Ripening", 2), ("Perfectly Ripe", 3), ("Almost Expired", 4), ("Just Expired", 5), ("Rotten", 6)])
-TIME_LEFT_DICT = OrderedDict([("Under 14%", 0), ("14-28%", 1), ("28-42%", 2), ("42-57%", 3), ("57-71%", 4), ("71-85%", 5), ("85-100%", 6), ("Expired", 7)])
+TIME_LEFT_DICT = OrderedDict([("100", 0), ("90", 1), ("80", 2), ("70", 3), ("60", 4), ("50", 5), ("40", 6), ("30", 7), ("20", 8), ("10", 9), ("0", 10), ("Expired", 11)])
 
 GT_RGBN_DIR_NAME = "rgbn"
 GT_SECONDARY_RGB_CAM_DIR_NAME = "secondary-rgbn"
 MOBILE_DATASET_DIR_NAME = "mobile-rgbn"
 RECONSTRUCTED_HS_DIR_NAME = "reconstructed"
 MOBILE_RECONSTRUCTED_HS_DIR_NAME = "mobile-reconstructed"
+PATCHED_HS_DIR_NAME = "patched"
 VISUALIZATION_DIR_NAME = "visualizations"
 MOBILE_MODELS_DIR_NAME = "mobileModels"
 
 APPEND_SECONDARY_RGB_CAM_INPUT = True
+PATCHED_INFERENCE = True
 
 PREDEF_TRANSFORMS_FILENAME = "transforms{}.pth".format("_appended" if APPEND_SECONDARY_RGB_CAM_INPUT else "")
 
@@ -46,14 +48,19 @@ MODEL_PATH = os.path.join(".", "checkpoints")
 LOGS_PATH = os.path.join(".", "logs")
 DATA_PREP_PATH = os.path.join(".", "dataPreparation")
 
+DEEP_WB_DIR = "deepWB"
+
 ### Parameters for Data reading ###
 BAND_SPACING = 1						# used only if reading data from directories dataset.DatasetFromDirectory
 NUMBER_OF_BANDS = 204//BAND_SPACING		# holds the number of bands considered (used in model creation)
 
 IMAGE_SIZE = 512
 PATCH_SIZE = 64							# patching of the hypercubes and images
+CLASSIFICATION_PATCH_SIZE = 45			# patching of the hypercubes and images during classification
+STRIDE = 5								# stride for patching the hypercubes and images
 NORMALIZATION_FACTOR = 4096				# max value of the captured hypercube (dependent on the camera - Specim IQ)
 RGBN_BANDS = [18, 47, 80, 183]			# correspond to B 454, G 541, R 640, N 949 bands
+NIR_BANDS = list(range(186, 195))		# correspond to NIR bands range
 # BANDS = [RGBN_BANDS, range(104, 204, 2)]
 # Bands: (450, 650, 5), (670, 690, 5), (750, 900, 5), (900, 1000, 5)
 # BANDS = [range(19, 87, 5), range(94, 102, 5), range(120, 170, 5), range(170, 204, 5)]
@@ -87,7 +94,7 @@ classicication_run_title = "Model: %s\tDataset: %s\tNumber of Classes: %d\tSub C
 ### to create the checkpoint of the model ###
 checkpoint_fileprestring = "%s_%s" % (MODEL_NAME, APPLICATION_NAME)
 classification_checkpoint_fileprestring = "%s_%s" % (CLASSIFIER_MODEL_NAME, APPLICATION_NAME)
-checkpoint_file = "MSLP_%s_500.pkl" % checkpoint_fileprestring
+checkpoint_file = "MSLP_%s_399.pkl" % checkpoint_fileprestring
 # checkpoint_file = "HS_model_%d.pkl" % end_epoch
 run_pretrained = False					# if True, the model is loaded from the checkpoint_file
 use_mobile_dataset = True				# if True, the model is trained on the mobile dataset
