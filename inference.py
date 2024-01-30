@@ -3,6 +3,7 @@ from __future__ import division
 import os
 import time
 import numpy as np
+import pandas as pd
 from glob import glob
 from imageio import imread
 
@@ -10,9 +11,9 @@ import torch
 from torchsummary import summary
 from models.MST import MST_Plus_Plus
 
-from utils import save_mat, load_mat, initialize_logger, visualize_gt_pred_hs_data, get_best_checkpoint
+from utils import save_mat, save_mat_patched, load_mat, load_mat_patched, initialize_logger, visualize_gt_pred_hs_data, get_best_checkpoint
 from loss import test_mrae, test_rrmse, test_msam, test_sid, test_psnr, test_ssim
-from config import MODEL_PATH, TEST_ROOT_DATASET_DIR, TEST_DATASETS, APPLICATION_NAME, BANDS, MOBILE_DATASET_DIR_NAME, RECONSTRUCTED_HS_DIR_NAME, GT_RGBN_DIR_NAME, GT_SECONDARY_RGB_CAM_DIR_NAME, MOBILE_RECONSTRUCTED_HS_DIR_NAME, EPS, model_run_title, checkpoint_file, device, create_directory
+from config import MODEL_PATH, TEST_ROOT_DATASET_DIR, TEST_DATASETS, APPLICATION_NAME, BANDS, CLASSIFICATION_PATCH_SIZE, STRIDE, DATA_PREP_PATH, GT_DATASET_CROPS_FILENAME, MOBILE_DATASET_CROPS_FILENAME, MOBILE_DATASET_DIR_NAME, RECONSTRUCTED_HS_DIR_NAME, GT_RGBN_DIR_NAME, GT_SECONDARY_RGB_CAM_DIR_NAME, MOBILE_RECONSTRUCTED_HS_DIR_NAME, PATCHED_INFERENCE, PATCHED_HS_DIR_NAME, EPS, model_run_title, checkpoint_file, device, create_directory
 
 def calculate_metrics(img_pred, img_gt):
 	mrae = test_mrae(img_pred, img_gt)
@@ -23,16 +24,21 @@ def calculate_metrics(img_pred, img_gt):
 	ssim = test_ssim(img_pred, img_gt, max_p=1)		# max_p = 1 for 0-1 normalized images
 	return mrae, rrmse, msam, sid, psnr, ssim
 
-def inference(model, checkpoint_filename, mobile_reconstruction=False):
+def inference(model, checkpoint_filename, mobile_reconstruction=False, patched_inference=False):
 	# input_transform, label_transform = get_required_transforms(task="reconstruction")
 	logger = initialize_logger(filename="test.log")
 	log_string = "[%15s] Time: %0.9f, MRAE: %0.9f, RRMSE: %0.9f, SAM: %0.9f, SID: %0.9f, PSNR: %0.9f, SSIM: %0.9f"
 	TEST_DATASET_DIR = os.path.join(TEST_ROOT_DATASET_DIR, APPLICATION_NAME)
 
+	crops_df = pd.read_csv(os.path.join(DATA_PREP_PATH, MOBILE_DATASET_CROPS_FILENAME if mobile_reconstruction else GT_DATASET_CROPS_FILENAME))
+	crops_df["w"] = crops_df["xmax"] - crops_df["xmin"]
+	crops_df["h"] = crops_df["ymax"] - crops_df["ymin"]
+
 	for test_dataset in TEST_DATASETS:
 		directory = os.path.join(TEST_DATASET_DIR, "%s_204ch" % test_dataset)
 		OUT_PATH = os.path.join(directory, RECONSTRUCTED_HS_DIR_NAME) if not mobile_reconstruction else os.path.join(directory, MOBILE_RECONSTRUCTED_HS_DIR_NAME)
 		create_directory(OUT_PATH)
+		create_directory(os.path.join(OUT_PATH, PATCHED_HS_DIR_NAME)) if patched_inference else None
 
 		print("\n" + model_run_title)
 		logger.info(model_run_title)
@@ -47,6 +53,7 @@ def inference(model, checkpoint_filename, mobile_reconstruction=False):
 		for mat_filepath in sorted(glob(os.path.join(directory, "*.mat"))):
 			start_time = time.time()
 			mat_filename = os.path.split(mat_filepath)[-1]
+			mat_number = mat_filename.split("_")[0].split(".")[0]
 
 			hypercube = load_mat(mat_filepath)
 			hypercube = hypercube[:, :, BANDS]
@@ -65,11 +72,11 @@ def inference(model, checkpoint_filename, mobile_reconstruction=False):
 			nir_image = np.expand_dims(np.asarray(nir_image), axis=-1)
 			nir_image = np.transpose(nir_image, [2, 0, 1])
 			nir_image = np.expand_dims(nir_image, axis=0)
-
-			image = torch.Tensor(np.concatenate((rgb_image, nir_image), axis=1)).float().to(device)
+			image = np.concatenate((rgb_image, nir_image), axis=1)
+			image_tensor = torch.Tensor(image).float().to(device)
 
 			with torch.no_grad():
-				hypercube_pred = model(image)
+				hypercube_pred = model(image_tensor)
 			hypercube_pred = np.transpose(hypercube_pred.squeeze(0).cpu().detach().numpy(), [1, 2, 0])
 			# hypercube_pred = hypercube_pred + EPS			# should work without this line but just in case
 
@@ -87,6 +94,28 @@ def inference(model, checkpoint_filename, mobile_reconstruction=False):
 				print("[%15s] Time: %0.9f" % (mat_filename, end_time))
 				logger.info("[%15s] Time: %0.9f" % (mat_filename, end_time))
 
+			if patched_inference:
+				crop_record = crops_df[crops_df["image"].isin(["{}_RGB.png".format(mat_number)])]
+				hypercube_combined = {}
+				xmin = int(crop_record["xmin"].iloc[0])
+				ymin = int(crop_record["ymin"].iloc[0])
+				xmax = int(crop_record["xmax"].iloc[0])
+				ymax = int(crop_record["ymax"].iloc[0])
+
+				for patch_i in range(xmin, xmax, STRIDE):
+					if patch_i+CLASSIFICATION_PATCH_SIZE > xmax: continue
+					for patch_j in range(ymin, ymax, STRIDE):
+						if patch_j+CLASSIFICATION_PATCH_SIZE > ymax: continue
+						imageCrop = image[:, :, patch_i:patch_i+CLASSIFICATION_PATCH_SIZE, patch_j:patch_j+CLASSIFICATION_PATCH_SIZE]
+						if (imageCrop.shape[2:4] != (CLASSIFICATION_PATCH_SIZE, CLASSIFICATION_PATCH_SIZE)):
+							continue
+						image_tensor = torch.Tensor(imageCrop).float().to(device)
+						with torch.no_grad():
+							hypercube_pred = model(image_tensor)
+						hypercube_pred = np.transpose(hypercube_pred.squeeze(0).cpu().detach().numpy(), [1, 2, 0])
+						hypercube_combined[u"(%d, %d)" % (patch_i, patch_j)] = hypercube_pred
+				save_mat_patched(os.path.join(OUT_PATH, PATCHED_HS_DIR_NAME, mat_filename), hypercube_combined)
+
 def main():
 	# checkpoint_filename, epoch, iter, model_param, optimizer, val_loss, val_acc = get_best_checkpoint(task="reconstruction")
 	checkpoint_filename = checkpoint_file
@@ -97,7 +126,7 @@ def main():
 	model = model.to(device)
 	model.eval()
 	print(summary(model=model, input_data=(4, 512, 512)))
-	inference(model, checkpoint_filename, mobile_reconstruction=False)
+	inference(model, checkpoint_filename, mobile_reconstruction=True, patched_inference=PATCHED_INFERENCE)
 
 if __name__ == "__main__":
 	main()
