@@ -2,6 +2,7 @@ from __future__ import division
 
 import  os
 import time
+import argparse
 from tqdm import tqdm
 
 import torch
@@ -17,6 +18,11 @@ from utils import AverageMeter, initialize_logger, save_checkpoint, get_best_che
 from config import MODEL_PATH, LOGS_PATH, DATA_PREP_PATH, BANDS, PREDEF_TRANSFORMS_FILENAME, batch_size, device, end_epoch, init_lr, model_run_title, run_pretrained, lossfunctions_considered, create_directory
 
 torch.autograd.set_detect_anomaly(False)
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--disable_tqdm", default=False, required=False, type=bool, help="Disable tqdm progress bar")
+args = parser.parse_args()
+disable_tqdm = args.disable_tqdm
 
 def get_and_save_predef_transforms():
 	if os.path.exists(os.path.join(DATA_PREP_PATH, PREDEF_TRANSFORMS_FILENAME)):
@@ -88,14 +94,14 @@ def main():
 
 		train_loss_mrae, train_loss_sam, train_loss_sid = train_losses_ind
 		val_loss_mrae, val_loss_sam, val_loss_sid = val_losses_ind
-		# if best_val_loss < val_loss:
-		# 	best_val_loss = val_loss
-		# 	best_epoch = epoch
-		# 	best_model = model
-		# 	best_optimizer = optimizer
-		# 	iteration_passed = iteration
-		# if epoch % 10 == 0:
-		save_checkpoint(epoch, iteration, model, optimizer, val_loss, 0, bands=BANDS, task="reconstruction")
+		if best_val_loss < val_loss:
+			best_val_loss = val_loss
+			best_epoch = epoch
+			best_model = model
+			best_optimizer = optimizer
+			iteration_passed = iteration
+		# if epoch % 30 == 0:
+		save_checkpoint(epoch, iteration, model, optimizer, val_loss, 0, 0, bands=BANDS, task="reconstruction")
 
 		epoch_time = time.time() - start_time
 
@@ -116,7 +122,7 @@ def train(train_data_loader, model, criterions, optimizer, iteration, init_lr, m
 	criterion_mrae, criterion_sam, criterion_sid = criterions
 	losses_mrae, losses_sam, losses_sid = AverageMeter(), AverageMeter(), AverageMeter()
 
-	for images, labels in tqdm(train_data_loader, desc="Train", total=len(train_data_loader)):
+	for images, labels in tqdm(train_data_loader, desc="Train", total=len(train_data_loader), disable=disable_tqdm):
 		# print(torch.min(images), torch.max(images), torch.min(labels), torch.max(labels))
 		images, labels = images.to(device, non_blocking=True), labels.to(device, non_blocking=True)
 		lr = poly_lr_scheduler(optimizer, init_lr, iteration, max_iter=max_iter, power=0.9)
@@ -152,7 +158,7 @@ def validate(valid_data_loader, model, criterions):
 	losses_mrae, losses_sam, losses_sid = AverageMeter(), AverageMeter(), AverageMeter()
 
 	with torch.no_grad():
-		for images, labels in tqdm(valid_data_loader, desc="Valid", total=len(valid_data_loader)):
+		for images, labels in tqdm(valid_data_loader, desc="Valid", total=len(valid_data_loader), disable=disable_tqdm):
 			images, labels = images.to(device, non_blocking=True), labels.to(device, non_blocking=True)
 
 			# compute output
