@@ -9,6 +9,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 import torch
+from torchsummary import summary
 from torch.autograd import Variable
 from sklearn.utils.class_weight import compute_class_weight
 from sklearn.metrics import confusion_matrix, classification_report, accuracy_score
@@ -17,7 +18,7 @@ from models.classifier import ModelWithAttention
 
 from dataset import get_dataloaders_classification
 from utils import AverageMeter, initialize_logger, save_checkpoint, get_best_checkpoint
-from config import BANDS, VISUALIZATION_DIR_NAME, MODEL_PATH, LABELS_DICT, SUB_LABELS_DICT, TIME_LEFT_DICT, classicication_run_title, end_epoch, run_pretrained, create_directory
+from config import BANDS, VISUALIZATION_DIR_NAME, MODEL_PATH, LABELS_DICT, SUB_LABELS_DICT, TEST_DATASETS, TIME_LEFT_DICT, classicication_run_title, end_epoch, run_pretrained, create_directory
 
 init_lr = 0.0005
 y_pred, y_true = [], []
@@ -44,14 +45,17 @@ def test_model_only():
 	test_data_loader, _ = get_dataloaders_classification(trainset_size=1.0)
 	model = ModelWithAttention(input_channels=len(BANDS), num_classes=len(LABELS_DICT), num_subclasses=len(TIME_LEFT_DICT))
 	model = model.cuda()
+	model.eval()
+	print(summary(model=model, input_data=(68, 512, 512)))
 	criterion = (torch.nn.CrossEntropyLoss(reduction="mean"), torch.nn.CrossEntropyLoss(reduction="mean"))
 	model.load_state_dict(state_dict)
 	test_loss, test_acc = test(test_data_loader, model, criterion)
+	print("Test Loss: {}, Test Accuracy: {}".format(test_loss, test_acc))
 
 def main():
 	logger = initialize_logger(filename="classification.log")
 	history = {"train_loss": [], "train_loss_labels": [], "train_loss_sublabels": [], "train_acc_labels": [], "train_acc_sublabels": [], "val_loss": [], "val_loss_labels": [], "val_loss_sublabels": [], "val_acc_labels": [], "val_acc_sublabels": []}
-	log_string = "Epoch [%3d], Iter[%5d], Time: %.2f, Train Loss: %.8f (%.8f, %.8f), Train Accuracy: %.2f%%, %.2f%%, Validation Loss: %.8f (%.8f, %.8f), Validation Accuracy: %.2f%%, %.2f%%"
+	log_string = "Epoch [%3d], Iter[%7d], Time: %.2f, Train Loss: %.8f (%.8f, %.8f), Train Accuracy: %.2f%%, %.2f%%, Validation Loss: %.8f (%.8f, %.8f), Validation Accuracy: %.2f%%, %.2f%%"
 
 	# input_transform, label_transform = get_required_transforms(task="classification")
 
@@ -81,7 +85,7 @@ def main():
 	epoch, iteration, best_epoch, best_val_loss, best_val_acc_labels, best_val_acc_sublabels = 0, 0, 0, 0, 0, 0
 
 	if run_pretrained:
-		epoch, iteration, state_dict, optimizer, val_loss, (val_acc_labels, val_acc_sublabels) = get_best_checkpoint(task="classification")
+		best_checkpoint_file, epoch, iteration, state_dict, optimizer, val_loss, (val_acc_labels, val_acc_sublabels) = get_best_checkpoint(task="classification")
 		model.load_state_dict(state_dict)
 
 	for epoch in range(1, end_epoch):
@@ -96,8 +100,8 @@ def main():
 			best_model = model
 			best_optimizer = optimizer
 			iteration_passed = iteration
-		if epoch % 30 == 0:
-			if epoch <= 150:
+		if epoch % 20 == 0:
+			if epoch <= 80:
 				continue
 			else:
 				save_checkpoint(int(round(epoch, -1)), iteration_passed, best_model, best_optimizer, best_val_loss, best_val_acc_labels, best_val_acc_sublabels, bands=BANDS, task="classification")
@@ -269,17 +273,15 @@ def test(test_data_loader, model, criterion):
 	accuracy_labels = 100. * (running_correct_labels / len(test_data_loader.dataset))
 	accuracy_sublabels = 100. * (running_correct_sublabels / len(test_data_loader.dataset))
 
-	classification_evaluate(y_true_labels, y_pred_labels, "all")
-	classification_evaluate(y_true_labels[pear_bosc_indices], y_pred_labels[pear_bosc_indices], "pear_bosc")
-	classification_evaluate(y_true_labels[pear_williams_indices], y_pred_labels[pear_williams_indices], "pear_williams")
-	classification_evaluate(y_true_labels[avo_empire_indices], y_pred_labels[avo_empire_indices], "avocado_emp")
-	classification_evaluate(y_true_labels[avo_organic_indices], y_pred_labels[avo_organic_indices], "avocado_organic")
+	# classification_evaluate(y_true_labels, y_pred_labels, "all")
+	for fruit in TEST_DATASETS:
+		fruit_fullname = " ".join(elem.capitalize() for elem in fruit.split("-"))
+		fruit_indices = find_indices(fruit_labels, fruit_fullname)
+		print(fruit_fullname, fruit)
+		classification_evaluate(y_true_labels[fruit_indices], y_pred_labels[fruit_indices], fruit)
+		classification_evaluate(y_true_sublabels[fruit_indices], y_pred_sublabels[fruit_indices], fruit + "_sublabels", labels_dict=TIME_LEFT_DICT)
 
-	classification_evaluate(y_true_sublabels, y_pred_sublabels, "all_sublabels", labels_dict=TIME_LEFT_DICT)
-	classification_evaluate(y_true_sublabels[pear_bosc_indices], y_pred_sublabels[pear_bosc_indices], "pear_bosc_sublabels", labels_dict=TIME_LEFT_DICT)
-	classification_evaluate(y_true_sublabels[pear_williams_indices], y_pred_sublabels[pear_williams_indices], "pear_williams_sublabels", labels_dict=TIME_LEFT_DICT)
-	classification_evaluate(y_true_sublabels[avo_empire_indices], y_pred_sublabels[avo_empire_indices], "avocado_emp_sublabels", labels_dict=TIME_LEFT_DICT)
-	classification_evaluate(y_true_sublabels[avo_organic_indices], y_pred_sublabels[avo_organic_indices], "avocado_organic_sublabels", labels_dict=TIME_LEFT_DICT)
+	# classification_evaluate(y_true_sublabels, y_pred_sublabels, "all_sublabels", labels_dict=TIME_LEFT_DICT)
 
 	return (losses.avg, losses_class.avg, losses_subclass.avg), (accuracy_labels, accuracy_sublabels)
 
