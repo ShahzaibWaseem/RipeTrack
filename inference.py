@@ -20,8 +20,8 @@ def calculate_metrics(img_pred, img_gt):
 	rrmse = test_rrmse(img_pred, img_gt)
 	msam = test_msam(img_pred, img_gt)
 	sid = test_sid(img_pred, img_gt)
-	psnr = test_psnr(img_pred, img_gt, max_p=1)		# max_p = 1 for 0-1 normalized images
-	ssim = test_ssim(img_pred, img_gt, max_p=1)		# max_p = 1 for 0-1 normalized images
+	psnr = test_psnr(img_pred, img_gt, max_value=1)		# max_value = 1 for 0-1 normalized images
+	ssim = test_ssim(img_pred, img_gt, max_value=1)		# max_value = 1 for 0-1 normalized images
 	return mrae, rrmse, msam, sid, psnr, ssim
 
 def inference(model, checkpoint_filename, mobile_reconstruction=False, patched_inference=False):
@@ -30,9 +30,14 @@ def inference(model, checkpoint_filename, mobile_reconstruction=False, patched_i
 	log_string = "[%15s] Time: %0.9f, MRAE: %0.9f, RRMSE: %0.9f, SAM: %0.9f, SID: %0.9f, PSNR: %0.9f, SSIM: %0.9f"
 	TEST_DATASET_DIR = os.path.join(TEST_ROOT_DATASET_DIR, APPLICATION_NAME)
 
-	crops_df = pd.read_csv(os.path.join(DATA_PREP_PATH, MOBILE_DATASET_CROPS_FILENAME if mobile_reconstruction else GT_DATASET_CROPS_FILENAME))
+	crops_filepath = os.path.join(DATA_PREP_PATH, MOBILE_DATASET_CROPS_FILENAME if mobile_reconstruction else GT_DATASET_CROPS_FILENAME)
+	crops_df = pd.read_csv(crops_filepath)
+	print("Using {} Crop File".format(crops_filepath))
+
 	crops_df["w"] = crops_df["xmax"] - crops_df["xmin"]
 	crops_df["h"] = crops_df["ymax"] - crops_df["ymin"]
+	min_hc, max_hc = np.inf, -np.inf
+	min_phc, max_phc = np.inf, -np.inf
 
 	for test_dataset in TEST_DATASETS:
 		directory = os.path.join(TEST_DATASET_DIR, "%s_204ch" % test_dataset)
@@ -58,9 +63,11 @@ def inference(model, checkpoint_filename, mobile_reconstruction=False, patched_i
 			hypercube = load_mat(mat_filepath)
 			hypercube = hypercube[:, :, BANDS]
 			hypercube = (hypercube - hypercube.min()) / (hypercube.max() - hypercube.min())
+			min_hc, max_hc = min(min_hc, hypercube.min()), max(max_hc, hypercube.max())
+			hypercube = np.maximum(np.minimum(hypercube, 1.0), 0.0)
 			hypercube = hypercube + EPS
 
-			rgb_filename = mat_filename.replace(".mat", "_RGB.png")
+			rgb_filename = mat_filename.replace(".mat", "_RGB%s.png" % "-D")
 			rgb_image = imread(os.path.join(directory, GT_RGBN_DIR_NAME if not mobile_reconstruction else MOBILE_DATASET_DIR_NAME, rgb_filename))
 			rgb_image = (rgb_image - rgb_image.min()) / (rgb_image.max() - rgb_image.min())
 			rgb_image = np.transpose(rgb_image, [2, 0, 1])
@@ -78,7 +85,10 @@ def inference(model, checkpoint_filename, mobile_reconstruction=False, patched_i
 			with torch.no_grad():
 				hypercube_pred = model(image_tensor)
 			hypercube_pred = np.transpose(hypercube_pred.squeeze(0).cpu().detach().numpy(), [1, 2, 0])
-			# hypercube_pred = hypercube_pred + EPS			# should work without this line but just in case
+			hypercube_pred = (hypercube_pred - hypercube_pred.min()) / (hypercube_pred.max() - hypercube_pred.min())
+			min_phc, max_phc = min(min_phc, hypercube_pred.min()), max(max_phc, hypercube_pred.max())
+			hypercube_pred = np.maximum(np.minimum(hypercube_pred, 1.0), 0.0)
+			hypercube_pred = hypercube_pred + EPS			# should work without this line but just in case
 
 			end_time = time.time() - start_time
 			hypercube_pred_filepath = os.path.join(OUT_PATH, mat_filename)
@@ -115,18 +125,20 @@ def inference(model, checkpoint_filename, mobile_reconstruction=False, patched_i
 						hypercube_pred = np.transpose(hypercube_pred.squeeze(0).cpu().detach().numpy(), [1, 2, 0])
 						hypercube_combined[u"(%d, %d)" % (patch_i, patch_j)] = hypercube_pred
 				save_mat_patched(os.path.join(OUT_PATH, PATCHED_HS_DIR_NAME, mat_filename), hypercube_combined)
+		print("Min Hypercube: %0.9f, Max Hypercube: %0.9f" % (min_hc, max_hc))
+		print("Min Predicted Hypercube: %0.9f, Max Predicted Hypercube: %0.9f" % (min_phc, max_phc))
 
 def main():
-	# checkpoint_filename, epoch, iter, model_param, optimizer, val_loss, val_acc = get_best_checkpoint(task="reconstruction")
-	checkpoint_filename = checkpoint_file
-	checkpoint = torch.load(os.path.join(MODEL_PATH, "reconstruction", checkpoint_file))
+	checkpoint_filename, epoch, iter, model_param, optimizer, val_loss, val_acc = get_best_checkpoint(task="reconstruction")
+	# checkpoint_filename = checkpoint_file
+	checkpoint = torch.load(os.path.join(MODEL_PATH, "reconstruction", checkpoint_filename))
 	model_param = checkpoint["state_dict"]
 	model = MST_Plus_Plus(in_channels=4, out_channels=len(BANDS), n_feat=len(BANDS), stage=3)
 	model.load_state_dict(model_param)
 	model = model.to(device)
 	model.eval()
 	print(summary(model=model, input_data=(4, 512, 512)))
-	inference(model, checkpoint_filename, mobile_reconstruction=True, patched_inference=PATCHED_INFERENCE)
+	inference(model, checkpoint_filename, mobile_reconstruction=False, patched_inference=PATCHED_INFERENCE)
 
 if __name__ == "__main__":
 	main()
