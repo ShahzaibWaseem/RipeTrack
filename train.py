@@ -13,9 +13,9 @@ from torch.autograd import Variable
 from models.MST import MST_Plus_Plus
 from loss import mrae_loss, sam_loss, sid_loss
 
-from dataset import get_required_transforms, get_dataloaders_reconstruction
-from utils import AverageMeter, initialize_logger, save_checkpoint, get_best_checkpoint, record_loss, poly_lr_scheduler, optimizer_to
-from config import MODEL_PATH, LOGS_PATH, DATA_PREP_PATH, BANDS, PREDEF_TRANSFORMS_FILENAME, batch_size, device, end_epoch, init_lr, model_run_title, run_pretrained, lossfunctions_considered, create_directory
+from dataset import get_dataloaders_reconstruction
+from utils import AverageMeter, initialize_logger, save_checkpoint, get_best_checkpoint, poly_lr_scheduler, optimizer_to
+from config import MODEL_PATH, LOGS_PATH, DATA_PREP_PATH, BANDS, PREDEF_TRANSFORMS_FILENAME, batch_size, device, end_epoch, init_lr, model_run_title, run_pretrained, transfer_learning, lossfunctions_considered, create_directory
 
 torch.autograd.set_detect_anomaly(False)
 
@@ -24,35 +24,13 @@ parser.add_argument("--disable_tqdm", default=False, required=False, type=bool, 
 args = parser.parse_args()
 disable_tqdm = args.disable_tqdm
 
-def get_and_save_predef_transforms():
-	if os.path.exists(os.path.join(DATA_PREP_PATH, PREDEF_TRANSFORMS_FILENAME)):
-		print("Loading Pre-defined Transforms...")
-		transforms = torch.load(os.path.join(DATA_PREP_PATH, PREDEF_TRANSFORMS_FILENAME))
-		input_transform, label_transform = transforms["rgbn"], transforms["hypercube"]
-		if BANDS == transforms["bands"]:
-			return input_transform, label_transform
-		else:
-			input_transform, label_transform = get_required_transforms()
-			transforms = {"rgbn": input_transform, "hypercube": label_transform, "bands": BANDS}
-			torch.save(transforms, os.path.join(DATA_PREP_PATH, PREDEF_TRANSFORMS_FILENAME))
-			return input_transform, label_transform
-	else:
-		input_transform, label_transform = get_required_transforms()
-		transforms = {"rgbn": input_transform, "hypercube": label_transform, "bands": BANDS}
-		torch.save(transforms, os.path.join(DATA_PREP_PATH, PREDEF_TRANSFORMS_FILENAME))
-		return input_transform, label_transform
-
 def main():
-	# torch.backends.cudnn.benchmark = True
+	torch.backends.cudnn.benchmark = True
 	trainset_size=0.8
-	# input_transform, label_transform = get_and_save_predef_transforms()
-
-	# train_data_loader, valid_data_loader, whole_dataset_loader = get_dataloaders(input_transform, label_transform, task="reconstruction", trainset_size=trainset_size)
-	# train_data_loader, valid_data_loader = train_data_loader.to(device), valid_data_loader.to(device)
 
 	train_data_loader, valid_data_loader = get_dataloaders_reconstruction(trainset_size=trainset_size)
-
 	whole_dataset_size = len(train_data_loader.dataset) + len(valid_data_loader.dataset)
+	# train_data_loader, valid_data_loader = train_data_loader.to(device), valid_data_loader.to(device)
 
 	# Parameters, Loss and Optimizer
 	start_epoch = 0
@@ -67,7 +45,7 @@ def main():
 	# Log files
 	logger = initialize_logger(filename="train.log")
 
-	log_string = "Epoch [%3d], Iter[%6d], Time: %.9f, Learning Rate: %.9f, Train Loss: %.9f (%.9f, %.9f, %.9f), Validation Loss: %.9f (%.9f, %.9f, %.9f)"
+	log_string = "Epoch [%3d], Iter[%7d], Time: %.9f, Learning Rate: %.9f, Train Loss: %.9f (%.9f, %.9f, %.9f), Validation Loss: %.9f (%.9f, %.9f, %.9f)"
 
 	# make model
 	model = MST_Plus_Plus(in_channels=4, out_channels=len(BANDS), n_feat=len(BANDS), stage=3)
@@ -86,6 +64,17 @@ def main():
 	print("\n" + model_run_title)
 	logger.info(model_run_title)
 
+	if transfer_learning:
+		module_count = 0
+		for param in model.parameters():
+			param.requires_grad = False
+		for _, p in model.state_dict().items():
+			module_count += 1
+			if module_count > 151:		# 151 layers onwards are parameters in the last MST block
+				p.requires_grad = True
+			# print(_, p.requires_grad)
+		# print("Total number of modules: ", module_count)
+
 	for epoch in range(start_epoch+1, end_epoch):
 		start_time = time.time()
 
@@ -94,24 +83,25 @@ def main():
 
 		train_loss_mrae, train_loss_sam, train_loss_sid = train_losses_ind
 		val_loss_mrae, val_loss_sam, val_loss_sid = val_losses_ind
-		if best_val_loss < val_loss:
+		if best_val_loss > val_loss:
 			best_val_loss = val_loss
 			best_epoch = epoch
 			best_model = model
 			best_optimizer = optimizer
 			iteration_passed = iteration
-		# if epoch % 30 == 0:
-		save_checkpoint(epoch, iteration, model, optimizer, val_loss, 0, 0, bands=BANDS, task="reconstruction")
-
+		if epoch % 30 == 0:
+			if epoch <= 80:
+				continue
+			else:
+				save_checkpoint(int(round(epoch, -1)), iteration_passed, best_model, best_optimizer, best_val_loss, 0, 0, bands=BANDS, task="reconstruction")
 		epoch_time = time.time() - start_time
 
 		# Printing and saving losses
-		# record_loss(loss_csv, epoch, iteration, epoch_time, lr, train_loss, val_loss)
 		log_string_filled = log_string % (epoch, iteration, epoch_time, lr,
 							train_loss, train_loss_mrae, train_loss_sam, train_loss_sid,
 							val_loss, val_loss_mrae, val_loss_sam, val_loss_sid)
 
-		print("\n", log_string_filled, "\n")
+		print("\n", log_string_filled, ", Best val: %.2f" % (best_val_loss), "\n")
 		logger.info(log_string_filled)
 	iteration = 0
 
@@ -142,7 +132,7 @@ def train(train_data_loader, model, criterions, optimizer, iteration, init_lr, m
 		nn.utils.clip_grad_norm_(model.parameters(), 5.0)
 		# Calling the step function on an Optimizer makes an update to its parameters
 		optimizer.step()
-		#  record loss
+		# record loss
 		losses.update(loss.item())
 		losses_mrae.update(loss_mrae.item())
 		losses_sam.update(loss_sam.item())
@@ -169,7 +159,7 @@ def validate(valid_data_loader, model, criterions):
 			loss_sid = torch.mul(criterion_sid(output, labels), 0.0001) if "SID" in lossfunctions_considered else torch.tensor(0)
 			loss = loss_mrae + loss_sam + loss_sid
 
-			#  record loss
+			# record loss
 			losses.update(loss.item())
 			losses_mrae.update(loss_mrae.item())
 			losses_sam.update(loss_sam.item())
