@@ -6,8 +6,6 @@ from skimage.metrics import structural_similarity
 
 import torch
 
-from config import NORMALIZATION_FACTOR
-
 def mrae_loss(tensor_pred, tensor_gt):
 	""" Computes the Mean Relative Absolute Error Loss (PyTorch - Training Loss) """
 	error = torch.abs((tensor_pred-tensor_gt)/tensor_gt)
@@ -87,31 +85,31 @@ def test_mrae(img_pred, img_gt):
 	mrae = np.mean(np.abs(error_relative))
 	return mrae
 
-def test_rrmse(img_pred, img_gt):
+def test_rrmse(img_pred, img_gt, relative=False):
 	""" Calculate the relative Root Mean Square Error (NumPy - Test Error) """
 	error = img_pred - img_gt
-	error_relative = error/img_gt
+	error_relative = error/img_gt if relative else error
 	rrmse = np.sqrt(np.mean((np.power(error_relative, 2))))
 	return rrmse
 
-def test_msam(img_pred, img_gt):
+def test_msam(img_pred, img_gt, max_value=1):
 	""" Calculate the mean spectral angle mapper (NumPy - Test Error) """
 	img_pred_flat = img_pred.reshape(-1, img_pred.shape[2])
 	img_gt_flat = img_gt.reshape(-1, img_gt.shape[2])
 	assert len(img_pred_flat) == len(img_gt_flat)
-	return np.mean([spectral_angle(img_pred_flat[i]/NORMALIZATION_FACTOR, img_gt_flat[i]/NORMALIZATION_FACTOR) for i in range(len(img_pred_flat))])
+	return np.mean([spectral_angle(img_pred_flat[i]/max_value, img_gt_flat[i]/max_value) for i in range(len(img_pred_flat))])
 
-def test_sid(img_pred, img_gt):
+def test_sid(img_pred, img_gt, max_value=1):
 	""" mean spectral information divergence """
 	img_pred_flat = img_pred.reshape(-1, img_pred.shape[2])
 	img_gt_flat = img_gt.reshape(-1, img_gt.shape[2])
 	assert len(img_pred_flat) == len(img_gt_flat)
-	return np.mean([spectral_divergence(img_pred_flat[i]/NORMALIZATION_FACTOR, img_gt_flat[i]/NORMALIZATION_FACTOR) for i in range(len(img_pred_flat))])
+	return np.mean([spectral_divergence(img_pred_flat[i]/max_value, img_gt_flat[i]/max_value) for i in range(len(img_pred_flat))])
 
-def test_psnr(img_pred, img_gt, max_p=1):
+def test_psnr(img_pred, img_gt, max_value=1):
 	""" Calculate the peak signal to noise ratio (NumPy - Test Error) """
-	return 10 * np.log10(max_p**2 / mse(img_pred, img_gt))
+	return 10 * np.log10(max_value**2 / mse(img_pred, img_gt))
 
-def test_ssim(img_pred, img_gt, max_p=1):
+def test_ssim(img_pred, img_gt, max_value=1):
 	""" Calculate the structural simularity index measure (NumPy - Test Error) """
-	return structural_similarity(img_gt, img_pred, data_range=max_p, channel_axis=True)
+	return structural_similarity(img_gt, img_pred, data_range=max_value, channel_axis=True)
