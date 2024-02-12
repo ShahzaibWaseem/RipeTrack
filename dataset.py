@@ -52,14 +52,12 @@ def get_dataloaders_reconstruction(trainset_size=0.7):
 								   num_workers=4,
 								   batch_size=batch_size,
 								   shuffle=True,
-								   persistent_workers=True,
 								   pin_memory=False)
 
 	valid_data_loader = DataLoader(dataset=valid_data,
 								   num_workers=4,
 								   batch_size=16,
 								   shuffle=False,
-								   persistent_workers=True,
 								   pin_memory=False)
 
 	return train_data_loader, valid_data_loader
@@ -192,8 +190,8 @@ class DatasetFromDirectoryReconstruction(Dataset):
 		image = np.concatenate((secondary_rgb_image, nir_image), axis=0) if self.append_secondary_input else np.concatenate((rgb_image, nir_image), axis=0)
 		# print(image.shape, image[0, 0, 0])
 
-		image = torch.tensor(image, device=device).float()
-		hypercube = torch.tensor(hypercube, device=device).float()
+		image = torch.tensor(image).float()
+		hypercube = torch.tensor(hypercube).float()
 
 		# visualize_data_item(np.transpose(rgb_image.numpy(), [1, 2, 0]), np.transpose(hypercube.numpy(), [1, 2, 0]), np.transpose(secondary_rgb_image.numpy(), [1, 2, 0]), 12, 0)
 		# print(rgb_image.shape, nir_image.shape, secondary_rgb_image.shape if self.append_secondary_input else None, hypercube.shape)

@@ -35,7 +35,7 @@ def main():
 	# Parameters, Loss and Optimizer
 	start_epoch = 0
 	iteration = 0
-	best_val_loss = 0
+	best_val_loss = float('inf')
 	criterion_mrae = mrae_loss
 	criterion_sam = sam_loss
 	criterion_sid = sid_loss
@@ -76,6 +76,7 @@ def main():
 		# print("Total number of modules: ", module_count)
 
 	for epoch in range(start_epoch+1, end_epoch):
+		torch.cuda.synchronize()
 		start_time = time.time()
 
 		train_loss, train_losses_ind, iteration, lr = train(train_data_loader, model, criterions, optimizer, iteration, init_lr, int(trainset_size*whole_dataset_size)*end_epoch/batch_size)
@@ -89,11 +90,12 @@ def main():
 			best_model = model
 			best_optimizer = optimizer
 			iteration_passed = iteration
-		if epoch % 30 == 0:
-			if epoch <= 80:
-				continue
-			else:
-				save_checkpoint(int(round(epoch, -1)), iteration_passed, best_model, best_optimizer, best_val_loss, 0, 0, bands=BANDS, task="reconstruction")
+		# if epoch % 30 == 0:
+		# 	if epoch <= 80:
+		# 		continue
+		# 	else:
+		save_checkpoint(epoch, iteration, model, optimizer, val_loss, 0, 0, bands=BANDS, task="reconstruction")
+		torch.cuda.synchronize()
 		epoch_time = time.time() - start_time
 
 		# Printing and saving losses

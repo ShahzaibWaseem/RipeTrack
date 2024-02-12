@@ -23,7 +23,7 @@ FRUITS_DICT = OrderedDict([("Pear Bosc", 0), ("Pear Williams", 1), ("Avocado Org
 # LABELS_DICT = OrderedDict([("Pear Bosc Ripe", 0), ("Pear Bosc Dangerous", 1), ("Pear Bosc Expired", 2), ("Pear Williams Ripe", 3), ("Pear Williams Dangerous", 4), ("Pear Williams Expired", 5), ("Avocado Organic Ripe", 6), ("Avocado Organic Dangerous", 7), ("Avocado Organic Expired", 8), ("Avocado Emp Ripe", 9), ("Avocado Emp Dangerous", 10), ("Avocado Emp Expired", 11)])
 LABELS_DICT = OrderedDict([("Unripe", 0), ("Ripe", 1), ("Expired", 2)])
 SUB_LABELS_DICT = OrderedDict([("Pretty Unripe", 0), ("Almost Ripe", 1), ("Ripening", 2), ("Perfectly Ripe", 3), ("Almost Expired", 4), ("Just Expired", 5), ("Rotten", 6)])
-TIME_LEFT_DICT = OrderedDict([("100", 0), ("90", 1), ("80", 2), ("70", 3), ("60", 4), ("50", 5), ("40", 6), ("30", 7), ("20", 8), ("10", 9), ("0", 10), ("Expired", 11)])
+TIME_LEFT_DICT = OrderedDict([("100%", 0), ("90%", 1), ("80%", 2), ("70%", 3), ("60%", 4), ("50%", 5), ("40%", 6), ("30%", 7), ("20%", 8), ("10%", 9), ("0%", 10)])
 
 GT_RGBN_DIR_NAME = "rgbn"
 GT_SECONDARY_RGB_CAM_DIR_NAME = "secondary-rgbn"
@@ -35,7 +35,7 @@ VISUALIZATION_DIR_NAME = "visualizations"
 MOBILE_MODELS_DIR_NAME = "mobileModels"
 
 APPEND_SECONDARY_RGB_CAM_INPUT = True
-PATCHED_INFERENCE = True
+PATCHED_INFERENCE = False
 
 PREDEF_TRANSFORMS_FILENAME = "transforms{}.pth".format("_appended" if APPEND_SECONDARY_RGB_CAM_INPUT else "")
 
@@ -97,7 +97,8 @@ classification_checkpoint_fileprestring = "%s_%s" % (CLASSIFIER_MODEL_NAME, APPL
 checkpoint_file = "MSLP_%s_399.pkl" % checkpoint_fileprestring
 # checkpoint_file = "HS_model_%d.pkl" % end_epoch
 run_pretrained = False					# if True, the model is loaded from the checkpoint_file
-use_mobile_dataset = True				# if True, the model is trained on the mobile dataset
+use_mobile_dataset = False				# if True, the model is trained on the mobile dataset
+transfer_learning = False				# if True, the model will freeze all layers except the last MST block and conv layers
 
 mobile_model_file = "model_%s.pth" % APPLICATION_NAME
 onnx_file_name = "model.onnx"
