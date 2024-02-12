@@ -90,11 +90,11 @@ def main():
 			best_model = model
 			best_optimizer = optimizer
 			iteration_passed = iteration
-		# if epoch % 30 == 0:
-		# 	if epoch <= 80:
-		# 		continue
-		# 	else:
-		save_checkpoint(epoch, iteration, model, optimizer, val_loss, 0, 0, bands=BANDS, task="reconstruction")
+		if epoch % 30 == 0:
+			if epoch <= 80:
+				continue
+			else:
+				save_checkpoint(int(round(epoch, -1)), iteration_passed, best_model, best_optimizer, best_val_loss, 0, 0, bands=BANDS, task="reconstruction")
 		torch.cuda.synchronize()
 		epoch_time = time.time() - start_time
 
@@ -103,7 +103,7 @@ def main():
 							train_loss, train_loss_mrae, train_loss_sam, train_loss_sid,
 							val_loss, val_loss_mrae, val_loss_sam, val_loss_sid)
 
-		print("\n", log_string_filled, ", Best val: %.2f" % (best_val_loss), "\n")
+		print("\n", log_string_filled, "\n")
 		logger.info(log_string_filled)
 	iteration = 0
 
