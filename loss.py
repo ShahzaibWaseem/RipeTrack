@@ -78,10 +78,10 @@ def spectral_divergence(a, b):
 	q = (b / np.sum(b)) + np.spacing(1)
 	return np.sum(p * np.log(p / q) + q * np.log(q / p))
 
-def test_mrae(img_pred, img_gt):
+def test_mrae(img_pred, img_gt, relative=False):
 	""" Calculate the relative Mean Relative Absolute Error (NumPy - Test Error) """
 	error = img_pred - img_gt
-	error_relative = error/img_gt
+	error_relative = error/img_gt if relative else error
 	mrae = np.mean(np.abs(error_relative))
 	return mrae
 
@@ -101,6 +101,7 @@ def test_msam(img_pred, img_gt, max_value=1):
 
 def test_sid(img_pred, img_gt, max_value=1):
 	""" mean spectral information divergence """
+	img_pred = np.clip(img_pred, 0, 1)
 	img_pred_flat = img_pred.reshape(-1, img_pred.shape[2])
 	img_gt_flat = img_gt.reshape(-1, img_gt.shape[2])
 	assert len(img_pred_flat) == len(img_gt_flat)
