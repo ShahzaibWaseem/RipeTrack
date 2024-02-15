@@ -40,6 +40,7 @@ def get_dataloaders_reconstruction(trainset_size=0.7):
 		patch_size=PATCH_SIZE,
 		movePixels=0 if reconstructionTransforms == None else movePixels,
 		append_secondary_input=APPEND_SECONDARY_RGB_CAM_INPUT,
+		lazy_read=True,
 		transforms=reconstructionTransforms,
 		verbose=True
 	)
@@ -49,16 +50,17 @@ def get_dataloaders_reconstruction(trainset_size=0.7):
 	print("Length of Validation Set ({}%):\t\t{}".ljust(40).format(round((1-trainset_size) * 100), len(valid_data)))
 
 	train_data_loader = DataLoader(dataset=train_data,
-								   num_workers=4,
+								   num_workers=2,
 								   batch_size=batch_size,
 								   shuffle=True,
-								   pin_memory=False)
+								   pin_memory=True,
+								   drop_last=True)
 
 	valid_data_loader = DataLoader(dataset=valid_data,
-								   num_workers=4,
+								   num_workers=2,
 								   batch_size=16,
 								   shuffle=False,
-								   pin_memory=False)
+								   pin_memory=True)
 
 	return train_data_loader, valid_data_loader
 
@@ -75,17 +77,19 @@ class DatasetFromDirectoryReconstruction(Dataset):
 			datapoints += len(hs_path) * ((image_width // patch_size) * (image_height // patch_size))
 		return datapoints
 
-	def __init__(self, root, application_name=APPLICATION_NAME, patch_size=64, movePixels=10, append_secondary_input=False, transforms=None, verbose=False):
+	def __init__(self, root, application_name=APPLICATION_NAME, patch_size=64, movePixels=10, append_secondary_input=False, lazy_read=False, transforms=None, verbose=False):
 		self.patch_size = patch_size
 		self.append_secondary_input = append_secondary_input
 		image_width, image_height = IMAGE_SIZE, IMAGE_SIZE
 		rgbn_counter, hypercube_counter, patch_index, data_idx = 0, 0, 0, 0
+		self.movePixels = movePixels
 		self.transforms = transforms
-		datapoints = self.pre_calculate_number_of_datapoints(os.path.join(root, application_name), TEST_DATASETS, IMAGE_SIZE, patch_size, movePixels)		# Datapoints: 51584
-		self.rgb_images = np.empty(shape=(datapoints, 3, patch_size, patch_size))
-		self.nir_images = np.empty(shape=(datapoints, 1, patch_size, patch_size))
-		self.secondary_rgb_images = np.empty(shape=(datapoints, 3, patch_size, patch_size))
-		self.hypercubes = np.empty(shape=(datapoints, len(BANDS), patch_size, patch_size))
+		self.lazy_read = lazy_read
+		# datapoints = self.pre_calculate_number_of_datapoints(os.path.join(root, application_name), TEST_DATASETS, IMAGE_SIZE, patch_size, movePixels)		# Datapoints: 51584
+		# self.rgb_images = np.empty(shape=(datapoints, 3, patch_size, patch_size))
+		# self.nir_images = np.empty(shape=(datapoints, 1, patch_size, patch_size))
+		# self.secondary_rgb_images = np.empty(shape=(datapoints, 3, patch_size, patch_size))
+		# self.hypercubes = np.empty(shape=(datapoints, len(BANDS), patch_size, patch_size))
 		print("Reading Images from:") if verbose else None
 
 		for dataset in TEST_DATASETS:
@@ -95,12 +99,13 @@ class DatasetFromDirectoryReconstruction(Dataset):
 			for filename in glob(os.path.join(directory, "*.mat")):
 				image_width, image_height = IMAGE_SIZE, IMAGE_SIZE
 				hypercube = load_mat(filename)
-				nir_image = hypercube[:, :, random.choice(NIR_BANDS)]
-				hypercube = hypercube[:, :, BANDS]
-				hypercube = hypercube[movePixels:image_width-movePixels, movePixels:image_height-movePixels, :] if not self.transforms == None else hypercube
-				hypercube = (hypercube - hypercube.min()) / (hypercube.max() - hypercube.min())
-				hypercube = np.transpose(hypercube, [2, 0, 1]) + EPS
-				hypercube = np.expand_dims(hypercube, axis=0)
+				# nir_image = hypercube[:, :, random.choice(NIR_BANDS)]
+				if not self.lazy_read:
+					hypercube = hypercube[:, :, BANDS]
+					hypercube = hypercube[movePixels:image_width-movePixels, movePixels:image_height-movePixels, :] if not self.transforms == None else hypercube
+					hypercube = (hypercube - hypercube.min()) / (hypercube.max() - hypercube.min())
+					hypercube = np.transpose(hypercube, [2, 0, 1]) + EPS
+					hypercube = np.expand_dims(hypercube, axis=0)
 
 				rgb_image = imread(os.path.join(directory, GT_RGBN_DIR_NAME, os.path.split(filename)[-1].replace(".mat", "_RGB%s.png" % "-D")))
 				rgb_image = self.transforms(rgb_image) if not self.transforms == None else rgb_image
@@ -108,7 +113,7 @@ class DatasetFromDirectoryReconstruction(Dataset):
 				rgb_image = np.transpose(rgb_image, [2, 0, 1])
 				rgb_image = np.expand_dims(rgb_image, axis=0)
 
-				# nir_image = imread(os.path.join(directory, GT_RGBN_DIR_NAME, os.path.split(filename)[-1].replace(".mat", "_NIR.png")))
+				nir_image = imread(os.path.join(directory, GT_RGBN_DIR_NAME, os.path.split(filename)[-1].replace(".mat", "_NIR.png")))
 				nir_image = nir_image[movePixels:image_width-movePixels, movePixels:image_height-movePixels] if not self.transforms == None else nir_image
 				nir_image = (nir_image - nir_image.min()) / (nir_image.max() - nir_image.min())
 				nir_image = np.expand_dims(np.asarray(nir_image), 2)
@@ -128,27 +133,33 @@ class DatasetFromDirectoryReconstruction(Dataset):
 					for patch_j in range(0, image_height, self.patch_size):
 						rgb_image_patch = rgb_image[:, :, patch_i:patch_i+self.patch_size, patch_j:patch_j+self.patch_size]
 						nir_image_patch = nir_image[:, :, patch_i:patch_i+self.patch_size, patch_j:patch_j+self.patch_size]
-						hypercube_patch = hypercube[:, :, patch_i:patch_i+self.patch_size, patch_j:patch_j+self.patch_size]
+						hypercube_patch = hypercube[:, :, patch_i:patch_i+self.patch_size, patch_j:patch_j+self.patch_size] if not self.lazy_read else None
 						secondary_rgb_image_patch = secondary_rgb_image[:, :, patch_i:patch_i+self.patch_size, patch_j:patch_j+self.patch_size] if append_secondary_input else None
 
 						if rgb_image_patch.shape[2] != self.patch_size or rgb_image_patch.shape[3] != self.patch_size:
 							continue
 
-						# if self.rgb_images.shape[0] == 0:
-						# 	self.rgb_images = rgb_image_patch
-						# 	self.nir_images = nir_image_patch
-						# 	self.hypercubes = hypercube_patch
-						# 	self.secondary_rgb_images = secondary_rgb_image_patch if self.append_secondary_input else None
+						if self.rgb_images.shape[0] == 0:
+							self.rgb_images = rgb_image_patch
+							self.nir_images = nir_image_patch
+							if self.lazy_read:
+								self.hypercubes = {"mat_path": os.path.split(filename)[-1], "idx": (patch_i, patch_j)}
+							else:
+								self.hypercubes = hypercube_patch
+							self.secondary_rgb_images = secondary_rgb_image_patch if self.append_secondary_input else None
 
-						# self.rgb_images = np.append(self.rgb_images, rgb_image_patch, axis=0)
-						# self.nir_images = np.append(self.nir_images, nir_image_patch, axis=0)
-						# self.hypercubes = np.append(self.hypercubes, hypercube_patch, axis=0)
-						# self.secondary_rgb_images = np.append(self.secondary_rgb_images, secondary_rgb_image_patch, axis=0) if self.append_secondary_input else None
+						self.rgb_images = np.append(self.rgb_images, rgb_image_patch, axis=0)
+						self.nir_images = np.append(self.nir_images, nir_image_patch, axis=0)
+						if self.lazy_read:
+							self.hypercubes = {"mat_path": filename, "idx": (patch_i, patch_j)}
+						else:
+							self.hypercubes = np.append(self.hypercubes, hypercube_patch, axis=0)
+						self.secondary_rgb_images = np.append(self.secondary_rgb_images, secondary_rgb_image_patch, axis=0) if self.append_secondary_input else None
 
-						self.rgb_images[data_idx, :, :, :] = np.asarray(rgb_image_patch)
-						self.nir_images[data_idx, :, :, :] = np.asarray(nir_image_patch)
-						self.hypercubes[data_idx, :, :, :] = np.asarray(hypercube_patch)
-						self.secondary_rgb_images[data_idx, :, :, :] = np.asarray(secondary_rgb_image_patch) if self.append_secondary_input else None
+						# self.rgb_images[data_idx, :, :, :] = np.asarray(rgb_image_patch)
+						# self.nir_images[data_idx, :, :, :] = np.asarray(nir_image_patch)
+						# self.hypercubes[data_idx, :, :, :] = np.asarray(hypercube_patch)
+						# self.secondary_rgb_images[data_idx, :, :, :] = np.asarray(secondary_rgb_image_patch) if self.append_secondary_input else None
 						# print(self.rgb_images[data_idx, 0, 0, 0])
 						data_idx += 1
 				rgbn_counter += 1
@@ -164,13 +175,13 @@ class DatasetFromDirectoryReconstruction(Dataset):
 			print("Number of RGBN Files:".ljust(40), rgbn_counter)
 			print("Number of Hypercubes Files:".ljust(40), hypercube_counter)
 			print("Data Indices:".ljust(40), data_idx)
-			print("Precalculated Number of datapoints:".ljust(40), datapoints)
+			# print("Precalculated Number of datapoints:".ljust(40), datapoints)
 			print("RGB Image Dataset Size:".ljust(40), len(self.rgb_images))
 			print("Hypercube Dataset Size:".ljust(40), len(self.hypercubes))
 			print("Appended Secondary Input:".ljust(40), ("yes" if append_secondary_input else "no"))
 			print("RGB Image Shape:".ljust(40), list(self.rgb_images[0].shape))
 			print("NIR Image Shape:".ljust(40), list(self.nir_images[0].shape))
-			print("Hypercubes Shape:".ljust(40), list(self.hypercubes[0].shape))
+			print("Hypercubes Shape:".ljust(40), list(self.hypercubes[0].shape)) if not self.lazy_read else None
 			if self.patch_size != image_height and self.patch_size != image_width and self.patch_size > 0:
 				print("Patch Size:".ljust(40), self.patch_size)
 				print("Number of Patches ({:<2}/{:<3} * {:<2}):\t".ljust(40).format(self.patch_size, min(image_width, image_height), self.patch_size, rgbn_counter), self.dataset_size)
@@ -180,18 +191,36 @@ class DatasetFromDirectoryReconstruction(Dataset):
 	def __len__(self):
 		return self.dataset_size
 
+	def fetch_lazy_hypercube(self, index):
+		""" Reads the image and label from the index (lazily or not) and/or product pairs """
+
+		if self.lazy_read:
+			hypercube = load_mat(self.hypercubes[index]["mat_path"])
+			patch_i, patch_j = self.hypercubes[index]["idx"]
+			hypercube = hypercube[:, :, BANDS]
+			image_width, image_height = hypercube.shape[0], hypercube.shape[1]
+			hypercube = hypercube[self.movePixels:image_width-self.movePixels, self.movePixels:image_height-self.movePixels, :] if not self.transforms == None else hypercube
+			hypercube = hypercube[patch_i:patch_i+self.patch_size, patch_j:patch_j+self.patch_size, :]
+			hypercube = (hypercube - hypercube.min()) / (hypercube.max() - hypercube.min())
+			hypercube = np.transpose(hypercube, [2, 0, 1]) + EPS
+			hypercube = np.expand_dims(hypercube, axis=0)
+		else:
+			hypercube = self.hypercubes[index]
+
+		return hypercube
+
 	def __getitem__(self, index):
 		rgb_image = self.rgb_images[index]
 		nir_image = self.nir_images[index]
-		hypercube = self.hypercubes[index]
+		hypercube = self.fetch_lazy_hypercube(index)
 		secondary_rgb_image = self.secondary_rgb_images[index] if self.append_secondary_input else None
 
 		# use_secondary = bool(random.getrandbits(1)) if self.append_secondary_input else False
 		image = np.concatenate((secondary_rgb_image, nir_image), axis=0) if self.append_secondary_input else np.concatenate((rgb_image, nir_image), axis=0)
 		# print(image.shape, image[0, 0, 0])
 
-		image = torch.tensor(image).float()
-		hypercube = torch.tensor(hypercube).float()
+		# image = torch.tensor(image).float()
+		# hypercube = torch.tensor(hypercube).float()
 
 		# visualize_data_item(np.transpose(rgb_image.numpy(), [1, 2, 0]), np.transpose(hypercube.numpy(), [1, 2, 0]), np.transpose(secondary_rgb_image.numpy(), [1, 2, 0]), 12, 0)
 		# print(rgb_image.shape, nir_image.shape, secondary_rgb_image.shape if self.append_secondary_input else None, hypercube.shape)
