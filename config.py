@@ -35,7 +35,7 @@ VISUALIZATION_DIR_NAME = "visualizations"
 MOBILE_MODELS_DIR_NAME = "mobileModels"
 
 APPEND_SECONDARY_RGB_CAM_INPUT = True
-PATCHED_INFERENCE = False
+PATCHED_INFERENCE = True
 
 PREDEF_TRANSFORMS_FILENAME = "transforms{}.pth".format("_appended" if APPEND_SECONDARY_RGB_CAM_INPUT else "")
 
@@ -97,7 +97,7 @@ classification_checkpoint_fileprestring = "%s_%s" % (CLASSIFIER_MODEL_NAME, APPL
 checkpoint_file = "MSLP_%s_399.pkl" % checkpoint_fileprestring
 # checkpoint_file = "HS_model_%d.pkl" % end_epoch
 run_pretrained = False					# if True, the model is loaded from the checkpoint_file
-use_mobile_dataset = False				# if True, the model is trained on the mobile dataset
+use_mobile_dataset = True				# if True, the model is trained on the mobile dataset
 transfer_learning = False				# if True, the model will freeze all layers except the last MST block and conv layers
 
 mobile_model_file = "model_%s.pth" % APPLICATION_NAME
@@ -107,6 +107,7 @@ tflite_filename = "model.tflite"
 
 ### Formatting used for the visualizations ###
 plt_dict = {"mathtext.default": "regular", "axes.linewidth": 2}
+confusion_font_dict = {"family" : "serif", "weight": "normal", "size" : 20.5}
 text_font_dict = {"family": "serif", "size": 25}
 title_font_dict = {"fontname": "serif", "size": 25}
 
