@@ -64,8 +64,6 @@ def inference(model, checkpoint_filename, mobile_reconstruction=False, patched_i
 			hypercube = load_mat(mat_filepath)
 			hypercube = hypercube[:, :, BANDS]
 			hypercube = (hypercube - hypercube.min()) / (hypercube.max() - hypercube.min())
-			# hypercube = np.transpose(hypercube, [2, 0, 1]) + EPS
-
 			min_hc, max_hc = min(min_hc, hypercube.min()), max(max_hc, hypercube.max())
 			hypercube = np.maximum(np.minimum(hypercube, 1.0), 0.0)
 			hypercube = hypercube + EPS
