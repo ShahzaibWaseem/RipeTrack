@@ -48,7 +48,8 @@ def main():
 	# Log files
 	logger = initialize_logger(filename="train.log")
 
-	log_string = "Epoch [%3d], Iter[%7d], Time: %.9f, Learning Rate: %.9f, Train Loss: %.9f (%.9f, %.9f, %.9f), Validation Loss: %.9f (%.9f, %.9f, %.9f)"
+	log_string = "Epoch [%3d], Iter[%7d], Time: %.9f, Learning Rate: %.9f, Train Loss: %.9f (%.9f, %.9f, %.9f)"
+	log_string_val = "Validation Loss: %.9f (%.9f, %.9f, %.9f)"
 
 	# make model
 	model = MST_Plus_Plus(in_channels=4, out_channels=len(BANDS), n_feat=len(BANDS), stage=3)
@@ -84,25 +85,28 @@ def main():
 		start_time = time.time()
 
 		train_loss, train_losses_ind, iteration, lr = train(train_data_loader, model, criterions, optimizer, iteration, scheduler)
-		val_loss, val_losses_ind = validate(valid_data_loader, model, criterions)
-
 		train_loss_mrae, train_loss_sam, train_loss_sid = train_losses_ind
-		val_loss_mrae, val_loss_sam, val_loss_sid = val_losses_ind
-		if best_val_loss > val_loss:
-			best_val_loss = val_loss
-			best_epoch = epoch
-			best_model = model
-			best_optimizer = optimizer
-			iteration_passed = iteration
+
 		if epoch % 20 == 0:
+			val_loss, val_losses_ind = validate(valid_data_loader, model, criterions)
+			val_loss_mrae, val_loss_sam, val_loss_sid = val_losses_ind
+			if best_val_loss > val_loss:
+				best_val_loss = val_loss
+				best_epoch = epoch
+				best_model = model
+				best_optimizer = optimizer
+				iteration_passed = iteration
 			save_checkpoint(int(round(epoch, -1)), iteration_passed, best_model, best_optimizer, best_val_loss, 0, 0, bands=BANDS, task="reconstruction")
+			log_string_val_filled = log_string_val % (val_loss, val_loss_mrae, val_loss_sam, val_loss_sid)
+			print("\n" + log_string_val_filled + "\n")
+			logger.info(log_string_val_filled)
+
 		# torch.cuda.synchronize()
 		epoch_time = time.time() - start_time
 
 		# Printing and saving losses
 		log_string_filled = log_string % (epoch, iteration, epoch_time, lr,
-							train_loss, train_loss_mrae, train_loss_sam, train_loss_sid,
-							val_loss, val_loss_mrae, val_loss_sam, val_loss_sid)
+							train_loss, train_loss_mrae, train_loss_sam, train_loss_sid)
 
 		print("\n"+ log_string_filled +"\n")
 		logger.info(log_string_filled)
