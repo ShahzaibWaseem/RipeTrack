@@ -11,7 +11,7 @@ from loss import test_mrae, test_rrmse, test_msam, test_sid, test_psnr, test_ssi
 import matplotlib
 import matplotlib.pyplot as plt
 
-from config import BANDS, APPLICATION_NAME, RECONSTRUCTED_HS_DIR_NAME, VISUALIZATION_DIR_NAME, TEST_ROOT_DATASET_DIR, TEST_DATASETS, LOGS_PATH, text_font_dict, plt_dict
+from config import BANDS, APPLICATION_NAME, RECONSTRUCTED_HS_DIR_NAME, GT_REMOVED_IR_CUTOFF_RECONSTRUCTED_DIR_NAME, VISUALIZATION_DIR_NAME, TEST_ROOT_DATASET_DIR, TEST_DATASETS, LOGS_PATH, text_font_dict, plt_dict
 
 def calculate_metrics(img_pred, img_gt, expand=False):
 	img_pred_flat = np.expand_dims(img_pred, axis=0) if expand else img_pred
@@ -20,8 +20,8 @@ def calculate_metrics(img_pred, img_gt, expand=False):
 	rrmse = test_rrmse(img_pred, img_gt)
 	msam = test_msam(img_pred_flat, img_gt_flat)
 	sid = test_sid(img_pred_flat, img_gt_flat)
-	psnr = test_psnr(img_pred, img_gt, max_p=1)		# max_p = 1 for 0-1 normalized images
-	ssim = test_ssim(img_pred, img_gt, max_p=1)		# max_p = 1 for 0-1 normalized images
+	psnr = test_psnr(img_pred, img_gt, max_value=1)		# max_value = 1 for 0-1 normalized images
+	ssim = test_ssim(img_pred, img_gt, max_value=1)		# max_value = 1 for 0-1 normalized images
 	return mrae, rrmse, msam, sid, psnr, ssim
 
 def getBandErrors():
@@ -31,8 +31,8 @@ def getBandErrors():
 
 	for dataset in TEST_DATASETS:
 		directory = os.path.join(TEST_ROOT_DATASET_DIR, APPLICATION_NAME, "{}_204ch".format(dataset))
-		inf_directory = os.path.join(directory, RECONSTRUCTED_HS_DIR_NAME)
-		print(" " * 19, "{0:62}".format(directory), RECONSTRUCTED_HS_DIR_NAME)
+		inf_directory = os.path.join(directory, GT_REMOVED_IR_CUTOFF_RECONSTRUCTED_DIR_NAME)
+		print(" " * 19, "{0:62}".format(directory), GT_REMOVED_IR_CUTOFF_RECONSTRUCTED_DIR_NAME)
 		for filename in sorted(glob(os.path.join(directory, "*.mat"))):
 			mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors = [], [], [], [], [], []
 
@@ -88,7 +88,7 @@ def readDataFromFile(json_file):
 	mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors = populateNumpyArrays(errors)
 	return mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors
 
-def plotSingleMetric(error, row, ax, ylim, ylabel, xlabel="Wavelength (nm)", legend_loc="upper right"):
+def plotSingleMetric(error, ax, ylim, ylabel, xlabel="Wavelength (nm)", legend_loc="upper right"):
 	""" plots error metrics on axis """
 	x=range(400, 1004, 9)
 	xlim=[400, 1000]
@@ -107,18 +107,20 @@ def plotBandErrors(mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_error
 	plt.rcParams["axes.grid"] = True
 	plt.rcParams["axes.spines.right"] = False
 	plt.rcParams["axes.spines.top"] = False
-	rows = len(["Fruit"])
+	# rows = len(["Fruit"])
 
-	_, axs = plt.subplots(nrows=rows, ncols=6, figsize=(45, 15))
+	fig, axs = plt.subplots(nrows=2, ncols=3, figsize=(30, 20))
+	fig.suptitle("Band-wise Errors; RGBN cutoff removed to 68 bands", fontsize=25, fontname="serif")
 
-	plotSingleMetric(mrae_errors, rows, axs[0], ylim=[0, 0.5], ylabel="MRAE")
-	plotSingleMetric(rrmse_errors, rows, axs[1], ylim=[0, 0.4], ylabel="RRMSE")
-	plotSingleMetric(sam_errors, rows, axs[2], ylim=[0, 0.5], ylabel="SAM")
-	plotSingleMetric(sid_errors, rows, axs[3], ylim=[0, 0.2], ylabel="SID")
-	plotSingleMetric(psnr_errors, rows, axs[4], ylim=[20, 65], ylabel="PSNR", legend_loc="upper center")
-	plotSingleMetric(ssim_errors, rows, axs[5], ylim=[0.8, 1], ylabel="SSIM", legend_loc="lower right")
+	plotSingleMetric(mrae_errors, axs[0][0], ylim=[0, 0.5], ylabel="MRAE")
+	plotSingleMetric(rrmse_errors, axs[0][1], ylim=[0, 0.4], ylabel="RRMSE")
+	plotSingleMetric(sam_errors, axs[0][2], ylim=[0, 0.5], ylabel="SAM")
+	plotSingleMetric(sid_errors, axs[1][0], ylim=[0, 0.2], ylabel="SID")
+	plotSingleMetric(psnr_errors, axs[1][1], ylim=[20, 65], ylabel="PSNR", legend_loc="upper center")
+	plotSingleMetric(ssim_errors, axs[1][2], ylim=[0.8, 1], ylabel="SSIM", legend_loc="lower right")
 	plt.tight_layout()
 	plt.savefig(os.path.join(VISUALIZATION_DIR_NAME, filename), bbox_inches="tight")
+	plt.close()
 
 if __name__ == "__main__":
 	os.chdir("..")
@@ -127,15 +129,15 @@ if __name__ == "__main__":
 	# print(errors.keys())
 	# mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors = meanErrors(errors)
 
-	# jsonFile = open(os.path.join(VISUALIZATION_DIR_NAME, "errorsRaw.json"), "w")
-	# jsonFile.write(json.dumps(errors, indent=4))
+	# jsonFile = open(os.path.join(VISUALIZATION_DIR_NAME, "errorsRaw(RGBCutoffRTo68).json"), "w")
+	# jsonFile.write(json.dumps(str(errors), indent=4))
 	# jsonFile.close()
 
 	# errors = {}
 	# errors.update({"MSLP": {"MRAE": mrae_errors.tolist(), "RRMSE": rrmse_errors.tolist(), "SAM": sam_errors.tolist(), "SID": sid_errors.tolist(), "PSNR": psnr_errors.tolist(), "SSIM": ssim_errors.tolist()}})
 
 	# jsonFile = open(os.path.join(VISUALIZATION_DIR_NAME, "errors.json"), "w")
-	# jsonFile.write(json.dumps(errors, indent=4))
+	# jsonFile.write(json.dumps(str(errors), indent=4))
 	# jsonFile.close()
 
 	mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors = readDataFromFile(json_file="errors.json")
