@@ -16,7 +16,7 @@ from scipy.io import savemat
 
 from models.DeepWB import deepWBnet
 from models.DeepWBUtils import deep_wb, colorTempInterpolate, to_image
-from config import CAMERA_OUTPUT_ROOT_PATH, TEST_ROOT_DATASET_DIR, APPLICATION_NAME, RGBN_BANDS, SHELF_LIFE_GROUND_TRUTH_FILENAME, GT_RGBN_DIR_NAME, MODEL_PATH, DEEP_WB_DIR, GT_SECONDARY_RGB_CAM_DIR_NAME, device, var_name, create_directory
+from config import CAMERA_OUTPUT_ROOT_PATH, TEST_ROOT_DATASET_DIR, APPLICATION_NAME, RGBN_BANDS, SHELF_LIFE_GROUND_TRUTH_FILENAME, GT_RGBN_DIR_NAME, MODEL_PATH, DEEP_WB_DIR, GT_AUXILIARY_RGB_CAM_DIR_NAME, device, var_name, create_directory
 
 import matplotlib.pyplot as plt
 
@@ -133,7 +133,7 @@ def main():
 
 		output_hypercube_directory = os.path.join("..", TEST_ROOT_DATASET_DIR, APPLICATION_NAME, "%s_204ch" % dataset_name)
 		output_rgbn_directory = os.path.join(output_hypercube_directory, GT_RGBN_DIR_NAME)
-		output_secondary_rgbn_directory = os.path.join(output_hypercube_directory, GT_SECONDARY_RGB_CAM_DIR_NAME)
+		output_secondary_rgbn_directory = os.path.join(output_hypercube_directory, GT_AUXILIARY_RGB_CAM_DIR_NAME)
 		create_directory(output_hypercube_directory)
 		create_directory(output_rgbn_directory)
 		create_directory(output_secondary_rgbn_directory)
