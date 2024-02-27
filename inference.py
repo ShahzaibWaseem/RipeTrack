@@ -13,15 +13,15 @@ from models.MST import MST_Plus_Plus
 
 from utils import save_mat, save_mat_patched, load_mat, load_mat_patched, initialize_logger, visualize_gt_pred_hs_data, get_best_checkpoint
 from loss import test_mrae, test_rrmse, test_msam, test_sid, test_psnr, test_ssim
-from config import MODEL_PATH, TEST_ROOT_DATASET_DIR, TEST_DATASETS, APPLICATION_NAME, BANDS, CLASSIFICATION_PATCH_SIZE, STRIDE, DATA_PREP_PATH, GT_DATASET_CROPS_FILENAME, MOBILE_DATASET_CROPS_FILENAME, MOBILE_DATASET_DIR_NAME, RECONSTRUCTED_HS_DIR_NAME, GT_RGBN_DIR_NAME, GT_SECONDARY_RGB_CAM_DIR_NAME, MOBILE_RECONSTRUCTED_HS_DIR_NAME, PATCHED_INFERENCE, PATCHED_HS_DIR_NAME, EPS, var_name, model_run_title, checkpoint_file, device, create_directory
+from config import MODEL_PATH, TEST_ROOT_DATASET_DIR, TEST_DATASETS, APPLICATION_NAME, BANDS, CLASSIFICATION_PATCH_SIZE, STRIDE, DATA_PREP_PATH, GT_DATASET_CROPS_FILENAME, MOBILE_DATASET_CROPS_FILENAME, MOBILE_DATASET_DIR_NAME, RECONSTRUCTED_HS_DIR_NAME, GT_RGBN_DIR_NAME, GT_AUXILIARY_RGB_CAM_DIR_NAME, GT_REMOVED_IR_CUTOFF_DIR_NAME, MOBILE_RECONSTRUCTED_HS_DIR_NAME, PATCHED_INFERENCE, PATCHED_HS_DIR_NAME, EPS, var_name, model_run_title, checkpoint_file, device, create_directory
 
 def calculate_metrics(img_pred, img_gt):
 	mrae = test_mrae(img_pred, img_gt)
 	rrmse = test_rrmse(img_pred, img_gt)
-	msam = test_msam(img_pred, img_gt)
-	sid = test_sid(img_pred, img_gt)
-	psnr = test_psnr(img_pred, img_gt, max_value=1)		# max_value = 1 for 0-1 normalized images
-	ssim = test_ssim(img_pred, img_gt, max_value=1)		# max_value = 1 for 0-1 normalized images
+	msam = test_msam(img_pred, img_gt, max_value=1)
+	sid = test_sid(img_pred, img_gt, max_value=1)
+	psnr = test_psnr(img_pred, img_gt, max_value=1)
+	ssim = test_ssim(img_pred, img_gt, max_value=1)
 	return mrae, rrmse, msam, sid, psnr, ssim
 
 def inference(model, checkpoint_filename, mobile_reconstruction=False, patched_inference=False):
@@ -67,37 +67,39 @@ def inference(model, checkpoint_filename, mobile_reconstruction=False, patched_i
 			# hypercube = np.transpose(hypercube, [2, 0, 1]) + EPS
 
 			min_hc, max_hc = min(min_hc, hypercube.min()), max(max_hc, hypercube.max())
-			# hypercube = np.maximum(np.minimum(hypercube, 1.0), 0.0)
+			hypercube = np.maximum(np.minimum(hypercube, 1.0), 0.0)
 			hypercube = hypercube + EPS
-			hypercube = np.asarray(hypercube)
+			# hypercube = np.asarray(hypercube)
 
 			rgb_filename = mat_filename.replace(".mat", "_RGB%s.png" % "-D")
-			rgb_image = imread(os.path.join(directory, GT_SECONDARY_RGB_CAM_DIR_NAME if not mobile_reconstruction else MOBILE_DATASET_DIR_NAME, rgb_filename))
+			rgb_image = np.float32(imread(os.path.join(directory, GT_RGBN_DIR_NAME if not mobile_reconstruction else MOBILE_DATASET_DIR_NAME, rgb_filename)))
 			rgb_image = (rgb_image - rgb_image.min()) / (rgb_image.max() - rgb_image.min())
 			rgb_image = np.transpose(rgb_image, [2, 0, 1])
 			rgb_image = np.expand_dims(rgb_image, axis=0)
-			rgb_image = np.asarray(rgb_image)
+			# rgb_image = np.asarray(rgb_image)
 
 			nir_filename = mat_filename.replace(".mat", "_NIR.png")
-			nir_image = imread(os.path.join(directory, GT_SECONDARY_RGB_CAM_DIR_NAME if not mobile_reconstruction else MOBILE_DATASET_DIR_NAME, nir_filename))
+			nir_image = np.float32(imread(os.path.join(directory, GT_RGBN_DIR_NAME if not mobile_reconstruction else MOBILE_DATASET_DIR_NAME, nir_filename)))
 			nir_image = (nir_image - nir_image.min()) / (nir_image.max() - nir_image.min())
 			nir_image = np.expand_dims(np.asarray(nir_image), axis=-1)
 			nir_image = np.transpose(nir_image, [2, 0, 1])
 			nir_image = np.expand_dims(nir_image, axis=0)
-			nir_image = np.asarray(nir_image)
+			# nir_image = np.asarray(nir_image)
 
 			image = np.concatenate((rgb_image, nir_image), axis=1)
+			# image = rgb_image
 			image_tensor = torch.Tensor(image).float().to(device)
 
 			with torch.no_grad():
 				hypercube_pred = model(image_tensor)
 			hypercube_pred = np.transpose(hypercube_pred.squeeze(0).cpu().detach().numpy(), [1, 2, 0])
+			hypercube_pred = np.maximum(np.minimum(hypercube_pred, 1.0), 0.0)
 			# hypercube_pred = hypercube_pred.squeeze(0).cpu().detach().numpy()
-			hypercube_pred = (hypercube_pred - hypercube_pred.min()) / (hypercube_pred.max() - hypercube_pred.min())
+			# hypercube_pred = (hypercube_pred - hypercube_pred.min()) / (hypercube_pred.max() - hypercube_pred.min())
 			min_phc, max_phc = min(min_phc, hypercube_pred.min()), max(max_phc, hypercube_pred.max())
 			
 			# hypercube_pred = np.maximum(np.minimum(hypercube_pred, 1.0), 0.0)
-			hypercube_pred = hypercube_pred + EPS			# should work without this line but just in case
+			# hypercube_pred = hypercube_pred + EPS			# should work without this line but just in case
 
 			end_time = time.time() - start_time
 			hypercube_pred_filepath = os.path.join(OUT_PATH, mat_filename)
@@ -158,16 +160,16 @@ def inference(model, checkpoint_filename, mobile_reconstruction=False, patched_i
 		print("Min Predicted Hypercube: %0.9f, Max Predicted Hypercube: %0.9f" % (min_phc, max_phc))
 
 def main():
-	checkpoint_filename, epoch, iter, model_param, optimizer, val_loss, val_acc = get_best_checkpoint(task="reconstruction")
-	# checkpoint_filename = checkpoint_file
-	# checkpoint = torch.load(os.path.join(MODEL_PATH, "reconstruction", checkpoint_filename))
-	# model_param = checkpoint["state_dict"]
+	# checkpoint_filename, epoch, iter, model_param, optimizer, val_loss, val_acc = get_best_checkpoint(task="reconstruction")
+	checkpoint_filename = checkpoint_file
+	checkpoint = torch.load(os.path.join(MODEL_PATH, "reconstruction", "others", "MSLP_MST++_shelflife_443 trained on all (actual model).pkl"))
+	model_param = checkpoint["state_dict"]
 	model = MST_Plus_Plus(in_channels=4, out_channels=len(BANDS), n_feat=len(BANDS), stage=3)
 	model.load_state_dict(model_param)
 	model = model.to(device)
 	model.eval()
 	print(summary(model=model, input_data=(4, 512, 512)))
-	inference(model, checkpoint_filename, mobile_reconstruction=True, patched_inference=PATCHED_INFERENCE)
+	inference(model, checkpoint_filename, mobile_reconstruction=False, patched_inference=PATCHED_INFERENCE)
 
 if __name__ == "__main__":
 	main()
