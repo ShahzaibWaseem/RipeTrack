@@ -112,7 +112,7 @@ def main():
 			else:
 				save_checkpoint(int(round(epoch, -1)), iteration_passed, best_model, best_optimizer, best_val_loss, best_val_acc_labels, best_val_acc_sublabels, bands=BANDS, task="classification")
 		if epoch % 100 == 0:
-			test_loss, test_acc = test(valid_data_loader, model, criterion)
+			test_loss, test_acc = test(valid_data_loader, best_model, criterion)
 		# scheduler.step(val_loss)
 
 		log_string_filled = log_string % (epoch, iteration, time.time() - start_time, train_loss, train_loss_labels, train_loss_sublabels, train_acc_labels, train_acc_sublabels, val_loss, val_loss_labels, val_loss_sublabels, val_acc_labels, val_acc_sublabels)
