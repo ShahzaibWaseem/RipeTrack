@@ -38,7 +38,7 @@ def get_dataloaders_reconstruction():
 		root=TEST_ROOT_DATASET_DIR,
 		application_name=APPLICATION_NAME,
 		patch_size=PATCH_SIZE,
-		augment=True,
+		augment=False,
 		movePixels=0 if reconstructionTransforms == None else movePixels,
 		use_auxiliary_input=APPEND_SECONDARY_RGB_CAM_INPUT,
 		transforms=reconstructionTransforms,
