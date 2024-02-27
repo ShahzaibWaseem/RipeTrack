@@ -53,7 +53,7 @@ def main():
 	# make model
 	model = MST_Plus_Plus(in_channels=4, out_channels=len(BANDS), n_feat=len(BANDS), stage=3)
 	optimizer = torch.optim.Adam(model.parameters(), lr=init_lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.0001)
-	scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, int(trainset_size*whole_dataset_size)*end_epoch/batch_size, eta_min=1e-6)
+	scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, int(train_data_loader.__len__())*end_epoch/batch_size, eta_min=1e-6)
 	# print(summary(model, (4, 64, 64), verbose=1))
 
 	if run_pretrained:
