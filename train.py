@@ -11,12 +11,13 @@ from torchsummary import summary
 from torch.autograd import Variable
 
 from models.MST import MST_Plus_Plus
-from loss import mrae_loss, sam_loss, sid_loss
+from loss import Loss_MRAE, Loss_SAM, Loss_SID
 
 from dataset import get_dataloaders_reconstruction
 from utils import AverageMeter, initialize_logger, save_checkpoint, get_best_checkpoint, poly_lr_scheduler, optimizer_to
 from config import MODEL_PATH, LOGS_PATH, DATA_PREP_PATH, BANDS, PREDEF_TRANSFORMS_FILENAME, batch_size, device, end_epoch, init_lr, model_run_title, run_pretrained, transfer_learning, lossfunctions_considered, create_directory
 
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 torch.autograd.set_detect_anomaly(False)
 
 parser = argparse.ArgumentParser()
@@ -26,19 +27,21 @@ disable_tqdm = args.disable_tqdm
 
 def main():
 	torch.backends.cudnn.benchmark = True
-	trainset_size=0.8
-
-	train_data_loader, valid_data_loader = get_dataloaders_reconstruction(trainset_size=trainset_size)
+	train_data_loader, valid_data_loader = get_dataloaders_reconstruction()
 	whole_dataset_size = len(train_data_loader.dataset) + len(valid_data_loader.dataset)
 	# train_data_loader, valid_data_loader = train_data_loader.to(device), valid_data_loader.to(device)
 
 	# Parameters, Loss and Optimizer
 	start_epoch = 0
 	iteration = 0
-	best_val_loss = float('inf')
-	criterion_mrae = mrae_loss
-	criterion_sam = sam_loss
-	criterion_sid = sid_loss
+	best_val_loss = float("inf")
+	criterion_mrae = Loss_MRAE()
+	criterion_sam = Loss_SAM()
+	criterion_sid = Loss_SID()
+
+	criterion_mrae.to(device)
+	criterion_sam.to(device)
+	criterion_sid.to(device)
 
 	criterions = (criterion_mrae, criterion_sam, criterion_sid)
 
@@ -50,6 +53,7 @@ def main():
 	# make model
 	model = MST_Plus_Plus(in_channels=4, out_channels=len(BANDS), n_feat=len(BANDS), stage=3)
 	optimizer = torch.optim.Adam(model.parameters(), lr=init_lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.0001)
+	scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, int(trainset_size*whole_dataset_size)*end_epoch/batch_size, eta_min=1e-6)
 	# print(summary(model, (4, 64, 64), verbose=1))
 
 	if run_pretrained:
@@ -58,8 +62,8 @@ def main():
 		optimizer.load_state_dict(opt_state)
 		start_epoch = epoch
 
-	model.to(device, non_blocking=True)
-	optimizer_to(optimizer, device)
+	model.to(device)
+	# optimizer_to(optimizer, device)
 
 	print("\n" + model_run_title)
 	logger.info(model_run_title)
@@ -76,10 +80,10 @@ def main():
 		# print("Total number of modules: ", module_count)
 
 	for epoch in range(start_epoch+1, end_epoch):
-		torch.cuda.synchronize()
+		# torch.cuda.synchronize()
 		start_time = time.time()
 
-		train_loss, train_losses_ind, iteration, lr = train(train_data_loader, model, criterions, optimizer, iteration, init_lr, int(trainset_size*whole_dataset_size)*end_epoch/batch_size)
+		train_loss, train_losses_ind, iteration, lr = train(train_data_loader, model, criterions, optimizer, iteration, scheduler)
 		val_loss, val_losses_ind = validate(valid_data_loader, model, criterions)
 
 		train_loss_mrae, train_loss_sam, train_loss_sid = train_losses_ind
@@ -90,12 +94,9 @@ def main():
 			best_model = model
 			best_optimizer = optimizer
 			iteration_passed = iteration
-		if epoch % 30 == 0:
-			if epoch <= 80:
-				continue
-			else:
-				save_checkpoint(int(round(epoch, -1)), iteration_passed, best_model, best_optimizer, best_val_loss, 0, 0, bands=BANDS, task="reconstruction")
-		torch.cuda.synchronize()
+		if epoch % 20 == 0:
+			save_checkpoint(int(round(epoch, -1)), iteration_passed, best_model, best_optimizer, best_val_loss, 0, 0, bands=BANDS, task="reconstruction")
+		# torch.cuda.synchronize()
 		epoch_time = time.time() - start_time
 
 		# Printing and saving losses
@@ -103,24 +104,24 @@ def main():
 							train_loss, train_loss_mrae, train_loss_sam, train_loss_sid,
 							val_loss, val_loss_mrae, val_loss_sam, val_loss_sid)
 
-		print("\n", log_string_filled, "\n")
+		print("\n"+ log_string_filled +"\n")
 		logger.info(log_string_filled)
 	iteration = 0
 
-def train(train_data_loader, model, criterions, optimizer, iteration, init_lr, max_iter):
+def train(train_data_loader, model, criterions, optimizer, iteration, scheduler):
 	""" Trains the model on the dataloader provided """
 	model.train()
-	losses = AverageMeter()
 	criterion_mrae, criterion_sam, criterion_sid = criterions
-	losses_mrae, losses_sam, losses_sid = AverageMeter(), AverageMeter(), AverageMeter()
+	losses, losses_mrae, losses_sam, losses_sid = AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter()
 
 	for images, labels in tqdm(train_data_loader, desc="Train", total=len(train_data_loader), disable=disable_tqdm):
 		# print(torch.min(images), torch.max(images), torch.min(labels), torch.max(labels))
-		images, labels = images.to(device, non_blocking=True), labels.to(device, non_blocking=True)
-		lr = poly_lr_scheduler(optimizer, init_lr, iteration, max_iter=max_iter, power=0.9)
-		iteration = iteration + 1
+		images, labels = images.to(device), labels.to(device)
+		lr = optimizer.param_groups[0]["lr"]
+		iteration += 1
 
 		# Forward + Backward + Optimize
+		optimizer.zero_grad()
 		output = model(images)
 
 		loss_mrae = criterion_mrae(output, labels)
@@ -128,12 +129,11 @@ def train(train_data_loader, model, criterions, optimizer, iteration, init_lr, m
 		loss_sid = torch.mul(criterion_sid(output, labels), 0.0001) if "SID" in lossfunctions_considered else torch.tensor(0)
 		loss = loss_mrae + loss_sam + loss_sid
 
-		optimizer.zero_grad()
 		loss.backward()
 
-		nn.utils.clip_grad_norm_(model.parameters(), 5.0)
 		# Calling the step function on an Optimizer makes an update to its parameters
 		optimizer.step()
+		scheduler.step()
 		# record loss
 		losses.update(loss.item())
 		losses_mrae.update(loss_mrae.item())
@@ -145,13 +145,12 @@ def train(train_data_loader, model, criterions, optimizer, iteration, init_lr, m
 def validate(valid_data_loader, model, criterions):
 	""" Validates the model on the dataloader provided """
 	model.eval()
-	losses = AverageMeter()
 	criterion_mrae, criterion_sam, criterion_sid = criterions
-	losses_mrae, losses_sam, losses_sid = AverageMeter(), AverageMeter(), AverageMeter()
+	losses, losses_mrae, losses_sam, losses_sid = AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter()
 
 	with torch.no_grad():
 		for images, labels in tqdm(valid_data_loader, desc="Valid", total=len(valid_data_loader), disable=disable_tqdm):
-			images, labels = images.to(device, non_blocking=True), labels.to(device, non_blocking=True)
+			images, labels = images.to(device), labels.to(device)
 
 			# compute output
 			output = model(images)
