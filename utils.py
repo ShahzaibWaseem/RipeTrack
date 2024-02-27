@@ -243,15 +243,15 @@ def optimizer_to(optim, device):
 	for param in optim.state.values():
 		# Not sure there are any global tensors in the state dict
 		if isinstance(param, torch.Tensor):
-			param.data = param.data.to(device, non_blocking=True)
+			param.data = param.data.to(device)
 			if param._grad is not None:
-				param._grad.data = param._grad.data.to(device, non_blocking=True)
+				param._grad.data = param._grad.data.to(device)
 		elif isinstance(param, dict):
 			for subparam in param.values():
 				if isinstance(subparam, torch.Tensor):
-					subparam.data = subparam.data.to(device, non_blocking=True)
+					subparam.data = subparam.data.to(device)
 					if subparam._grad is not None:
-						subparam._grad.data = subparam._grad.data.to(device, non_blocking=True)
+						subparam._grad.data = subparam._grad.data.to(device)
 
 def save_mat(mat_filename, hypercube):
 	hdf5storage.savemat(mat_filename, {var_name: hypercube}, format="7.3", store_python_metadata=True)
@@ -297,12 +297,12 @@ def reconstruction(rgb, model, normalize=False):
 		img_res = np.maximum(img_res, 0)
 	return img_res
 
-def load_mat(mat_name, normalize=False, skip_normalization=False):
+def load_mat(mat_name, normalize=False):
 	""" Helper function to load mat files (used in making h5 dataset) """
 	data = hdf5storage.loadmat(mat_name, variable_names=[var_name])
-	if not skip_normalization:
-		data = data[var_name]
-		data /= NORMALIZATION_FACTOR if normalize else 1.0
+	data = data[var_name]
+	if normalize:
+		data /= NORMALIZATION_FACTOR
 	return data
 
 def load_mat_patched(mat_name):
