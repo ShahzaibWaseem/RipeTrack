@@ -40,6 +40,7 @@ def get_dataloaders_reconstruction():
 		patch_size=PATCH_SIZE,
 		augment=False,
 		movePixels=0 if reconstructionTransforms == None else movePixels,
+		stride=PATCH_SIZE,
 		use_auxiliary_input=APPEND_SECONDARY_RGB_CAM_INPUT,
 		transforms=reconstructionTransforms,
 		verbose=True
@@ -61,7 +62,7 @@ def get_dataloaders_reconstruction():
 
 	valid_data_loader = DataLoader(dataset=valid_data,
 								   num_workers=2,
-								   batch_size=16,
+								   batch_size=1,
 								   shuffle=False,
 								   pin_memory=True)
 
