@@ -63,7 +63,7 @@ CLASSIFICATION_PATCH_SIZE = 45			# patching of the hypercubes and images during 
 STRIDE = 5								# stride for patching the hypercubes and images
 NORMALIZATION_FACTOR = 4096				# max value of the captured hypercube (dependent on the camera - Specim IQ)
 RGBN_BANDS = [18, 47, 80, 183]			# correspond to B 454, G 541, R 640, N 949 bands
-NIR_BANDS = list(range(186, 195))		# correspond to NIR bands range
+NIR_BANDS = list(range(183, 197))		# correspond to NIR bands range
 # BANDS = [RGBN_BANDS, range(104, 204, 2)]
 # Bands: (450, 650, 5), (670, 690, 5), (750, 900, 5), (900, 1000, 5)
 # BANDS = [range(19, 87, 5), range(94, 102, 5), range(120, 170, 5), range(170, 204, 5)]

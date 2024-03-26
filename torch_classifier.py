@@ -143,7 +143,7 @@ def main():
 
 	plt.plot(history["train_acc_labels"], label="Train Label")
 	plt.plot(history["val_acc_labels"], label="Validation Label")
-	plt.plot(history["train_acc_sublabels"], label="Train Label")
+	plt.plot(history["train_acc_sublabels"], label="Train SubLabel")
 	plt.plot(history["val_acc_sublabels"], label="Validation SubLabel")
 	plt.title("Model Accuracy")
 	plt.ylabel("Accuracy")

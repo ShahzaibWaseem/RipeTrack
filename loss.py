@@ -89,7 +89,7 @@ def spectral_divergence(a, b):
 	q = (b / np.sum(b)) + np.spacing(1)
 	return np.sum(p * np.log(p / q) + q * np.log(q / p))
 
-def test_mrae(img_pred, img_gt, relative=False):
+def test_mrae(img_pred, img_gt, relative=True):
 	""" Calculate the relative Mean Relative Absolute Error (NumPy - Test Error) """
 	error = img_pred - img_gt
 	error_relative = error/img_gt if relative else error
