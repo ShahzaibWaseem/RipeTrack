@@ -97,7 +97,7 @@ class DatasetFromDirectoryReconstructionTrain(Dataset):
 					continue
 				image_width, image_height = IMAGE_SIZE, IMAGE_SIZE
 				hypercube = load_mat(os.path.join(directory, filename))
-				# nir_image = hypercube[:, :, random.choice(NIR_BANDS)]
+				nir_image = np.float32(hypercube[:, :, random.choices(NIR_BANDS)])
 				hypercube = hypercube[:, :, BANDS]
 				# hypercube = hypercube[movePixels:image_width-movePixels, movePixels:image_height-movePixels, :] if not self.transforms == None else hypercube
 				hypercube = (hypercube - hypercube.min()) / (hypercube.max() - hypercube.min())
@@ -110,12 +110,13 @@ class DatasetFromDirectoryReconstructionTrain(Dataset):
 				rgb_image = (rgb_image - rgb_image.min()) / (rgb_image.max() - rgb_image.min())
 				# rgb_image = self.transforms(rgb_image) if not self.transforms == None else rgb_image
 
-				nir_image = np.float32(imread(os.path.join(directory, GT_RGBN_DIR_NAME, os.path.split(filename)[-1].replace(".mat", "_NIR.png"))))
+				# nir_image = np.float32(imread(os.path.join(directory, GT_RGBN_DIR_NAME, os.path.split(filename)[-1].replace(".mat", "_NIR.png"))))
 				nir_image = (nir_image - nir_image.min()) / (nir_image.max() - nir_image.min())
 				# nir_image = nir_image[movePixels:image_width-movePixels, movePixels:image_height-movePixels] if not self.transforms == None else nir_image
 				# nir_image = np.expand_dims(np.asarray(nir_image), 2)
 				# nir_image = np.transpose(nir_image, [2, 0, 1])
 
+				# image = rgb_image
 				image = np.dstack((rgb_image, nir_image))
 				image = np.transpose(image, [2, 0, 1])
 				rgbn_counter += 1
@@ -195,7 +196,7 @@ class DatasetFromDirectoryReconstructionValid(Dataset):
 			dataset_load_time = time.time()
 			for filename in hypercube_list:
 				hypercube = load_mat(os.path.join(directory, filename))
-				# nir_image = hypercube[:, :, random.choice(NIR_BANDS)]
+				nir_image = np.float32(hypercube[:, :, random.choice(NIR_BANDS)])
 				hypercube = hypercube[:, :, BANDS]
 				# hypercube = hypercube[movePixels:image_width-movePixels, movePixels:image_height-movePixels, :] if not self.transforms == None else hypercube
 				hypercube = (hypercube - hypercube.min()) / (hypercube.max() - hypercube.min())
@@ -207,12 +208,13 @@ class DatasetFromDirectoryReconstructionValid(Dataset):
 				rgb_image = (rgb_image - rgb_image.min()) / (rgb_image.max() - rgb_image.min())
 				# rgb_image = self.transforms(rgb_image) if not self.transforms == None else rgb_image
 
-				nir_image = np.float32(imread(os.path.join(directory, GT_RGBN_DIR_NAME, os.path.split(filename)[-1].replace(".mat", "_NIR.png"))))
+				# nir_image = np.float32(imread(os.path.join(directory, GT_RGBN_DIR_NAME, os.path.split(filename)[-1].replace(".mat", "_NIR.png"))))
 				nir_image = (nir_image - nir_image.min()) / (nir_image.max() - nir_image.min())
 				# nir_image = nir_image[movePixels:image_width-movePixels, movePixels:image_height-movePixels] if not self.transforms == None else nir_image
 				# nir_image = np.expand_dims(np.asarray(nir_image), 2)
 				# nir_image = np.transpose(nir_image, [2, 0, 1])
 
+				# image = rgb_image
 				image = np.dstack((rgb_image, nir_image))
 				image = np.transpose(image, [2, 0, 1])
 
@@ -254,6 +256,7 @@ def get_dataloaders_classification(trainset_size=0.7):
 		root=TEST_ROOT_DATASET_DIR,
 		application_name=APPLICATION_NAME,
 		mobile_reconstructed_folder=MOBILE_RECONSTRUCTED_HS_DIR_NAME if use_mobile_dataset else RECONSTRUCTED_HS_DIR_NAME,
+		# mobile_reconstructed_folder=None,
 		transforms=classificationTransforms,
 		patched_inference=PATCHED_INFERENCE,
 		verbose=True

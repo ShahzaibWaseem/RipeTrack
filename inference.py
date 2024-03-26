@@ -11,9 +11,9 @@ import torch
 from torchsummary import summary
 from models.MST import MST_Plus_Plus
 
-from utils import save_mat, save_mat_patched, load_mat, load_mat_patched, initialize_logger, visualize_gt_pred_hs_data, get_best_checkpoint
+from utils import save_mat, save_mat_patched, load_mat, load_mat_patched, initialize_logger, visualize_gt_pred_hs_data, get_best_checkpoint, AverageMeter
 from loss import test_mrae, test_rrmse, test_msam, test_sid, test_psnr, test_ssim
-from config import MODEL_PATH, TEST_ROOT_DATASET_DIR, TEST_DATASETS, APPLICATION_NAME, BANDS, CLASSIFICATION_PATCH_SIZE, STRIDE, DATA_PREP_PATH, GT_DATASET_CROPS_FILENAME, MOBILE_DATASET_CROPS_FILENAME, MOBILE_DATASET_DIR_NAME, RECONSTRUCTED_HS_DIR_NAME, GT_RGBN_DIR_NAME, GT_AUXILIARY_RGB_CAM_DIR_NAME, GT_REMOVED_IR_CUTOFF_DIR_NAME, MOBILE_RECONSTRUCTED_HS_DIR_NAME, PATCHED_INFERENCE, PATCHED_HS_DIR_NAME, EPS, var_name, model_run_title, checkpoint_file, device, create_directory
+from config import MODEL_PATH, TEST_ROOT_DATASET_DIR, TEST_DATASETS, APPLICATION_NAME, BANDS, TRAIN_VAL_TEST_SPLIT_DIR_NAME, CLASSIFICATION_PATCH_SIZE, STRIDE, DATA_PREP_PATH, GT_DATASET_CROPS_FILENAME, MOBILE_DATASET_CROPS_FILENAME, MOBILE_DATASET_DIR_NAME, RECONSTRUCTED_HS_DIR_NAME, GT_RGBN_DIR_NAME, GT_AUXILIARY_RGB_CAM_DIR_NAME, GT_REMOVED_IR_CUTOFF_DIR_NAME, MOBILE_RECONSTRUCTED_HS_DIR_NAME, PATCHED_INFERENCE, PATCHED_HS_DIR_NAME, EPS, var_name, model_run_title, checkpoint_file, device, create_directory
 
 def calculate_metrics(img_pred, img_gt):
 	mrae = test_mrae(img_pred, img_gt)
@@ -40,6 +40,12 @@ def inference(model, checkpoint_filename, mobile_reconstruction=False, patched_i
 	min_phc, max_phc = np.inf, -np.inf
 
 	for test_dataset in TEST_DATASETS:
+		losses_mrae = AverageMeter()
+		losses_rmse = AverageMeter()
+		losses_psnr = AverageMeter()
+		losses_sam = AverageMeter()
+		losses_sid = AverageMeter()
+		losses_ssim = AverageMeter()
 		directory = os.path.join(TEST_DATASET_DIR, "%s_204ch" % test_dataset)
 		OUT_PATH = os.path.join(directory, RECONSTRUCTED_HS_DIR_NAME) if not mobile_reconstruction else os.path.join(directory, MOBILE_RECONSTRUCTED_HS_DIR_NAME)
 		create_directory(OUT_PATH)
@@ -56,48 +62,48 @@ def inference(model, checkpoint_filename, mobile_reconstruction=False, patched_i
 		logger.info("Dataset: %s\tTest Directory: %s\tModel: %s\n" % (APPLICATION_NAME, test_dataset, checkpoint_filename))
 		p_mrae, p_rrmse, p_msam, p_sid, p_psnr, p_ssim, num_patches = 0, 0, 0, 0, 0, 0, 0
 
-		for mat_filepath in sorted(glob(os.path.join(directory, "*.mat"))):
+		with open(os.path.join(TEST_DATASET_DIR, "%s_204ch" % test_dataset, TRAIN_VAL_TEST_SPLIT_DIR_NAME, "test.txt"), "r") as test_file:
+			hypercube_list = [filename.replace("\n", ".mat") for filename in test_file]
+
+		for mat_filepath in hypercube_list:
+		# for mat_filepath in sorted(glob(os.path.join(directory, "*.mat"))):
 			start_time = time.time()
 			mat_filename = os.path.split(mat_filepath)[-1]
 			mat_number = mat_filename.split("_")[0].split(".")[0]
 
-			hypercube = load_mat(mat_filepath)
+			hypercube = load_mat(os.path.join(directory, mat_filepath))
+
+			# hypercube = load_mat(os.path.join(mat_filepath))
 			hypercube = hypercube[:, :, BANDS]
 			hypercube = (hypercube - hypercube.min()) / (hypercube.max() - hypercube.min())
 			min_hc, max_hc = min(min_hc, hypercube.min()), max(max_hc, hypercube.max())
-			hypercube = np.maximum(np.minimum(hypercube, 1.0), 0.0)
+			# hypercube = np.maximum(np.minimum(hypercube, 1.0), 0.0)
 			hypercube = hypercube + EPS
-			# hypercube = np.asarray(hypercube)
 
-			rgb_filename = mat_filename.replace(".mat", "_RGB%s.png" % "-D")
+			rgb_filename = mat_filename.replace(".mat", "_RGB%s.png" % "")
 			rgb_image = np.float32(imread(os.path.join(directory, GT_RGBN_DIR_NAME if not mobile_reconstruction else MOBILE_DATASET_DIR_NAME, rgb_filename)))
 			rgb_image = (rgb_image - rgb_image.min()) / (rgb_image.max() - rgb_image.min())
-			rgb_image = np.transpose(rgb_image, [2, 0, 1])
-			rgb_image = np.expand_dims(rgb_image, axis=0)
-			# rgb_image = np.asarray(rgb_image)
 
 			nir_filename = mat_filename.replace(".mat", "_NIR.png")
 			nir_image = np.float32(imread(os.path.join(directory, GT_RGBN_DIR_NAME if not mobile_reconstruction else MOBILE_DATASET_DIR_NAME, nir_filename)))
 			nir_image = (nir_image - nir_image.min()) / (nir_image.max() - nir_image.min())
 			nir_image = np.expand_dims(np.asarray(nir_image), axis=-1)
-			nir_image = np.transpose(nir_image, [2, 0, 1])
-			nir_image = np.expand_dims(nir_image, axis=0)
-			# nir_image = np.asarray(nir_image)
 
-			image = np.concatenate((rgb_image, nir_image), axis=1)
+			image = np.dstack((rgb_image, nir_image))
 			# image = rgb_image
+			image = np.transpose(image, [2, 0, 1])
+			image = np.expand_dims(image, axis=0)
 			image_tensor = torch.Tensor(image).float().to(device)
 
 			with torch.no_grad():
 				hypercube_pred = model(image_tensor)
+
 			hypercube_pred = np.transpose(hypercube_pred.squeeze(0).cpu().detach().numpy(), [1, 2, 0])
-			hypercube_pred = np.maximum(np.minimum(hypercube_pred, 1.0), 0.0)
-			# hypercube_pred = hypercube_pred.squeeze(0).cpu().detach().numpy()
-			# hypercube_pred = (hypercube_pred - hypercube_pred.min()) / (hypercube_pred.max() - hypercube_pred.min())
-			min_phc, max_phc = min(min_phc, hypercube_pred.min()), max(max_phc, hypercube_pred.max())
-			
-			# hypercube_pred = np.maximum(np.minimum(hypercube_pred, 1.0), 0.0)
 			# hypercube_pred = hypercube_pred + EPS			# should work without this line but just in case
+			hypercube_pred = np.maximum(np.minimum(hypercube_pred, 1.0), 0.0)
+
+			min_phc, max_phc = min(min_phc, hypercube_pred.min()), max(max_phc, hypercube_pred.max())
+			# print("HC Min: {}, Max: {}\tPred Min: {}, Max: {}".format(min_hc, max_hc, min_phc, max_phc))
 
 			end_time = time.time() - start_time
 			hypercube_pred_filepath = os.path.join(OUT_PATH, mat_filename)
@@ -106,6 +112,12 @@ def inference(model, checkpoint_filename, mobile_reconstruction=False, patched_i
 			if not mobile_reconstruction:
 				# visualize_gt_pred_hs_data(hypercube, hypercube_pred, 12)
 				mrae, rrmse, msam, sid, psnr, ssim = calculate_metrics(hypercube_pred, hypercube)
+				losses_mrae.update(mrae)
+				losses_rmse.update(rrmse)
+				losses_sam.update(msam)
+				losses_sid.update(sid)
+				losses_psnr.update(psnr)
+				losses_ssim.update(ssim)
 
 				print(log_string % (mat_filename, end_time, mrae, rrmse, msam, sid, psnr, ssim))
 				logger.info(log_string % (mat_filename, end_time, mrae, rrmse, msam, sid, psnr, ssim))
@@ -154,13 +166,16 @@ def inference(model, checkpoint_filename, mobile_reconstruction=False, patched_i
 						hypercube_combined[u"(%d, %d)"% (patch_i, patch_j)] = hypercube_pred
 				print(log_string % (mat_filename+"_patch", end_time, p_mrae/num_patches, p_rrmse/num_patches, p_msam/num_patches, p_sid/num_patches, p_psnr/num_patches, p_ssim/num_patches)) if not mobile_reconstruction else None
 				save_mat_patched(os.path.join(OUT_PATH, PATCHED_HS_DIR_NAME, mat_filename), hypercube_combined)
+		print(log_string % ("Average", 0, losses_mrae.avg, losses_rmse.avg, losses_sam.avg, losses_sid.avg, losses_psnr.avg, losses_ssim.avg))
+		logger.info(log_string % ("Average", 0, losses_mrae.avg, losses_rmse.avg, losses_sam.avg, losses_sid.avg, losses_psnr.avg, losses_ssim.avg))
 		print("Min Hypercube: %0.9f, Max Hypercube: %0.9f" % (min_hc, max_hc))
 		print("Min Predicted Hypercube: %0.9f, Max Predicted Hypercube: %0.9f" % (min_phc, max_phc))
 
 def main():
 	# checkpoint_filename, epoch, iter, model_param, optimizer, val_loss, val_acc = get_best_checkpoint(task="reconstruction")
-	checkpoint_filename = checkpoint_file
-	checkpoint = torch.load(os.path.join(MODEL_PATH, "reconstruction", "others", "MSLP_MST++_shelflife_443 trained on all (actual model).pkl"))
+	# checkpoint_filename = checkpoint_file
+	checkpoint_filename = "MSLP_MST++_shelflife_060 trained on all [half] RGBN to 68 (Vanilla, only MRAE).pkl"
+	checkpoint = torch.load(os.path.join(MODEL_PATH, "reconstruction", "others", checkpoint_filename))
 	model_param = checkpoint["state_dict"]
 	model = MST_Plus_Plus(in_channels=4, out_channels=len(BANDS), n_feat=len(BANDS), stage=3)
 	model.load_state_dict(model_param)
