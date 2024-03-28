@@ -7,8 +7,9 @@ In order to reproduce our results using our pre-trained models or the models can
 
 ### Installation
 Clone the repository
+...
 
-The directory tree should look something like this:
+The directory tree should look something like this (Some directories are created when the scripts are run):
 
 ```
 MobiSLP
@@ -29,7 +30,7 @@ MobiSLP
 ### Training
 In order to train the spectral upsampling model, you can use the following command:
 
-```zsh
+```bash
 python3 train.py
 ```
 
@@ -40,7 +41,7 @@ If you want to employ Transfer Learning, set `transfer_learning` to True in `con
 ### Reproduce the results using our pretrained models
 To run the inference script, which produces the hypercubes, use the following command:
 
-```zsh
+```bash
 python3 inference.py
 ```
 
