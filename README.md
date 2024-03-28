@@ -45,21 +45,21 @@ shelflife
 │
 └── avocado-hass
 │	│
-│	└── mobile-reconstructed	Inferred Upsampled Mobile Hypercubes (created)
+│	└── mobile-reconstructed		Inferred Upsampled Mobile Hypercubes (created)
 │	│
-│	└── mobile-rgbn			Mobile Image Dataset
+│	└── mobile-rgbn				Mobile Image Dataset
 │	│
-│	└── reconstructed		Inferred Upsampled Hypercubes (created)
+│	└── reconstructed			Inferred Upsampled Hypercubes (created)
 │	│
-│	└── rgbn			RGB and NIR images
+│	└── rgbn				RGB and NIR images
 │	│
-│	└── rgbnir-sensor		RGB with IR cutoff removed and NIR
+│	└── rgbnir-sensor			RGB with IR cutoff removed and NIR
 │	│
 │	└── rgbnir-sensor-reconstructed		Inferred Upsampled Hypercubes for No IR Filter data (created)
 │	│
-│	└── split			Training, Validation and Testing split
+│	└── split				Training, Validation and Testing split
 │
-│	496.mat				Ground truth Hypercubes
+│	496.mat					Ground truth Hypercubes
 │	497.mat
 │	...
 │
