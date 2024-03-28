@@ -16,15 +16,15 @@ The directory tree should look something like this (Some directories are created
 MobiSLP
 │
 └── checkpoints			Pretrained models
-|
+│
 └── dataPreparation		Scripts to prepare the data
 │
 └── logs			Training and testing logs
-|
+│
 └── models			Model Architecture Scripts
-|
+│
 └── visualizationsScripts	Contains scripts to produce various visualizations
-|
+│
 └── visualizations		Contains output of said scripts
 ```
 
@@ -42,26 +42,26 @@ The dataset directories are divided as follows:
 shelflife
 │
 └── avocado-hass
-|	|
-|	└── mobile-reconstructed	Inferred Upsampled Mobile Hypercubes 
-|	│
-|	└── mobile-rgbn			Mobile Image Dataset
-|	|
-|	└── reconstructed		Inferred Upsampled Hypercubes 
-|	|
-|	└── rgbn			RGB and NIR images
-|	|
-|	└── rgbnir-sensor		RGB with IR cutoff removed and NIR
-|	|
-|	└── split			Training, Validation and Testing split
-|
-|	496.mat				Ground truth Hypercubes
-|	497.mat
-|	...
-|
+│	│
+│	└── mobile-reconstructed	Inferred Upsampled Mobile Hypercubes 
+│	│
+│	└── mobile-rgbn			Mobile Image Dataset
+│	│
+│	└── reconstructed		Inferred Upsampled Hypercubes 
+│	│
+│	└── rgbn			RGB and NIR images
+│	│
+│	└── rgbnir-sensor		RGB with IR cutoff removed and NIR
+│	│
+│	└── split			Training, Validation and Testing split
+│
+│	496.mat				Ground truth Hypercubes
+│	497.mat
+│	...
+│
 └── pear-bartlett
-|	|
-|	...
+│	│
+│	...
 ```
 
 Some of the directories (mobile-reconstructed, reconstructed, rgbnir-sensor-reconstructed) are created when the `inference.py` script is run.
