@@ -51,11 +51,11 @@ shelflife
 |	|
 |	└── rgbn			RGB and NIR images
 |	|
-|	└── rgbn-sensor			RGB with IR cutoff removed and NIR
+|	└── rgbnir-sensor			RGB with IR cutoff removed and NIR
 |	|
 |	└── split			Training, Validation and Testing split
 |
-|	496.mat
+|	496.mat				Ground truth Hypercubes
 |	497.mat
 |	...
 |
@@ -63,6 +63,10 @@ shelflife
 |	|
 |	...
 ```
+
+Some of the directories (mobile-reconstructed, reconstructed, rgbnir-sensor-reconstructed) are created when the `inference.py` script is run.
+
+`split` directory is created when `MobiSLP/dataPreparation/trainTestDiv.py` script is executed.
 
 ### Training
 In order to train the spectral upsampling model, you can use the following command:
