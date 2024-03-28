@@ -10,23 +10,25 @@ Clone the repository
 
 ...
 
-The directory tree should look something like this (Some directories are created when the scripts are run):
+The directory tree should look something like this:
 
 ```
 MobiSLP
 │
-└── checkpoints			Pretrained models
+└── checkpoints			Pretrained models (created)
 │
 └── dataPreparation		Scripts to prepare the data
 │
-└── logs			Training and testing logs
+└── logs			Training and testing logs (created)
 │
 └── models			Model Architecture Scripts
 │
 └── visualizationsScripts	Contains scripts to produce various visualizations
 │
-└── visualizations		Contains output of said scripts
+└── visualizations		Contains output of said scripts (created)
 ```
+
+Some of the directories are created when the scripts are executed.
 
 ### Dataset
 Download the datasets from the following links:
@@ -43,15 +45,17 @@ shelflife
 │
 └── avocado-hass
 │	│
-│	└── mobile-reconstructed	Inferred Upsampled Mobile Hypercubes 
+│	└── mobile-reconstructed	Inferred Upsampled Mobile Hypercubes (created)
 │	│
 │	└── mobile-rgbn			Mobile Image Dataset
 │	│
-│	└── reconstructed		Inferred Upsampled Hypercubes 
+│	└── reconstructed		Inferred Upsampled Hypercubes (created)
 │	│
 │	└── rgbn			RGB and NIR images
 │	│
 │	└── rgbnir-sensor		RGB with IR cutoff removed and NIR
+│	│
+│	└── rgbnir-sensor-reconstructed		Inferred Upsampled Hypercubes for No IR Filter data (created)
 │	│
 │	└── split			Training, Validation and Testing split
 │
@@ -77,7 +81,7 @@ python3 train.py
 
 To change any of the parameters like batch sizes, number of epochs, datasets considered, losses considered etc; check `config.py` file.
 
-If you want to employ Transfer Learning, set `transfer_learning = True` in `config.py`. In order to train on Mobile images, set `use_mobile_dataset = True`.
+If you want to employ Transfer Learning, set `transfer_learning = True` in `config.py`. In order to train on Mobile images, set `use_mobile_dataset = True`. Set `run_pretrained = True` (in `config.py`) if you want to resume training the model (if the script was stopped).
 
 During training, please also check the `dataset.py` for which input set is loaded into the memory.
 
@@ -90,9 +94,9 @@ python3 inference.py
 
 The same parameters apply here (`config.py`). To use a different model type out the name of it in this variable `checkpoint_filename`, and fix the image sizes if they need fixing. The Pre-trained models can be found here. Place the pre-trained models in `checkpoints/reconstruction/{others}`.
 
-This script also calculates the errors for the six metrics: MRAE, RMSE, SAM, SID, PSNR, SSIM.
+This script also calculates the errors for the six metrics: MRAE, RMSE, SAM, SID, PSNR, SSIM. The details are in the manuscript.
 
 In order to produce the Mobile Hypercubes, the command is same as above, set `use_mobile_dataset = True`. The error metrics are not calculated for Mobile dataset, because there are no Ground Truth Hypercubes to compare them to.
 
 
-**Note**: do not set `use_mobile_dataset = True`, unless you want to perform inference on Mobile Datasets, as it will select wrong band numbers.
+**Note**: do not set `use_mobile_dataset = True`, unless you want to perform inference on Mobile Datasets, as otherwise it will select wrong band numbers.
