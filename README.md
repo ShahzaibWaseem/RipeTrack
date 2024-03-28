@@ -13,17 +13,17 @@ The directory tree should look something like this:
 ```
 MobiSLP
 │
-└── checkpoints				Pretrained models
+└── checkpoints			Pretrained models
 |
-└── dataPreparation			Scripts to prepare the data
+└── dataPreparation		Scripts to prepare the data
 │
-└── logs					Training and testing logs
+└── logs			Training and testing logs
 |
-└── models					Model Architecture Scripts
+└── models			Model Architecture Scripts
 |
 └── visualizationsScripts	Contains scripts to produce various visualizations
 |
-└── visualizations			Contains output of said scripts
+└── visualizations		Contains output of said scripts
 ```
 
 ### Training
