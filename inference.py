@@ -28,6 +28,9 @@ def inference(model, checkpoint_filename, mobile_reconstruction=False, patched_i
 	# input_transform, label_transform = get_required_transforms(task="reconstruction")
 	logger = initialize_logger(filename="test.log")
 	log_string = "[%15s] Time: %0.9f, MRAE: %0.9f, RRMSE: %0.9f, SAM: %0.9f, SID: %0.9f, PSNR: %0.9f, SSIM: %0.9f"
+	log_string_avg = "%15s, %0.4f \pm %0.2f, %0.4f \pm %0.2f, %0.4f \pm %0.2f, %0.4f \pm %0.2f, %0.1f \pm %0.1f, %0.4f \pm %0.2f"
+	log_string_avg_combined = "%15s, \\textbf{%0.4f \pm %0.2f}, \\textbf{%0.4f \pm %0.2f}, \\textbf{%0.4f \pm %0.2f}, \\textbf{%0.4f \pm %0.2f}, \\textbf{%0.1f \pm %0.1f}, \\textbf{%0.4f \pm %0.2f}"
+
 	TEST_DATASET_DIR = os.path.join(TEST_ROOT_DATASET_DIR, APPLICATION_NAME)
 
 	crops_filepath = os.path.join(DATA_PREP_PATH, MOBILE_DATASET_CROPS_FILENAME if mobile_reconstruction else GT_DATASET_CROPS_FILENAME)
@@ -38,6 +41,12 @@ def inference(model, checkpoint_filename, mobile_reconstruction=False, patched_i
 	crops_df["h"] = crops_df["ymax"] - crops_df["ymin"]
 	min_hc, max_hc = np.inf, -np.inf
 	min_phc, max_phc = np.inf, -np.inf
+	losses_mrae_combined = AverageMeter()
+	losses_rmse_combined = AverageMeter()
+	losses_sam_combined = AverageMeter()
+	losses_sid_combined = AverageMeter()
+	losses_psnr_combined = AverageMeter()
+	losses_ssim_combined = AverageMeter()
 
 	for test_dataset in TEST_DATASETS:
 		losses_mrae = AverageMeter()
@@ -80,7 +89,7 @@ def inference(model, checkpoint_filename, mobile_reconstruction=False, patched_i
 			# hypercube = np.maximum(np.minimum(hypercube, 1.0), 0.0)
 			hypercube = hypercube + EPS
 
-			rgb_filename = mat_filename.replace(".mat", "_RGB%s.png" % "")
+			rgb_filename = mat_filename.replace(".mat", "_RGB%s.png" % "-D")
 			rgb_image = np.float32(imread(os.path.join(directory, GT_RGBN_DIR_NAME if not mobile_reconstruction else MOBILE_DATASET_DIR_NAME, rgb_filename)))
 			rgb_image = (rgb_image - rgb_image.min()) / (rgb_image.max() - rgb_image.min())
 
@@ -118,6 +127,13 @@ def inference(model, checkpoint_filename, mobile_reconstruction=False, patched_i
 				losses_sid.update(sid)
 				losses_psnr.update(psnr)
 				losses_ssim.update(ssim)
+
+				losses_mrae_combined.update(mrae)
+				losses_rmse_combined.update(rrmse)
+				losses_sam_combined.update(msam)
+				losses_sid_combined.update(sid)
+				losses_psnr_combined.update(psnr)
+				losses_ssim_combined.update(ssim)
 
 				print(log_string % (mat_filename, end_time, mrae, rrmse, msam, sid, psnr, ssim))
 				logger.info(log_string % (mat_filename, end_time, mrae, rrmse, msam, sid, psnr, ssim))
@@ -166,15 +182,25 @@ def inference(model, checkpoint_filename, mobile_reconstruction=False, patched_i
 						hypercube_combined[u"(%d, %d)"% (patch_i, patch_j)] = hypercube_pred
 				print(log_string % (mat_filename+"_patch", end_time, p_mrae/num_patches, p_rrmse/num_patches, p_msam/num_patches, p_sid/num_patches, p_psnr/num_patches, p_ssim/num_patches)) if not mobile_reconstruction else None
 				save_mat_patched(os.path.join(OUT_PATH, PATCHED_HS_DIR_NAME, mat_filename), hypercube_combined)
-		print(log_string % ("Average", 0, losses_mrae.avg, losses_rmse.avg, losses_sam.avg, losses_sid.avg, losses_psnr.avg, losses_ssim.avg))
-		logger.info(log_string % ("Average", 0, losses_mrae.avg, losses_rmse.avg, losses_sam.avg, losses_sid.avg, losses_psnr.avg, losses_ssim.avg))
+		print(log_string_avg % ("Average %s" % test_dataset, losses_mrae.avg, losses_mrae.stddev, losses_rmse.avg, losses_rmse.stddev,
+						  losses_sam.avg, losses_sam.stddev, losses_sid.avg, losses_sid.stddev,
+						  losses_psnr.avg, losses_psnr.stddev, losses_ssim.avg, losses_ssim.stddev))
+		logger.info(log_string_avg % ("Average %s" % test_dataset, losses_mrae.avg, losses_mrae.stddev, losses_rmse.avg, losses_rmse.stddev,
+						  losses_sam.avg, losses_sam.stddev, losses_sid.avg, losses_sid.stddev,
+						  losses_psnr.avg, losses_psnr.stddev, losses_ssim.avg, losses_ssim.stddev))
 		print("Min Hypercube: %0.9f, Max Hypercube: %0.9f" % (min_hc, max_hc))
 		print("Min Predicted Hypercube: %0.9f, Max Predicted Hypercube: %0.9f" % (min_phc, max_phc))
+	print(log_string_avg_combined % ("Combined Average %s" % "", losses_mrae_combined.avg, losses_mrae_combined.stddev, losses_rmse_combined.avg, losses_rmse_combined.stddev,
+						  losses_sam_combined.avg, losses_sam_combined.stddev, losses_sid_combined.avg, losses_sid_combined.stddev,
+						  losses_psnr_combined.avg, losses_psnr_combined.stddev, losses_ssim_combined.avg, losses_ssim_combined.stddev))
+	logger.info(log_string_avg_combined % ("Combined Average %s" % "", losses_mrae_combined.avg, losses_mrae_combined.stddev, losses_rmse_combined.avg, losses_rmse_combined.stddev,
+						  losses_sam_combined.avg, losses_sam_combined.stddev, losses_sid_combined.avg, losses_sid_combined.stddev,
+						  losses_psnr_combined.avg, losses_psnr_combined.stddev, losses_ssim_combined.avg, losses_ssim_combined.stddev))
 
 def main():
 	# checkpoint_filename, epoch, iter, model_param, optimizer, val_loss, val_acc = get_best_checkpoint(task="reconstruction")
 	# checkpoint_filename = checkpoint_file
-	checkpoint_filename = "MSLP_MST++_shelflife_060 trained on all [half] RGBN to 68 (Vanilla, only MRAE).pkl"
+	checkpoint_filename = "MSLP_MST++_shelflife_060 trained on all [Half] RGBN (Vanilla).pkl"
 	checkpoint = torch.load(os.path.join(MODEL_PATH, "reconstruction", "others", checkpoint_filename))
 	model_param = checkpoint["state_dict"]
 	model = MST_Plus_Plus(in_channels=4, out_channels=len(BANDS), n_feat=len(BANDS), stage=3)
