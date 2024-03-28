@@ -37,6 +37,7 @@ Download the datasets from the following links:
 - Pear Bartlett
 - Avocado Organic
 - Avocado Hass
+- Banana
 
 The dataset directories are divided as follows:
 
@@ -94,7 +95,7 @@ python3 inference.py
 
 The same parameters apply here (`config.py`). To use a different model type out the name of it in this variable `checkpoint_filename`, and fix the image sizes if they need fixing. The Pre-trained models can be found here. Place the pre-trained models in `checkpoints/reconstruction/{others}`.
 
-This script also calculates the errors for the six metrics: MRAE, RMSE, SAM, SID, PSNR, SSIM. The details are in the manuscript.
+This script also calculates the errors for the six metrics: MRAE, RMSE, SAM, SID, PSNR, SSIM (`losses.py`). The details are in the manuscript.
 
 In order to produce the Mobile Hypercubes, the command is same as above, set `use_mobile_dataset = True`. The error metrics are not calculated for Mobile dataset, because there are no Ground Truth Hypercubes to compare them to.
 
