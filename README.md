@@ -51,7 +51,7 @@ shelflife
 |	|
 |	└── rgbn			RGB and NIR images
 |	|
-|	└── rgbnir-sensor			RGB with IR cutoff removed and NIR
+|	└── rgbnir-sensor		RGB with IR cutoff removed and NIR
 |	|
 |	└── split			Training, Validation and Testing split
 |
