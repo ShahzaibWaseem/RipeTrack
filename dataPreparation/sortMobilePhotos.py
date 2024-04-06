@@ -14,7 +14,7 @@ from config import TEST_ROOT_DATASET_DIR, APPLICATION_NAME, SHELF_LIFE_GROUND_TR
 
 import matplotlib.pyplot as plt
 
-months = {"Aug": "08", "Sep": "09"}
+months = {"Aug": "08", "Sep": "09", "Mar": "03"}
 
 def plotImages(image):
 	fig, ax = plt.subplots(1, 1, figsize=(15, 5))
@@ -22,12 +22,8 @@ def plotImages(image):
 	ax.title.set_text("RGB Image")
 	plt.show()
 
-def fixedAlign(image):
-	aligningFactorX = 35
-	aligningFactorY = 82
-	mobileImageXShape = 480
-	mobileImageYShape = 640
-
+def fixedAlign(image, aligningFactorX=35, aligningFactorY=82, mobileImageXShape=480, mobileImageYShape=640):
+	""" Aligning the Mobile Images, Preset for front RGB and NIR cameras of Google Pixel 4XL. """
 	image = image[aligningFactorY:aligningFactorY+mobileImageYShape, aligningFactorX:aligningFactorX+mobileImageXShape, :]
 	return image
 
@@ -41,12 +37,13 @@ def viewImages(rgb_image, nir_image, rgb_image_aligned, plot_title, dataset_name
 	ax3.imshow(rgb_image_aligned)
 	merged_image = Image.blend(rgb_image_for, nir_image_for, 0.5)
 	ax4.imshow(merged_image)
-	create_directory(os.path.join("..", TEST_ROOT_DATASET_DIR, APPLICATION_NAME, "%s_204ch" % dataset_name, VISUALIZATION_DIR_NAME))
-	plt.savefig(os.path.join("..", TEST_ROOT_DATASET_DIR, APPLICATION_NAME, "%s_204ch" % dataset_name, VISUALIZATION_DIR_NAME, "%s.png" % plot_filename))
+	create_directory(os.path.join("..", TEST_ROOT_DATASET_DIR, APPLICATION_NAME+"2", "%s_204ch" % dataset_name, VISUALIZATION_DIR_NAME))
+	plt.savefig(os.path.join("..", TEST_ROOT_DATASET_DIR, APPLICATION_NAME+"2", "%s_204ch" % dataset_name, VISUALIZATION_DIR_NAME, "%s.png" % plot_filename))
 	plt.close()
 
 def main():
-	ground_truth_df = pd.read_csv(os.path.join(SHELF_LIFE_GROUND_TRUTH_FILENAME))
+	ground_truth_df = pd.read_csv(os.path.join("ShelfLifeGroundTruth(New).csv"))
+	# ground_truth_df = pd.read_csv(os.path.join(SHELF_LIFE_GROUND_TRUTH_FILENAME))
 	check_filenames = []
 	commonLighting = CommonLighting()
 
@@ -59,15 +56,15 @@ def main():
 		fruit_name_short = ground_truth_df["Fruit"][index]
 		fruit_name_short = fruit_name_short[0] + fruit_name_short[-1]
 
-		mobile_dataset_input_directory = os.path.join("..", TEST_ROOT_DATASET_DIR, "mobile_%s" % APPLICATION_NAME)
-		mobile_dataset_output_directory = os.path.join("..", TEST_ROOT_DATASET_DIR, APPLICATION_NAME, "%s_204ch" % dataset_name, MOBILE_DATASET_DIR_NAME)
+		mobile_dataset_input_directory = os.path.join("..", TEST_ROOT_DATASET_DIR, "mobile_%s_new" % APPLICATION_NAME, "rawImages")
+		mobile_dataset_output_directory = os.path.join("..", TEST_ROOT_DATASET_DIR, APPLICATION_NAME+"2", "%s_204ch" % dataset_name, MOBILE_DATASET_DIR_NAME)
 
 		create_directory(mobile_dataset_output_directory)
 
 		# IMG_2023_08_14_16_16_27_916_RGB_(Pr_ID_0).png
-		mobile_rgbfilename = "IMG_2023_%s_%s_*_RGB_(%s_ID_%s).png" % (months[month], date, fruit_name_short, mobile_fid)
-		mobile_nirfilename = "IMG_2023_%s_%s_*_NIR_(%s_ID_%s).png" % (months[month], date, fruit_name_short, mobile_fid)
-		check_number_of_files_per_day = len(glob(os.path.join(mobile_dataset_input_directory, "IMG_2023_%s_%s_*(%s_ID*).png" % (months[month], date, fruit_name_short))))
+		mobile_rgbfilename = "IMG_2024_%s_%s_*_RGB_(%s_ID_%s).png" % (months[month], date, fruit_name_short, mobile_fid)
+		mobile_nirfilename = "IMG_2024_%s_%s_*_NIR_(%s_ID_%s).png" % (months[month], date, fruit_name_short, mobile_fid)
+		check_number_of_files_per_day = len(glob(os.path.join(mobile_dataset_input_directory, "IMG_2024_%s_%s_*(%s_ID*).png" % (months[month], date, fruit_name_short))))
 
 		# Checks if the files captured on Mobile have correct names. Soft Assertion/Warning
 		rgb_glob_len = len(glob(os.path.join(mobile_dataset_input_directory, mobile_rgbfilename)))
