@@ -101,7 +101,7 @@ class ModelWithAttention(nn.Module):
 		super().__init__()
 		self.ssattn = SSAttention(input_channels)
 		self.relu = nn.LeakyReLU(inplace=True)
-		self.bottleneck = nn.Linear(in_features=150212, out_features=256)
+		self.bottleneck = nn.Linear(in_features=296208, out_features=256)
 		# self.bottleneck = nn.Linear(in_features=6627, out_features=256)
 		self.dropout = nn.Dropout(p=0.25)
 		self.fc_class = nn.Linear(in_features=256, out_features=num_classes)

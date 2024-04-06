@@ -106,12 +106,9 @@ def main():
 			best_model = model
 			best_optimizer = optimizer
 			iteration_passed = iteration
-		if epoch % 20 == 0:
-			if epoch <= 80:
-				continue
-			else:
+		if epoch % 10 == 0:
 				save_checkpoint(int(round(epoch, -1)), iteration_passed, best_model, best_optimizer, best_val_loss, best_val_acc_labels, best_val_acc_sublabels, bands=BANDS, task="classification")
-		if epoch % 100 == 0:
+		if epoch % 50 == 0:
 			test_loss, test_acc = test(valid_data_loader, best_model, criterion)
 		# scheduler.step(val_loss)
 
@@ -286,8 +283,9 @@ def test(test_data_loader, model, criterion):
 	accuracy_labels = 100. * (running_correct_labels / len(test_data_loader.dataset))
 	accuracy_sublabels = 100. * (running_correct_sublabels / len(test_data_loader.dataset))
 
-	classification_evaluate(y_true_labels, y_pred_labels, "all")
-	classification_evaluate(y_true_sublabels, y_pred_sublabels, "all_sublabels", labels_dict=TIME_LEFT_DICT)
+	classification_evaluate(y_true_labels, y_pred_labels, "all", acc=accuracy_labels)
+	classification_evaluate(y_true_sublabels, y_pred_sublabels, "all_sublabels", labels_dict=TIME_LEFT_DICT, acc=accuracy_sublabels)
+
 	for fruit in TEST_DATASETS:
 		fruit_fullname = " ".join(elem.capitalize() for elem in fruit.split("-"))
 		fruit_indices = find_indices(fruit_labels, fruit_fullname)
@@ -312,7 +310,6 @@ def test(test_data_loader, model, criterion):
 
 def find_indices(list, fruit):
 	return [i for i, x in enumerate(list) if x == fruit]
-
 
 def pr_auc_curve(y_true_labels, y_pred_labels_proba, y_test, labels_dict=LABELS_DICT):
 	""" Gets the Precision Recall curve for One vs Rest classification """
@@ -433,13 +430,13 @@ def wrap_labels(ax, width, break_long_words=False):
 	ax.set_yticklabels(labels, rotation=90, horizontalalignment="center")
 	ax.tick_params(axis="y", which="major", pad=15)
 
-def classification_evaluate(y_true, y_pred, title, labels_dict=LABELS_DICT):
+def classification_evaluate(y_true, y_pred, title, labels_dict=LABELS_DICT, acc=0.0):
 	confusion_mat = confusion_matrix(y_true, y_pred)
 	df_confusion_mat = pd.DataFrame(confusion_mat / np.sum(confusion_mat, axis=1)[:, None], index = [key for key, value in labels_dict.items()], columns = [key for key, value in labels_dict.items()])
 	fig, ax = plt.subplots(figsize=(10, 10))
 	sns.heatmap(df_confusion_mat, annot=True, fmt=".0%", cmap="Blues")
 	# wrap_labels(ax, 10) if title.split("_")[-1] == "sublabels" else None
-	print("Title: {}, Accuracy: {}".format(title, accuracy_score(y_true, y_pred)))
+	print("Title: {}, Accuracy: {}, {}".format(title, accuracy_score(y_true, y_pred), acc))
 	print(classification_report(y_true, y_pred, target_names=[key for key, value in labels_dict.items()]))
 	plt.tight_layout()
 	# print(df_confusion_mat)

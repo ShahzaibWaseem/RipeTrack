@@ -101,7 +101,7 @@ def plotSingleMetric(error, ax, ylim, ylabel, xlabel="Wavelength (nm)", legend_l
 	xlim=[400, 1000]
 
 	ax.plot(x, error, "r-", linewidth=5, label=label, color=color)
-	ax.legend(loc=legend_loc)
+	# ax.legend(loc=legend_loc)
 	ax.set_ylabel(ylabel)
 	ax.set_xlabel(xlabel)
 	ax.set_xlim(xlim)
@@ -117,7 +117,6 @@ def plotBandErrors(mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_error
 	# rows = len(["Fruit"])
 
 	fig, axs = plt.subplots(nrows=2, ncols=3, figsize=(30, 20))
-	fig.suptitle("Band-wise Errors; RGBN cutoff removed to 68 bands", fontsize=25, fontname="serif")
 
 	plotSingleMetric(mrae_errors, axs[0][0], ylim=[0, 0.5], ylabel="MRAE")
 	plotSingleMetric(rrmse_errors, axs[0][1], ylim=[0, 0.4], ylabel="RRMSE")
@@ -154,15 +153,14 @@ def plotAllBandErrors(filename="errors.pdf"):
 	# rows = len(["Fruit"])
 
 	fig, axs = plt.subplots(nrows=2, ncols=3, figsize=(30, 20))
-	fig.suptitle("Band-wise Errors; RGBN cutoff removed to 68 bands", fontsize=25, fontname="serif")
 	colors = ["r", "g", "b", "c", "m", "y", "k", "w"]
 	
 	for ix, title in enumerate(titles):
 		plotSingleMetric(mrae_errors_combined[ix], axs[0][0], ylim=[0, 0.7], ylabel="MRAE", label=title, color=colors[ix])
 		plotSingleMetric(rrmse_errors_combined[ix], axs[0][1], ylim=[0, 0.4], ylabel="RRMSE", label=title, color=colors[ix])
-		plotSingleMetric(sam_errors_combined[ix], axs[0][2], ylim=[0, 0.5], ylabel="SAM", label=title, color=colors[ix])
+		plotSingleMetric(sam_errors_combined[ix], axs[0][2], ylim=[0, 0.4], ylabel="SAM", label=title, color=colors[ix])
 		plotSingleMetric(sid_errors_combined[ix], axs[1][0], ylim=[0, 0.2], ylabel="SID", label=title, color=colors[ix])
-		plotSingleMetric(psnr_errors_combined[ix], axs[1][1], ylim=[20, 65], ylabel="PSNR", legend_loc="upper center", label=title, color=colors[ix])
+		plotSingleMetric(psnr_errors_combined[ix], axs[1][1], ylim=[10, 45], ylabel="PSNR", legend_loc="upper right", label=title, color=colors[ix])
 		plotSingleMetric(ssim_errors_combined[ix], axs[1][2], ylim=[0.8, 1], ylabel="SSIM", legend_loc="lower right", label=title, color=colors[ix])
 	plt.tight_layout()
 	plt.savefig(os.path.join(VISUALIZATION_DIR_NAME, "tempJSON", filename), bbox_inches="tight")
@@ -205,26 +203,29 @@ if __name__ == "__main__":
 	# print(errors.keys())
 	# mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors = meanErrors(errors)
 
-	# jsonFile = open(os.path.join(VISUALIZATION_DIR_NAME, "tempJSON", "errorsRaw(RGBNto68)[Vanilla].json"), "w")
+	# jsonFile = open(os.path.join(VISUALIZATION_DIR_NAME, "tempJSON", "errorsRaw(RGBto68)[Vanilla].json"), "w")
 	# jsonFile.write(json.dumps(str(errors), indent=4))
 	# jsonFile.close()
 
 	# errors = {}
 	# errors.update({"MSLP": {"MRAE": mrae_errors.tolist(), "RRMSE": rrmse_errors.tolist(), "SAM": sam_errors.tolist(), "SID": sid_errors.tolist(), "PSNR": psnr_errors.tolist(), "SSIM": ssim_errors.tolist()}})
 
-	# jsonFile = open(os.path.join(VISUALIZATION_DIR_NAME, "tempJSON", "errors(RGBNto68)[Vanilla].json"), "w")
+	# jsonFile = open(os.path.join(VISUALIZATION_DIR_NAME, "tempJSON", "errors(RGBto68)[Vanilla].json"), "w")
 	# jsonFile.write(json.dumps(str(errors), indent=4))
 	# jsonFile.close()
 
 	# mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors = readDataFromFile(json_file=os.path.join("tempJSON","errors(RGBNto68)[VanillaMRAE].json"))
 	# plotBandErrors(mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors, filename=os.path.join("tempJSON", "errors(RGNto68)[VanillaMRAE].pdf"))
 	fruitname = "pear-williams"
-	processRawJSON("errorsRaw(RGBto68).json", "RGB", fruitname)
-	processRawJSON("errorsRaw(RGBto68)[IR Cutoff Removed].json", "RGB [IR CR]", fruitname)
-	processRawJSON("errorsRaw(RGBNto68).json", "RGB+FaceID", fruitname)
-	processRawJSON("errorsRaw(RGBNto68)[IR Cutoff Removed].json", "Custom Sensor", fruitname)
-	processRawJSON("errorsRaw(RGBNto68)[Vanilla].json", "RGBN [Vanilla]", fruitname)
-	processRawJSON("errorsRaw(RGBNto68)[Losses + NIR Augmentation].json", "RGBN [L+A]", fruitname)
+	processRawJSON("errorsRaw(RGBto68)[Vanilla].json", "Pear Bartlett", fruitname)
+	# processRawJSON("errorsRaw(RGBto68)[Vanilla].json", "Avocado Organic", "avocado-organic")
+
+
+	# processRawJSON("errorsRaw(RGBto68)[IR Cutoff Removed].json", "RGB [IR CR]", fruitname)
+	# processRawJSON("errorsRaw(RGBNto68).json", "RGB+FaceID", fruitname)
+	# processRawJSON("errorsRaw(RGBNto68)[IR Cutoff Removed].json", "Custom Sensor", fruitname)
+	# processRawJSON("errorsRaw(RGBNto68)[Vanilla].json", "RGBN [Vanilla]", fruitname)
+	# processRawJSON("errorsRaw(RGBNto68)[Losses + NIR Augmentation].json", "RGBN [L+A]", fruitname)
 
 	# mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors = readDataFromFile(json_file=os.path.join("tempJSON","errors(RGBto68).json"))
 	# combineAllArrays(mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors, "RGB")
@@ -239,4 +240,4 @@ if __name__ == "__main__":
 	# mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors = readDataFromFile(json_file=os.path.join("tempJSON","errors(RGBNto68)[Losses + NIR Augmentation].json"))
 	# combineAllArrays(mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors, "RGBN [L+A]")
 
-	# plotAllBandErrors(filename="errors(%s).pdf" % (fruitname))
+	plotAllBandErrors(filename="errors(%s).pdf" % ("VanillaMST"))

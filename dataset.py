@@ -97,7 +97,7 @@ class DatasetFromDirectoryReconstructionTrain(Dataset):
 					continue
 				image_width, image_height = IMAGE_SIZE, IMAGE_SIZE
 				hypercube = load_mat(os.path.join(directory, filename))
-				nir_image = np.float32(hypercube[:, :, random.choices(NIR_BANDS)])
+				# nir_image = np.float32(hypercube[:, :, random.choices(NIR_BANDS)])
 				hypercube = hypercube[:, :, BANDS]
 				# hypercube = hypercube[movePixels:image_width-movePixels, movePixels:image_height-movePixels, :] if not self.transforms == None else hypercube
 				hypercube = (hypercube - hypercube.min()) / (hypercube.max() - hypercube.min())
@@ -110,11 +110,11 @@ class DatasetFromDirectoryReconstructionTrain(Dataset):
 				rgb_image = (rgb_image - rgb_image.min()) / (rgb_image.max() - rgb_image.min())
 				# rgb_image = self.transforms(rgb_image) if not self.transforms == None else rgb_image
 
-				# nir_image = np.float32(imread(os.path.join(directory, GT_RGBN_DIR_NAME, os.path.split(filename)[-1].replace(".mat", "_NIR.png"))))
+				nir_image = np.float32(imread(os.path.join(directory, GT_RGBN_DIR_NAME, os.path.split(filename)[-1].replace(".mat", "_NIR.png"))))
 				nir_image = (nir_image - nir_image.min()) / (nir_image.max() - nir_image.min())
 				# nir_image = nir_image[movePixels:image_width-movePixels, movePixels:image_height-movePixels] if not self.transforms == None else nir_image
-				# nir_image = np.expand_dims(np.asarray(nir_image), 2)
-				# nir_image = np.transpose(nir_image, [2, 0, 1])
+				nir_image = np.expand_dims(np.asarray(nir_image), 2)
+				nir_image = np.transpose(nir_image, [2, 0, 1])
 
 				# image = rgb_image
 				image = np.dstack((rgb_image, nir_image))
@@ -196,9 +196,8 @@ class DatasetFromDirectoryReconstructionValid(Dataset):
 			dataset_load_time = time.time()
 			for filename in hypercube_list:
 				hypercube = load_mat(os.path.join(directory, filename))
-				nir_image = np.float32(hypercube[:, :, random.choice(NIR_BANDS)])
+				# nir_image = np.float32(hypercube[:, :, random.choice(NIR_BANDS)])
 				hypercube = hypercube[:, :, BANDS]
-				# hypercube = hypercube[movePixels:image_width-movePixels, movePixels:image_height-movePixels, :] if not self.transforms == None else hypercube
 				hypercube = (hypercube - hypercube.min()) / (hypercube.max() - hypercube.min())
 				hypercube = np.transpose(hypercube, [2, 0, 1])
 				hypercube += EPS
@@ -206,13 +205,11 @@ class DatasetFromDirectoryReconstructionValid(Dataset):
 
 				rgb_image = np.float32(imread(os.path.join(directory, GT_RGBN_DIR_NAME if not use_auxiliary_input else GT_AUXILIARY_RGB_CAM_DIR_NAME, os.path.split(filename)[-1].replace(".mat", "_RGB%s.png" % "-D"))))
 				rgb_image = (rgb_image - rgb_image.min()) / (rgb_image.max() - rgb_image.min())
-				# rgb_image = self.transforms(rgb_image) if not self.transforms == None else rgb_image
 
-				# nir_image = np.float32(imread(os.path.join(directory, GT_RGBN_DIR_NAME, os.path.split(filename)[-1].replace(".mat", "_NIR.png"))))
+				nir_image = np.float32(imread(os.path.join(directory, GT_RGBN_DIR_NAME, os.path.split(filename)[-1].replace(".mat", "_NIR.png"))))
 				nir_image = (nir_image - nir_image.min()) / (nir_image.max() - nir_image.min())
-				# nir_image = nir_image[movePixels:image_width-movePixels, movePixels:image_height-movePixels] if not self.transforms == None else nir_image
-				# nir_image = np.expand_dims(np.asarray(nir_image), 2)
-				# nir_image = np.transpose(nir_image, [2, 0, 1])
+				nir_image = np.expand_dims(np.asarray(nir_image), 2)
+				nir_image = np.transpose(nir_image, [2, 0, 1])
 
 				# image = rgb_image
 				image = np.dstack((rgb_image, nir_image))
@@ -255,8 +252,7 @@ def get_dataloaders_classification(trainset_size=0.7):
 	dataset = DatasetFromDirectoryClassification(
 		root=TEST_ROOT_DATASET_DIR,
 		application_name=APPLICATION_NAME,
-		mobile_reconstructed_folder=MOBILE_RECONSTRUCTED_HS_DIR_NAME if use_mobile_dataset else RECONSTRUCTED_HS_DIR_NAME,
-		# mobile_reconstructed_folder=None,
+		hypercube_directory=MOBILE_RECONSTRUCTED_HS_DIR_NAME if use_mobile_dataset else None,
 		transforms=classificationTransforms,
 		patched_inference=PATCHED_INFERENCE,
 		verbose=True
@@ -292,7 +288,7 @@ def get_dataloaders_classification(trainset_size=0.7):
 class DatasetFromDirectoryClassification(Dataset):
 	images, hypercubes, labels, sublabels, fruits = [], [], [], [], []
 
-	def __init__(self, root, application_name=APPLICATION_NAME, mobile_reconstructed_folder=None, patched_inference=True, transforms=None, verbose=False):
+	def __init__(self, root, application_name=APPLICATION_NAME, hypercube_directory=None, patched_inference=True, transforms=None, verbose=False):
 		global class_sizes, subclass_sizes
 		self.transforms = transforms
 
@@ -301,7 +297,7 @@ class DatasetFromDirectoryClassification(Dataset):
 		self.stride = STRIDE
 		hypercube_counter = 0
 
-		crops_df = pd.read_csv(os.path.join(DATA_PREP_PATH, MOBILE_DATASET_CROPS_FILENAME if mobile_reconstructed_folder else GT_DATASET_CROPS_FILENAME))
+		crops_df = pd.read_csv(os.path.join(DATA_PREP_PATH, MOBILE_DATASET_CROPS_FILENAME if hypercube_directory == MOBILE_RECONSTRUCTED_HS_DIR_NAME else GT_DATASET_CROPS_FILENAME))
 		shelflife_df = pd.read_csv(os.path.join(DATA_PREP_PATH, SHELF_LIFE_GROUND_TRUTH_FILENAME))
 		crops_df["w"] = crops_df["xmax"] - crops_df["xmin"]
 		crops_df["h"] = crops_df["ymax"] - crops_df["ymin"]
@@ -311,8 +307,8 @@ class DatasetFromDirectoryClassification(Dataset):
 		print("Reading Images from:") if verbose else None
 		for dataset in TEST_DATASETS:
 			directory = os.path.join(root, application_name, "{}_204ch".format(dataset))
-			directory = os.path.join(directory, mobile_reconstructed_folder) if mobile_reconstructed_folder != None else directory
-			print("{0:21}".format(os.path.split(directory)[-1] if mobile_reconstructed_folder == None else dataset), end=":")
+			directory = os.path.join(directory, hypercube_directory) if hypercube_directory != None else directory
+			print("{0:21}".format(os.path.split(directory)[-1] if hypercube_directory == None else dataset), end=":")
 			fruit_name_capt = shelflife_df["Fruit"].str.contains(dataset.split("-")[0].capitalize())
 			friut_type_capt = shelflife_df["Type"].str.contains(dataset.split("-")[1].capitalize())
 			# sub_labels_print_dict = shelflife_df[fruit_name_capt & friut_type_capt]["Remaining Life"].value_counts()b[shelflife_df["Remaining Life"].unique()].to_dict()
@@ -340,7 +336,7 @@ class DatasetFromDirectoryClassification(Dataset):
 				# print(rgb_image.shape, nir_image.shape, image.shape)
 
 				hypercube = load_mat(filename)
-				hypercube = hypercube[:, :, BANDS] if mobile_reconstructed_folder == None else hypercube
+				hypercube = hypercube[:, :, BANDS] if hypercube_directory != None else hypercube
 				hypercube = (hypercube - hypercube.min()) / (hypercube.max() - hypercube.min())
 				hypercube = np.transpose(hypercube, [2, 0, 1]) + EPS
 
