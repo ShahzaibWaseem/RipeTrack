@@ -1,21 +1,23 @@
-import os, sys
+""" Depreciated: file will be removed in the future """
+import os
+import sys
 sys.path.append(os.path.join(".."))
 
 import json
 import numpy as np
 from sklearn.svm import SVC
 from sklearn.cluster import KMeans
-from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
 
 import torch
 
 from torch_classifier import test
-from models.classifier import TorchClassifier
+from models.classifier import ModelWithAttention
 
 from dataset import get_dataloaders
 from utils import get_best_checkpoint, get_activation
-from config import BANDS, TEST_DATASETS, EXTRACT_DATASETS, predef_input_transform, predef_label_transform
+from config import TEST_DATASETS, EXTRACT_DATASETS, BANDS, predef_input_transform, predef_label_transform
 
 import matplotlib.pyplot as plt
 
@@ -23,7 +25,7 @@ def get_json(test_model=True):
 	X, y, actual_labels = np.empty(shape=(1, 256), dtype=np.int32), np.empty(shape=(1,), dtype=np.int8), np.empty(shape=(1,), dtype=np.int8)
 
 	if test_model:
-		model = TorchClassifier(fine_tune=True, in_channels=len(BANDS), num_classes=len(TEST_DATASETS))
+		model = ModelWithAttention(fine_tune=True, in_channels=len(BANDS), num_classes=len(TEST_DATASETS))
 		model.bottleneck.register_forward_hook(get_activation("bottleneck"))
 		model = model.cuda()
 

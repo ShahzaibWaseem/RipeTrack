@@ -1,24 +1,25 @@
+""" Deprecated: file will be deleted in the future """
 import os
 import time
 import pickle
+
 import numpy as np
 import pandas as pd
-import seaborn as sns
-
-import matplotlib.pyplot as plt
 
 from sklearn.svm import SVC
 from sklearn.pipeline import Pipeline
 from sklearn.neural_network import MLPClassifier
 from sklearn.linear_model import LogisticRegression, SGDClassifier
 
-from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
-from sklearn.model_selection import KFold, StratifiedKFold, cross_validate
 from sklearn.metrics import confusion_matrix, classification_report, accuracy_score
+from sklearn.model_selection import KFold, StratifiedKFold, train_test_split, cross_validate
 
-from dataset import DatasetFromDirectory, get_dataloaders_classification
+from dataset import get_dataloaders_classification
 from config import VISUALIZATION_DIR_NAME, MODEL_PATH, LABELS_DICT, SUB_LABELS_DICT
+
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 def fit_model(model, X_train, y_train, X_test, y_test, model_name, labels_dict=LABELS_DICT):
 	start = time.time()
@@ -33,7 +34,7 @@ def fit_model(model, X_train, y_train, X_test, y_test, model_name, labels_dict=L
 	sns.heatmap(df_confusion_mat, annot=True, fmt=".2%")
 	print(classification_report(y_test, y_pred, target_names=[key for key, _ in labels_dict.items()]))
 	print(df_confusion_mat)
-	# plt.savefig(os.path.join(VISUALIZATION_DIR_NAME, "confusion_matrix_{}.png".format(model_name)))
+	plt.savefig(os.path.join(VISUALIZATION_DIR_NAME, "confusion_matrix_{}.png".format(model_name)))
 	plt.show()
 	plt.close()
 

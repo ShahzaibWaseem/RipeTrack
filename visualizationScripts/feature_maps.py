@@ -1,17 +1,18 @@
-import os, sys
+""" Depreciated: file will be removed in the future """
+import os
+import sys
 sys.path.append(os.path.join(".."))
 
 import numpy as np
-import torch
-
 from imageio import imread
 
-from models.model import Network
-from models.resblock import ResNeXtBottleneck
+import torch
+
+from models.MST import MST_Plus_Plus
+
+from config import MODEL_PATH, BANDS, checkpoint_file
 
 import matplotlib.pyplot as plt
-
-from config import MODEL_PATH, checkpoint_file
 
 activation = {}
 
@@ -25,7 +26,7 @@ def visualize_features():
 
 	save_point = torch.load(os.path.join(MODEL_PATH, checkpoint_file))
 	model_param = save_point["state_dict"]
-	model = Network(block=ResNeXtBottleneck, block_num=10, input_channel=4, n_hidden=64, output_channel=51)
+	model = MST_Plus_Plus(in_channels=4, out_channels=len(BANDS), n_feat=len(BANDS), stage=3)
 	model.load_state_dict(model_param)
 	model = model.cuda()
 	model.eval()
