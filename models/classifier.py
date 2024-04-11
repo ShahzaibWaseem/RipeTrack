@@ -1,84 +1,8 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from efficientnet_pytorch import EfficientNet
 
-from config import CLASSIFIER_MODEL_NAME, BANDS, LABELS_DICT, SUB_LABELS_DICT
-
-class TorchClassifier(nn.Module):
-	""" Deprecated. Will be removed in future versions. """
-	def __init__(self, fine_tune=True, in_channels=len(BANDS), num_classes=len(LABELS_DICT)):
-		super(TorchClassifier, self).__init__()
-		self.model = EfficientNet.from_pretrained(CLASSIFIER_MODEL_NAME, advprop=True, in_channels=in_channels)
-		self.bottleneck = nn.Linear(in_features=1000, out_features=256, bias=True)
-		self.relu = nn.ReLU()
-		self.fc = nn.Linear(in_features=256, out_features=num_classes)
-
-		if fine_tune:
-			# print([name for name, param in self.model.named_modules()])
-			for params in self.model.parameters():
-				params.requires_grad = False
-			for name, module in self.model.named_modules():
-				if  name == "_blocks.31" or \
-					name == "_fc":
-					# name == "_blocks.53" or \
-					# name == "_blocks.54" or \
-				# if name in ["_conv_head", "_conv_head.static_padding", "_bn1", "_avg_pooling", "_dropout", "_fc", "_swish"]:
-					for param in module.parameters():
-						param.requires_grad = True
-
-	def forward(self, x):
-		x = self.model(x)
-		x = x.view(x.size(0), -1)
-		x = self.relu(self.bottleneck(x))
-		x = self.fc(x)
-		return x
-
-class SeparateClassifiers(nn.Module):
-	""" Deprecated. Will be removed in future versions. """
-	def __init__(self, fine_tune=True, in_channels=len(BANDS), num_classes=len(LABELS_DICT)):
-		super().__init__()
-		self.vis_module = TorchClassifier(fine_tune=fine_tune, in_channels=3, num_classes=num_classes)
-		self.nir_module = TorchClassifier(fine_tune=fine_tune, in_channels=in_channels-3, num_classes=num_classes)
-		self.relu = nn.ReLU()
-		self.fc = nn.Linear(in_features=2*256, out_features=num_classes)
-
-	def forward(self, x):
-		rgb_x = x[:, :3, :, :]
-		nir_x = x[:, 3:, :, :]
-		rgb_x = self.vis_module(rgb_x)
-		nir_x = self.nir_module(nir_x)
-		x = torch.cat((rgb_x, nir_x), dim=1)
-		x = self.relu(self.fc(x))
-		return x
-
-class MultiHeadClassification(nn.Module):
-	""" Deprecated. Will be removed in future versions. """
-	def __init__(self, input_channels=3, groups=3, num_classes=len(LABELS_DICT)):
-		super().__init__()
-		bands_head1, bands_head2 = BANDS[:16], BANDS[17:]
-		self.feature_ex_block = nn.Sequential(FeatureExtractionBlock(len(BANDS)), nn.MaxPool2d(2), FeatureExtractionBlock(16), nn.MaxPool2d(2), FeatureExtractionBlock(16))
-		# self.feature_ex_block1 = nn.Sequential(nn.MaxPool2d(2), FeatureExtractionBlock(len(bands_head1)), nn.MaxPool2d(2), FeatureExtractionBlock(16), nn.MaxPool2d(2), FeatureExtractionBlock(16))
-		# self.feature_ex_block2 = nn.Sequential(nn.MaxPool2d(2), FeatureExtractionBlock(len(bands_head2)), nn.MaxPool2d(2), FeatureExtractionBlock(16), nn.MaxPool2d(2), FeatureExtractionBlock(16))
-		self.relu = nn.LeakyReLU(inplace=True)
-		self.bottleneck = nn.Linear(in_features=1600, out_features=256)
-		self.dropout = nn.Dropout(p=0.25)
-		self.fc = nn.Linear(in_features=256, out_features=num_classes)
-
-	def forward(self, x):
-		# x1 = x[:, :16, :, :]
-		# x2 = x[:, 17:, :, :]
-		# x1 = self.feature_ex_block1(x1)
-		# x2 = self.feature_ex_block2(x2)
-		# x = torch.cat((x1, x2), dim=1)
-
-		x = self.feature_ex_block(x)
-		x = x.view(x.size(0), -1)
-		x = self.bottleneck(x)
-		x = self.relu(x)
-		x = self.dropout(x)
-		x = self.fc(x)
-		return x
+from config import BANDS, LABELS_DICT, SUB_LABELS_DICT
 
 class FeatureExtractionBlock(nn.Module):
 	def __init__(self, input_channels):
@@ -97,12 +21,11 @@ class FeatureExtractionBlock(nn.Module):
 		return x
 
 class ModelWithAttention(nn.Module):
-	def __init__(self, input_channels=3, num_classes=len(LABELS_DICT), num_subclasses=len(SUB_LABELS_DICT)):
+	def __init__(self, input_channels=len(BANDS), num_classes=len(LABELS_DICT), num_subclasses=len(SUB_LABELS_DICT)):
 		super().__init__()
 		self.ssattn = SSAttention(input_channels)
 		self.relu = nn.LeakyReLU(inplace=True)
 		self.bottleneck = nn.Linear(in_features=296208, out_features=256)
-		# self.bottleneck = nn.Linear(in_features=6627, out_features=256)
 		self.dropout = nn.Dropout(p=0.25)
 		self.fc_class = nn.Linear(in_features=256, out_features=num_classes)
 		self.fc_subclass = nn.Linear(in_features=256, out_features=num_subclasses)
