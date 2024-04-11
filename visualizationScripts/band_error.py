@@ -170,7 +170,7 @@ def plotAllBandErrors(filename="errors.pdf"):
 	plt.savefig(os.path.join(VISUALIZATION_DIR_NAME, "tempJSON", filename), bbox_inches="tight")
 	plt.close()
 
-def processRawJSON(jsonfile, title, fruitname="pear-williams"):
+def processRawJSON(jsonfile, title, fruitname="pear-bartlett"):
 	global mrae_errors_combined, rrmse_errors_combined, sam_errors_combined, sid_errors_combined, psnr_errors_combined, ssim_errors_combined, titles
 	errors = json.load(open(os.path.join(VISUALIZATION_DIR_NAME, "tempJSON", jsonfile), "r"))
 	mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors = np.array([]), np.array([]), np.array([]), np.array([]), np.array([]), np.array([])
@@ -221,7 +221,7 @@ if __name__ == "__main__":
 
 	# mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors = readDataFromFile(json_file=os.path.join("tempJSON","errors(RGBNto68)[VanillaMRAE].json"))
 	# plotBandErrors(mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors, filename=os.path.join("tempJSON", "errors(RGNto68)[VanillaMRAE].pdf"))
-	fruitname = "pear-williams"
+	fruitname = "pear-bartlett"
 	processRawJSON("errorsRaw(RGBto68)[Vanilla].json", "Pear Bartlett", fruitname)
 	# processRawJSON("errorsRaw(RGBto68)[Vanilla].json", "Avocado Organic", "avocado-organic")
 
