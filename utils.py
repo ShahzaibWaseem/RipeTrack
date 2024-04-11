@@ -16,11 +16,16 @@ import torch
 from torch.autograd import Variable
 from torch.utils.mobile_optimizer import optimize_for_mobile
 
-from models.model import Network
-from models.resblock import ResNeXtBottleneck
-from config import LABELS_DICT, BANDS, BAND_SPACING, MODEL_PATH, LOGS_PATH, MODEL_PATH, NORMALIZATION_FACTOR, NUMBER_OF_BANDS, checkpoint_fileprestring, classification_checkpoint_fileprestring, checkpoint_file, mobile_model_file, var_name, onnx_file_name, tf_model_dir, tflite_filename, device, create_directory
+from models.MST import MST_Plus_Plus
+from config import LABELS_DICT, BANDS, BAND_SPACING, MODEL_PATH, LOGS_PATH, MODEL_PATH, NORMALIZATION_FACTOR, NUMBER_OF_BANDS,\
+	device, checkpoint_fileprestring, classification_checkpoint_fileprestring, checkpoint_file, mobile_model_file, var_name, onnx_file_name, tf_model_dir, tflite_filename
 
 import matplotlib.pyplot as plt
+
+def create_directory(directory):
+	""" Create a directory if it does not exists. """
+	if not os.path.exists(directory):
+		os.makedirs(directory)
 
 class AverageMeter(object):
 	""" Computes and stores the average and current value. """
@@ -316,13 +321,14 @@ def load_mat_patched(mat_name):
 	return data
 
 def make_h5_dataset(DATASET_DIR, h5_filename):
+	""" Create h5 dataset from the mat files. """
 	labels = []
 	images = []
 
-	for filename in glob(os.path.join(DATASET_DIR, "*_dense_demRGB.png")):
+	for filename in glob(os.path.join(DATASET_DIR, "*_RGB.png")):
 		mat_file_name = os.path.split(filename)[-1].split("_")[0]
 		rgb_img_path = filename
-		nir_img_path = os.path.join(DATASET_DIR, os.path.split(filename)[-1].replace("RGB", "NIRc"))
+		nir_img_path = os.path.join(DATASET_DIR, os.path.split(filename)[-1].replace("RGB", "NIR"))
 		print(rgb_img_path)
 		rgb = imread(rgb_img_path)
 		rgb[:,:, [0, 2]] = rgb[:,:, [2, 0]]	# flipping red and blue channels (shape used for training)
@@ -350,9 +356,11 @@ def make_h5_dataset(DATASET_DIR, h5_filename):
 	hf.close()
 
 def makeMobileModel():
+	""" Deprecated: will delete in the future, because this is moved to a separate file in the project structure.
+		Convert the model to a mobile model. """
 	save_point = torch.load(os.path.join(MODEL_PATH, checkpoint_file))
 	model_param = save_point["state_dict"]
-	model = Network(block=ResNeXtBottleneck, block_num=10, input_channel=4, n_hidden=64, output_channel=NUMBER_OF_BANDS)
+	model = MST_Plus_Plus(in_channels=4, out_channels=len(BANDS), n_feat=len(BANDS), stage=3)
 	model.load_state_dict(model_param)
 
 	model.eval()
@@ -365,7 +373,7 @@ def makeMobileModel():
 def modeltoONNX():
 	save_point = torch.load(os.path.join(MODEL_PATH, checkpoint_file))
 	model_param = save_point["state_dict"]
-	model = Network(block=ResNeXtBottleneck, block_num=10, input_channel=4, n_hidden=64, output_channel=NUMBER_OF_BANDS)
+	model = MST_Plus_Plus(in_channels=4, out_channels=len(BANDS), n_feat=len(BANDS), stage=3)
 	model.load_state_dict(model_param)
 
 	model.eval()

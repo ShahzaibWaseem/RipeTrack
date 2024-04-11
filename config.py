@@ -33,6 +33,7 @@ SUB_LABELS_DICT = OrderedDict([("Pretty Unripe", 0), ("Almost Ripe", 1), ("Ripen
 TIME_LEFT_DICT = OrderedDict([("100%", 0), ("90%", 1), ("80%", 2), ("70%", 3), ("60%", 4), ("50%", 5), ("40%", 6), ("30%", 7), ("20%", 8), ("10%", 9), ("0%", 10)])
 
 ### Directories for the datasets ###
+GT_HYPERCUBES_DIR_NAME = "gt-cubes"
 GT_RGBN_DIR_NAME = "rgbn"
 GT_AUXILIARY_RGB_CAM_DIR_NAME = "secondary-rgbn"
 MOBILE_DATASET_DIR_NAME = "mobile-rgbn"
@@ -141,8 +142,3 @@ BANDS = [band for band in range(len(BANDS))] if use_mobile_dataset else BANDS
 ### Bands for text in the visualizations ###
 VIEW_BANDS = [7, 16, 53, 61]
 ACTUAL_BANDS = [BANDS_WAVELENGTHS[band] for band in VIEW_BANDS]
-
-def create_directory(directory):
-	""" Create a directory if it does not exists. """
-	if not os.path.exists(directory):
-		os.makedirs(directory)
