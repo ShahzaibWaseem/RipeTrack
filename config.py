@@ -15,7 +15,7 @@ CAMERA_OUTPUT_ROOT_PATH = os.path.join("..", "Catalog")
 CAMERA_EXTRACT_DATASETS = ["pear-bosc", "pear-williams", "avocado-organic", "avocado-emp"]
 
 ### Root directories for train and test dataset loading ###
-TRAIN_DATASET_DIR = os.path.join("..", "data_preparation", "h5datasets")
+TRAIN_DATASET_DIR = os.path.join("..", "h5datasets")
 TEST_ROOT_DATASET_DIR = os.path.join(os.path.dirname(TRAIN_DATASET_DIR), "datasets")
 
 ### Directories for logs and model checkpoints ###
