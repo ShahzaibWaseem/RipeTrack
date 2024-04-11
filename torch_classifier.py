@@ -7,23 +7,24 @@ from collections import Counter
 import numpy as np
 import pandas as pd
 
-import matplotlib
-import seaborn as sns
-import matplotlib.pyplot as plt
-
 import torch
 from torchsummary import summary
 from torch.autograd import Variable
 from sklearn.preprocessing import LabelBinarizer
 from sklearn.utils.class_weight import compute_class_weight
-from sklearn.metrics import confusion_matrix, classification_report, accuracy_score, auc, roc_curve, roc_auc_score, RocCurveDisplay, average_precision_score, precision_recall_curve, PrecisionRecallDisplay
+from sklearn.metrics import RocCurveDisplay, PrecisionRecallDisplay, accuracy_score, confusion_matrix, classification_report,\
+	auc, roc_curve, roc_auc_score, precision_recall_curve, average_precision_score
 
 from models.classifier import ModelWithAttention
 
 from dataset import get_dataloaders_classification
-from utils import AverageMeter, initialize_logger, save_checkpoint, get_best_checkpoint
-from config import BANDS, VISUALIZATION_DIR_NAME, MODEL_PATH, LABELS_DICT, SUB_LABELS_DICT, TEST_DATASETS, TIME_LEFT_DICT, confusion_font_dict, classicication_run_title, end_epoch, run_pretrained, create_directory
+from utils import AverageMeter, create_directory, initialize_logger, save_checkpoint, get_best_checkpoint
+from config import VISUALIZATION_DIR_NAME, MODEL_PATH, TEST_DATASETS, BANDS, LABELS_DICT, SUB_LABELS_DICT, TIME_LEFT_DICT,\
+	end_epoch, classicication_run_title, run_pretrained, confusion_font_dict
 
+import matplotlib
+import seaborn as sns
+import matplotlib.pyplot as plt
 matplotlib.rc("font", **confusion_font_dict)
 
 init_lr = 0.0005
@@ -77,7 +78,6 @@ def main():
 	print("Class Weights Loss Function: {}".format(class_weights))
 	class_weights = torch.tensor(class_weights, dtype=torch.float32).cuda()
 
-	# model = TorchClassifier(fine_tune=True, in_channels=len(BANDS), num_classes=len(LABELS_DICT))
 	model = ModelWithAttention(input_channels=len(BANDS), num_classes=len(LABELS_DICT), num_subclasses=len(TIME_LEFT_DICT))
 	# model.bottleneck.register_forward_hook(get_activation("bottleneck"))
 	model = model.cuda()

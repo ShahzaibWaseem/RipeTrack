@@ -2,18 +2,23 @@ from __future__ import division
 
 import os
 import time
-import numpy as np
-import pandas as pd
 from glob import glob
 from imageio import imread
+
+import numpy as np
+import pandas as pd
 
 import torch
 from torchsummary import summary
 from models.MST import MST_Plus_Plus
 
-from utils import save_mat, save_mat_patched, load_mat, load_mat_patched, initialize_logger, visualize_gt_pred_hs_data, get_best_checkpoint, AverageMeter
 from loss import test_mrae, test_rrmse, test_msam, test_sid, test_psnr, test_ssim
-from config import MODEL_PATH, TEST_ROOT_DATASET_DIR, TEST_DATASETS, APPLICATION_NAME, BANDS, TRAIN_VAL_TEST_SPLIT_DIR_NAME, CLASSIFICATION_PATCH_SIZE, STRIDE, DATA_PREP_PATH, GT_DATASET_CROPS_FILENAME, MOBILE_DATASET_CROPS_FILENAME, MOBILE_DATASET_DIR_NAME, RECONSTRUCTED_HS_DIR_NAME, GT_RGBN_DIR_NAME, GT_AUXILIARY_RGB_CAM_DIR_NAME, GT_REMOVED_IR_CUTOFF_DIR_NAME, MOBILE_RECONSTRUCTED_HS_DIR_NAME, PATCHED_INFERENCE, PATCHED_HS_DIR_NAME, EPS, var_name, model_run_title, checkpoint_file, device, create_directory
+from utils import AverageMeter, create_directory, save_mat, save_mat_patched, load_mat, load_mat_patched, initialize_logger, visualize_gt_pred_hs_data, get_best_checkpoint
+from config import GT_RGBN_DIR_NAME, GT_REMOVED_IR_CUTOFF_DIR_NAME, GT_AUXILIARY_RGB_CAM_DIR_NAME, GT_HYPERCUBES_DIR_NAME, RECONSTRUCTED_HS_DIR_NAME,\
+	MOBILE_DATASET_DIR_NAME, MOBILE_RECONSTRUCTED_HS_DIR_NAME, GT_REMOVED_IR_CUTOFF_RECONSTRUCTED_DIR_NAME, PATCHED_HS_DIR_NAME, TRAIN_VAL_TEST_SPLIT_DIR_NAME,\
+	PATCHED_INFERENCE, CLASSIFICATION_PATCH_SIZE, STRIDE, DATA_PREP_PATH, GT_DATASET_CROPS_FILENAME, MOBILE_DATASET_CROPS_FILENAME,\
+	TEST_DATASETS, TEST_ROOT_DATASET_DIR, MODEL_PATH, APPLICATION_NAME, BANDS, EPS,\
+	device, var_name, use_mobile_dataset, model_run_title, checkpoint_file
 
 def calculate_metrics(img_pred, img_gt):
 	mrae = test_mrae(img_pred, img_gt)
@@ -200,7 +205,7 @@ def inference(model, checkpoint_filename, mobile_reconstruction=False, patched_i
 def main():
 	# checkpoint_filename, epoch, iter, model_param, optimizer, val_loss, val_acc = get_best_checkpoint(task="reconstruction")
 	# checkpoint_filename = checkpoint_file
-	checkpoint_filename = "MSLP_MST++_shelflife_060 trained on all [Half] RGBN (Vanilla).pkl"
+	checkpoint_filename = "MSLP_MST++_shelflife_100 trained on all [half] RGBN to 68(Losses + NIR Augmentation) [corrected].pkl"
 	checkpoint = torch.load(os.path.join(MODEL_PATH, "reconstruction", "others", checkpoint_filename))
 	model_param = checkpoint["state_dict"]
 	model = MST_Plus_Plus(in_channels=4, out_channels=len(BANDS), n_feat=len(BANDS), stage=3)
@@ -208,7 +213,7 @@ def main():
 	model = model.to(device)
 	model.eval()
 	print(summary(model=model, input_data=(4, 512, 512)))
-	inference(model, checkpoint_filename, mobile_reconstruction=False, patched_inference=PATCHED_INFERENCE)
+	inference(model, checkpoint_filename, mobile_reconstruction=use_mobile_dataset, patched_inference=PATCHED_INFERENCE)
 
 if __name__ == "__main__":
 	main()

@@ -1,4 +1,5 @@
-import os, sys
+import os
+import sys
 sys.path.append(os.path.join(".."))
 
 import json
@@ -8,10 +9,13 @@ from glob import glob
 from utils import load_mat, average
 from loss import test_mrae, test_rrmse, test_msam, test_sid, test_psnr, test_ssim
 
+from utils import create_directory
+from config import GT_HYPERCUBES_DIR_NAME, RECONSTRUCTED_HS_DIR_NAME, GT_REMOVED_IR_CUTOFF_RECONSTRUCTED_DIR_NAME,\
+	TRAIN_VAL_TEST_SPLIT_DIR_NAME, VISUALIZATION_DIR_NAME, TEST_ROOT_DATASET_DIR, TEST_DATASETS, LOGS_PATH,\
+	EPS, BANDS, APPLICATION_NAME, text_font_dict, plt_dict
+
 import matplotlib
 import matplotlib.pyplot as plt
-
-from config import EPS, BANDS, APPLICATION_NAME, RECONSTRUCTED_HS_DIR_NAME, GT_REMOVED_IR_CUTOFF_RECONSTRUCTED_DIR_NAME, TRAIN_VAL_TEST_SPLIT_DIR_NAME, VISUALIZATION_DIR_NAME, TEST_ROOT_DATASET_DIR, TEST_DATASETS, LOGS_PATH, text_font_dict, plt_dict
 
 def calculate_metrics(img_pred, img_gt, expand=False):
 	img_pred_flat = np.expand_dims(img_pred, axis=0) if expand else img_pred
@@ -30,7 +34,7 @@ def getBandErrors():
 	log_string = "[%15s] MRAE=%0.9f, RRMSE=%0.9f, SAM=%0.9f, SID=%0.9f, PSNR=%0.9f, SSIM=%0.9f"
 
 	for dataset in TEST_DATASETS:
-		directory = os.path.join(TEST_ROOT_DATASET_DIR, APPLICATION_NAME, "{}_204ch".format(dataset))
+		directory = os.path.join(TEST_ROOT_DATASET_DIR, APPLICATION_NAME, "{}_204ch".format(dataset), GT_HYPERCUBES_DIR_NAME)
 		inf_directory = os.path.join(directory, RECONSTRUCTED_HS_DIR_NAME)
 		print(" " * 19, "{0:62}".format(inf_directory))
 
@@ -198,6 +202,7 @@ def processRawJSON(jsonfile, title, fruitname="pear-williams"):
 
 if __name__ == "__main__":
 	os.chdir("..")
+	create_directory(os.path.join(VISUALIZATION_DIR_NAME, "tempJSON"))
 
 	# errors = getBandErrors()
 	# print(errors.keys())

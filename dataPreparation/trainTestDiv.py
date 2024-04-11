@@ -5,7 +5,8 @@ from glob import glob
 
 import random
 
-from config import TEST_ROOT_DATASET_DIR, APPLICATION_NAME, TEST_DATASETS, TRAIN_VAL_TEST_SPLIT_DIR_NAME, create_directory
+from utils import create_directory
+from config import TEST_ROOT_DATASET_DIR, GT_HYPERCUBES_DIR_NAME, TRAIN_VAL_TEST_SPLIT_DIR_NAME, APPLICATION_NAME, TEST_DATASETS
 
 def saveFile(filepath, data):
 	with open(filepath, "w") as file:
@@ -19,7 +20,7 @@ def main():
 		dataset_items = []
 		print("\nDataset:", dataset)
 
-		for filename in glob(os.path.join("..", TEST_ROOT_DATASET_DIR, APPLICATION_NAME, "%s_204ch" % dataset, "*.mat")):
+		for filename in glob(os.path.join("..", TEST_ROOT_DATASET_DIR, APPLICATION_NAME, "%s_204ch" % dataset, GT_HYPERCUBES_DIR_NAME, "*.mat")):
 			filename_cleaned = int(os.path.split(filename)[-1].split(".")[0])
 			dataset_items.append(filename_cleaned)
 			random.shuffle(dataset_items)

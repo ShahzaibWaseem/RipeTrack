@@ -1,16 +1,18 @@
-import os, sys
+import os
+import sys
 sys.path.append(os.path.join(".."))
 
 from imageio import imread
-import matplotlib.pyplot as plt
-
 from skimage import exposure
-
-import matplotlib
-from matplotlib.patches import Circle
 
 from utils import load_mat
 from config import BAND_SPACING, NORMALIZATION_FACTOR, TEST_ROOT_DATASET_DIR, text_font_dict
+
+import matplotlib
+import matplotlib.pyplot as plt
+from matplotlib.patches import Circle
+
+matplotlib.rc("font", **text_font_dict)
 
 def main():
 	rgb_img = imread(os.path.join(os.path.dirname(TEST_ROOT_DATASET_DIR), "1458.png"))
@@ -55,5 +57,4 @@ def main():
 
 if __name__ == "__main__":
 	os.chdir("..")
-	matplotlib.rc("font", **text_font_dict)
 	main()

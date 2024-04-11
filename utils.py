@@ -3,17 +3,15 @@ from __future__ import division
 import os
 import json
 import random
-import numpy as np
+import logging
+from glob import glob
 
 import h5py
 import hdf5storage
-
-import logging
-from glob import glob
+import numpy as np
 from imageio import imread
 
 import torch
-from torch.autograd import Variable
 from torch.utils.mobile_optimizer import optimize_for_mobile
 
 from models.MST import MST_Plus_Plus
@@ -286,7 +284,7 @@ def get_reconstruction(input, num_split, dimension, model):
 	output_split = []
 	for i in range(num_split):
 		with torch.no_grad():
-			var_input = Variable(input_split[i].cuda())
+			var_input = torch.autograd.Variable(input_split[i].cuda())
 		var_output = model(var_input)
 		output_split.append(var_output.data)
 		if i == 0:

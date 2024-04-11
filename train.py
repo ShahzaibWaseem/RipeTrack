@@ -6,16 +6,15 @@ import argparse
 from tqdm import tqdm
 
 import torch
-import torch.nn as nn
 from torchsummary import summary
-from torch.autograd import Variable
 
 from models.MST import MST_Plus_Plus
 from loss import Loss_MRAE, Loss_SAM, Loss_SID
 
 from dataset import get_dataloaders_reconstruction
-from utils import AverageMeter, initialize_logger, save_checkpoint, get_best_checkpoint, poly_lr_scheduler, optimizer_to
-from config import MODEL_PATH, LOGS_PATH, DATA_PREP_PATH, BANDS, PREDEF_TRANSFORMS_FILENAME, batch_size, device, end_epoch, init_lr, model_run_title, run_pretrained, transfer_learning, lossfunctions_considered, create_directory
+from utils import AverageMeter, create_directory, initialize_logger, save_checkpoint, get_best_checkpoint, optimizer_to
+from config import MODEL_PATH, LOGS_PATH, BANDS,\
+	batch_size, device, end_epoch, init_lr, lossfunctions_considered, model_run_title, run_pretrained, transfer_learning
 
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 torch.autograd.set_detect_anomaly(False)

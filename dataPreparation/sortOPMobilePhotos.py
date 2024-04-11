@@ -4,14 +4,15 @@ from saveMat import CommonLighting
 from sortMobilePhotos import fixedAlign, viewImages
 sys.path.append("..")
 
+import cv2
 import imageio
 from glob import glob
 
-import cv2
 import numpy as np
 import pandas as pd
 
-from config import TEST_ROOT_DATASET_DIR, APPLICATION_NAME, SHELF_LIFE_GROUND_TRUTH_FILENAME, OP_MOBILE_DATASET_DIR_NAME, create_directory
+from utils import create_directory
+from config import OP_MOBILE_DATASET_DIR_NAME, TEST_ROOT_DATASET_DIR, APPLICATION_NAME, SHELF_LIFE_GROUND_TRUTH_FILENAME
 
 months = {"Aug": "08", "Sep": "09", "Mar": "03"}
 

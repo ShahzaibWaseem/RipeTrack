@@ -1,22 +1,24 @@
-import os, sys
+import os
+import sys
 sys.path.append(os.path.join(".."))
 
 import numpy as np
 from glob import glob
 from skimage import exposure
 
-from utils import load_mat
 from loss import test_psnr
+from utils import load_mat, create_directory
+from config import GT_HYPERCUBES_DIR_NAME, RECONSTRUCTED_HS_DIR_NAME, VISUALIZATION_DIR_NAME,\
+	TEST_DATASETS, TEST_ROOT_DATASET_DIR, BANDS, VIEW_BANDS, ACTUAL_BANDS, APPLICATION_NAME, IMAGE_SIZE,\
+	text_font_dict, title_font_dict, plt_dict
 
 import matplotlib
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
-from config import BANDS, APPLICATION_NAME, RECONSTRUCTED_HS_DIR_NAME, IMAGE_SIZE, TEST_ROOT_DATASET_DIR, TEST_DATASETS, VIEW_BANDS, ACTUAL_BANDS, VISUALIZATION_DIR_NAME, text_font_dict, title_font_dict, plt_dict, create_directory
-
 def main():
 	for dataset in TEST_DATASETS:
-		directory = os.path.join(TEST_ROOT_DATASET_DIR, APPLICATION_NAME, "{}_204ch".format(dataset))
+		directory = os.path.join(TEST_ROOT_DATASET_DIR, APPLICATION_NAME, "{}_204ch".format(dataset), GT_HYPERCUBES_DIR_NAME)
 		inf_directory = os.path.join(directory, RECONSTRUCTED_HS_DIR_NAME)
 		print(" " * 19, "{0:62}".format(directory), RECONSTRUCTED_HS_DIR_NAME)
 		create_directory(os.path.join(directory, VISUALIZATION_DIR_NAME))

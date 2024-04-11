@@ -10,7 +10,8 @@ from glob import glob
 import numpy as np
 import pandas as pd
 
-from config import TEST_ROOT_DATASET_DIR, APPLICATION_NAME, SHELF_LIFE_GROUND_TRUTH_FILENAME, MOBILE_DATASET_DIR_NAME, VISUALIZATION_DIR_NAME, create_directory
+from utils import create_directory
+from config import MOBILE_DATASET_DIR_NAME, TEST_ROOT_DATASET_DIR, VISUALIZATION_DIR_NAME, APPLICATION_NAME, SHELF_LIFE_GROUND_TRUTH_FILENAME
 
 import matplotlib.pyplot as plt
 

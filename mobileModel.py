@@ -7,9 +7,10 @@ from skl2onnx import convert_sklearn
 from skl2onnx.common.data_types import FloatTensorType
 from torch.utils.mobile_optimizer import optimize_for_mobile
 
-from utils import get_best_checkpoint
 from models.MST import MST_Plus_Plus
-from config import MODEL_PATH, BANDS, MOBILE_MODELS_DIR_NAME, create_directory
+
+from utils import create_directory, get_best_checkpoint
+from config import MODEL_PATH, MOBILE_MODELS_DIR_NAME, BANDS
 
 def makeMobileModel(torch_mobile_model_filename="mobile_mst_68.pt"):
 	create_directory(os.path.join(MODEL_PATH, MOBILE_MODELS_DIR_NAME))
@@ -29,7 +30,7 @@ def sklernModelToONNX(sklearn_model_filename="MLP_slp_k0.pkl", onnx_model_filena
 	pipeline = pickle.load(open(os.path.join(MODEL_PATH, MOBILE_MODELS_DIR_NAME, sklearn_model_filename), "rb"))
 	print(pipeline)
 
-	initial_type = [("float_input", FloatTensorType([None, 68]))]
+	initial_type = [("float_input", FloatTensorType([None, len(BANDS)]))]
 
 	onnx = convert_sklearn(pipeline, initial_types=initial_type)
 	with open(os.path.join(MODEL_PATH, MOBILE_MODELS_DIR_NAME, onnx_model_filename), "wb") as file:
