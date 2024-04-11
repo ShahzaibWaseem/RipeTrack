@@ -1,8 +1,8 @@
 """
- Main blocks of the network
- Copyright (c) 2019 Samsung Electronics Co., Ltd. All Rights Reserved
- If you use this code, please cite the following paper:
- Mahmoud Afifi and Michael S Brown. Deep White-Balance Editing. In CVPR, 2020.
+	Main blocks of the network
+	Copyright (c) 2019 Samsung Electronics Co., Ltd. All Rights Reserved
+	If you use this code, please cite the following paper:
+	Mahmoud Afifi and Michael S Brown. Deep White-Balance Editing. In CVPR, 2020.
 """
 __author__ = "Mahmoud Afifi"
 __credits__ = ["Mahmoud Afifi"]
@@ -11,7 +11,7 @@ import torch
 import torch.nn as nn
 
 class DoubleConvBlock(nn.Module):
-	"""double conv layers block"""
+	""" double conv layers block """
 	def __init__(self, in_channels, out_channels):
 		super().__init__()
 		self.double_conv = nn.Sequential(
@@ -25,7 +25,7 @@ class DoubleConvBlock(nn.Module):
 		return self.double_conv(x)
 
 class DownBlock(nn.Module):
-	"""Downscale block: maxpool -> double conv block"""
+	""" Downscale block: maxpool -> double conv block """
 	def __init__(self, in_channels, out_channels):
 		super().__init__()
 		self.maxpool_conv = nn.Sequential(nn.MaxPool2d(2), DoubleConvBlock(in_channels, out_channels))
@@ -34,7 +34,7 @@ class DownBlock(nn.Module):
 		return self.maxpool_conv(x)
 
 class BridgeDown(nn.Module):
-	"""Downscale bottleneck block: maxpool -> conv"""
+	""" Downscale bottleneck block: maxpool -> conv """
 	def __init__(self, in_channels, out_channels):
 		super().__init__()
 		self.maxpool_conv = nn.Sequential(
@@ -47,7 +47,7 @@ class BridgeDown(nn.Module):
 		return self.maxpool_conv(x)
 
 class BridgeUP(nn.Module):
-	"""Downscale bottleneck block: conv -> transpose conv"""
+	""" Downscale bottleneck block: conv -> transpose conv """
 	def __init__(self, in_channels, out_channels):
 		super().__init__()
 		self.conv_up = nn.Sequential(
@@ -60,7 +60,7 @@ class BridgeUP(nn.Module):
 		return self.conv_up(x)
 
 class UpBlock(nn.Module):
-	"""Upscale block: double conv block -> transpose conv"""
+	""" Upscale block: double conv block -> transpose conv """
 	def __init__(self, in_channels, out_channels):
 		super().__init__()
 		self.conv = DoubleConvBlock(in_channels * 2, in_channels)
@@ -72,7 +72,7 @@ class UpBlock(nn.Module):
 		return torch.relu(self.up(x))
 
 class OutputBlock(nn.Module):
-	"""Output block: double conv block -> output conv"""
+	""" Output block: double conv block -> output conv """
 	def __init__(self, in_channels, out_channels):
 		super().__init__()
 		self.out_conv = nn.Sequential(
@@ -130,7 +130,7 @@ class deepWBNet(nn.Module):
 		x_s = self.shade_decoder_up3(x_s, x2)
 		s = self.shade_decoder_out(x_s, x1)
 		return torch.cat((awb, t, s), dim=1)
-	
+
 class deepWBnet(nn.Module):
 	def __init__(self):
 		super(deepWBnet, self).__init__()

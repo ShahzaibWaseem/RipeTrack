@@ -1,8 +1,8 @@
 """
- Deep white-balance editing main function (inference phase)
- Copyright (c) 2019 Samsung Electronics Co., Ltd. All Rights Reserved
- If you use this code, please cite the following paper:
- Mahmoud Afifi and Michael S Brown. Deep White-Balance Editing. In CVPR, 2020.
+	Deep white-balance editing main function (inference phase)
+	Copyright (c) 2019 Samsung Electronics Co., Ltd. All Rights Reserved
+	If you use this code, please cite the following paper:
+	Mahmoud Afifi and Michael S Brown. Deep White-Balance Editing. In CVPR, 2020.
 """
 __author__ = "Mahmoud Afifi"
 __credits__ = ["Mahmoud Afifi"]
@@ -81,7 +81,7 @@ def outOfGamutClipping(I):
 def kernelP(I):
 	""" Kernel function: kernel(r, g, b) -> (r,g,b,rg,rb,gb,r^2,g^2,b^2,rgb,1)
 		Ref: Hong, et al., "A study of digital camera colorimetric characterization
-		 based on polynomial modeling." Color Research & Application, 2001. """
+		based on polynomial modeling." Color Research & Application, 2001. """
 	return (np.transpose((I[:, 0], I[:, 1], I[:, 2], I[:, 0] * I[:, 1], I[:, 0] * I[:, 2],
 						  I[:, 1] * I[:, 2], I[:, 0] * I[:, 0], I[:, 1] * I[:, 1],
 						  I[:, 2] * I[:, 2], I[:, 0] * I[:, 1] * I[:, 2],
