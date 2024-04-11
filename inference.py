@@ -79,15 +79,15 @@ def inference(model, checkpoint_filename, mobile_reconstruction=False, patched_i
 		with open(os.path.join(TEST_DATASET_DIR, "%s_204ch" % test_dataset, TRAIN_VAL_TEST_SPLIT_DIR_NAME, "test.txt"), "r") as test_file:
 			hypercube_list = [filename.replace("\n", ".mat") for filename in test_file]
 
-		for mat_filepath in hypercube_list:
-		# for mat_filepath in sorted(glob(os.path.join(directory, "*.mat"))):
+		for mat_filename in hypercube_list:
+		# for mat_filename in sorted(glob(os.path.join(directory, "*.mat"))):
 			start_time = time.time()
-			mat_filename = os.path.split(mat_filepath)[-1]
+			mat_filename = os.path.split(mat_filename)[-1]
 			mat_number = mat_filename.split("_")[0].split(".")[0]
 
-			hypercube = load_mat(os.path.join(directory, mat_filepath))
+			hypercube = load_mat(os.path.join(directory, GT_HYPERCUBES_DIR_NAME, mat_filename))
 
-			# hypercube = load_mat(os.path.join(mat_filepath))
+			# hypercube = load_mat(os.path.join(mat_filename))
 			hypercube = hypercube[:, :, BANDS]
 			hypercube = (hypercube - hypercube.min()) / (hypercube.max() - hypercube.min())
 			min_hc, max_hc = min(min_hc, hypercube.min()), max(max_hc, hypercube.max())

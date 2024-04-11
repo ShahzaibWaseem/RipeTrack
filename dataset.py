@@ -101,7 +101,7 @@ class DatasetFromDirectoryReconstructionTrain(Dataset):
 				if int(os.path.split(filename)[-1].split(".")[0]) % 2 != 0:
 					continue
 				image_width, image_height = IMAGE_SIZE, IMAGE_SIZE
-				hypercube = load_mat(os.path.join(directory, filename))
+				hypercube = load_mat(os.path.join(directory, GT_HYPERCUBES_DIR_NAME, filename))
 				# nir_image = np.float32(hypercube[:, :, random.choices(NIR_BANDS)])
 				hypercube = hypercube[:, :, BANDS]
 				# hypercube = hypercube[movePixels:image_width-movePixels, movePixels:image_height-movePixels, :] if not self.transforms == None else hypercube
@@ -200,7 +200,7 @@ class DatasetFromDirectoryReconstructionValid(Dataset):
 			print(" " * 19, "{0:62}".format(directory), "{} and {}".format(GT_RGBN_DIR_NAME, GT_AUXILIARY_RGB_CAM_DIR_NAME) if use_auxiliary_input else GT_RGBN_DIR_NAME, end="\t") if verbose else None
 			dataset_load_time = time.time()
 			for filename in hypercube_list:
-				hypercube = load_mat(os.path.join(directory, filename))
+				hypercube = load_mat(os.path.join(directory, GT_HYPERCUBES_DIR_NAME, filename))
 				# nir_image = np.float32(hypercube[:, :, random.choice(NIR_BANDS)])
 				hypercube = hypercube[:, :, BANDS]
 				hypercube = (hypercube - hypercube.min()) / (hypercube.max() - hypercube.min())
@@ -312,7 +312,7 @@ class DatasetFromDirectoryClassification(Dataset):
 		print("Reading Images from:") if verbose else None
 		for dataset in TEST_DATASETS:
 			directory = os.path.join(root, application_name, "{}_204ch".format(dataset))
-			directory = os.path.join(directory, hypercube_directory) if hypercube_directory != None else directory
+			directory = os.path.join(directory, hypercube_directory) if hypercube_directory != None else os.path.join(directory, GT_HYPERCUBES_DIR_NAME)
 			print("{0:21}".format(os.path.split(directory)[-1] if hypercube_directory == None else dataset), end=":")
 			fruit_name_capt = shelflife_df["Fruit"].str.contains(dataset.split("-")[0].capitalize())
 			friut_type_capt = shelflife_df["Type"].str.contains(dataset.split("-")[1].capitalize())

@@ -2,21 +2,23 @@ import os
 import sys
 sys.path.append("..")
 
-import cv2
 import imageio
 from PIL import Image
+from spectral import envi
+from scipy.io import savemat
 
 import numpy as np
 import pandas as pd
 
 import torch
 
-from spectral import envi
-from scipy.io import savemat
-
 from models.DeepWB import deepWBnet
 from models.DeepWBUtils import deep_wb, colorTempInterpolate, to_image
-from config import CAMERA_OUTPUT_ROOT_PATH, TEST_ROOT_DATASET_DIR, APPLICATION_NAME, RGBN_BANDS, SHELF_LIFE_GROUND_TRUTH_FILENAME, GT_RGBN_DIR_NAME, MODEL_PATH, DEEP_WB_DIR, GT_AUXILIARY_RGB_CAM_DIR_NAME, device, var_name, create_directory
+
+from utils import create_directory
+from config import GT_RGBN_DIR_NAME, GT_AUXILIARY_RGB_CAM_DIR_NAME, GT_HYPERCUBES_DIR_NAME, CAMERA_OUTPUT_ROOT_PATH,\
+	TEST_ROOT_DATASET_DIR, APPLICATION_NAME, RGBN_BANDS, MODEL_PATH, DEEP_WB_DIR, SHELF_LIFE_GROUND_TRUTH_FILENAME,\
+	device, var_name
 
 import matplotlib.pyplot as plt
 
@@ -83,18 +85,15 @@ def bandToNpNormalize(image):
 	return image
 
 def main():
-	# root_directory = os.path.join("..", CAMERA_OUTPUT_ROOT_PATH)
-	root_directory = os.path.join("..", "..", "..", "mnt", "rcg-nfs", "HyperspectralProject", "SpecimIQcameraImages", "Catalogs")
-	ground_truth_df = pd.read_csv(os.path.join("ShelfLifeGroundTruth(New).csv"))
-	# ground_truth_df = pd.read_csv(os.path.join(SHELF_LIFE_GROUND_TRUTH_FILENAME))
+	root_directory = os.path.join("..", CAMERA_OUTPUT_ROOT_PATH)
+	ground_truth_df = pd.read_csv(os.path.join(SHELF_LIFE_GROUND_TRUTH_FILENAME))
 	commonLighting = CommonLighting()
 
 	for index in ground_truth_df.index:
 		hs_filenumbers = [int(x) for x in ground_truth_df["HS Files"][index].split(",")]
 		dataset_name = ground_truth_df["Fruit"][index].lower() + "-" + ground_truth_df["Type"][index].replace("'", "").lower()
 
-		output_hypercube_directory = os.path.join("..", "..", "..", "mnt", "rcg-nfs", "HyperspectralProject", "shelflife", "%s_204ch" % dataset_name)
-		# output_hypercube_directory = os.path.join("..", TEST_ROOT_DATASET_DIR, APPLICATION_NAME, "%s_204ch" % dataset_name)
+		output_hypercube_directory = os.path.join("..", TEST_ROOT_DATASET_DIR, APPLICATION_NAME, "%s_204ch" % dataset_name, GT_HYPERCUBES_DIR_NAME)
 
 		output_rgbn_directory = os.path.join(output_hypercube_directory, GT_RGBN_DIR_NAME)
 		output_secondary_rgbn_directory = os.path.join(output_hypercube_directory, GT_AUXILIARY_RGB_CAM_DIR_NAME)
@@ -102,8 +101,7 @@ def main():
 		create_directory(output_rgbn_directory)
 		create_directory(output_secondary_rgbn_directory)
 
-		input_catalog_directory = os.path.join(root_directory, "ShelfLifeCatalog")
-		# input_catalog_directory = os.path.join(root_directory, "%s" % APPLICATION_NAME)
+		input_catalog_directory = os.path.join(root_directory, "%s" % APPLICATION_NAME)
 
 		for hs_filenumber in hs_filenumbers:
 			hs_filepath = os.path.join(input_catalog_directory, "%d" % hs_filenumber, "results", "REFLECTANCE_%s.hdr" % hs_filenumber)
