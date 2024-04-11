@@ -269,8 +269,8 @@ def test(test_data_loader, model, criterion):
 		losses_subclass.update(loss_subclass.item())
 
 	pear_bosc_indices = find_indices(fruit_labels, "Pear Bosc")
-	pear_williams_indices = find_indices(fruit_labels, "Pear Williams")
-	avo_empire_indices = find_indices(fruit_labels, "Avocado Emp")
+	pear_bartlett_indices = find_indices(fruit_labels, "Pear Bartlett")
+	avo_hass_indices = find_indices(fruit_labels, "Avocado Hass")
 	avo_organic_indices = find_indices(fruit_labels, "Avocado Organic")
 
 	y_true_labels = np.asarray(y_true_labels)
