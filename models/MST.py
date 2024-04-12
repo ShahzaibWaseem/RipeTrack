@@ -28,13 +28,13 @@ def trunc_normal_(tensor, mean=0., std=1., a=-2., b=2.):
 	""" type: (Tensor, float, float, float, float) -> Tensor """
 	return _no_grad_trunc_normal_(tensor, mean, std, a, b)
 
-def variance_scaling_(tensor, scale=1.0, mode='fan_in', distribution='normal'):
+def variance_scaling_(tensor, scale=1.0, mode="fan_in", distribution="normal"):
 	fan_in, fan_out = _calculate_fan_in_and_fan_out(tensor)
-	if mode == 'fan_in':
+	if mode == "fan_in":
 		denom = fan_in
-	elif mode == 'fan_out':
+	elif mode == "fan_out":
 		denom = fan_out
-	elif mode == 'fan_avg':
+	elif mode == "fan_avg":
 		denom = (fan_in + fan_out) / 2
 	variance = scale / denom
 	if distribution == "truncated_normal":
@@ -48,7 +48,7 @@ def variance_scaling_(tensor, scale=1.0, mode='fan_in', distribution='normal'):
 		raise ValueError(f"invalid distribution {distribution}")
 
 def lecun_normal_(tensor):
-	variance_scaling_(tensor, mode='fan_in', distribution='truncated_normal')
+	variance_scaling_(tensor, mode="fan_in", distribution="truncated_normal")
 
 class PreNorm(nn.Module):
 	def __init__(self, dim, fn):
@@ -107,7 +107,7 @@ class MS_MSA(nn.Module):
 		q_inp = self.to_q(x)
 		k_inp = self.to_k(x)
 		v_inp = self.to_v(x)
-		q, k, v = map(lambda t: rearrange(t, 'b n (h d) -> b h n d', h=self.num_heads), (q_inp, k_inp, v_inp))
+		q, k, v = map(lambda t: rearrange(t, "b n (h d) -> b h n d", h=self.num_heads), (q_inp, k_inp, v_inp))
 		v = v
 		# q: b, heads, hw, c
 		q = q.transpose(-2, -1)
@@ -266,7 +266,7 @@ class MST_Plus_Plus(nn.Module):
 		hb, wb = 8, 8
 		pad_h = (hb - h_inp % hb) % hb
 		pad_w = (wb - w_inp % wb) % wb
-		x = F.pad(x, [0, pad_w, 0, pad_h], mode='reflect')
+		x = F.pad(x, [0, pad_w, 0, pad_h], mode="reflect")
 		x = self.conv_in(x)
 		h = self.body(x)
 		h = self.conv_out(h)
