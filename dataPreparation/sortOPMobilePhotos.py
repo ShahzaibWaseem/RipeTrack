@@ -22,12 +22,13 @@ def main():
 	commonLighting = CommonLighting()
 
 	for index in ground_truth_df.index:
-		date, month = ground_truth_df["Date"][index].split("-")
-		date = date.zfill(2)
 		day = ground_truth_df["Day"][index]
 		hs_filenames = [int(filenames.split(",")[0]) for filenames in ground_truth_df.loc[ground_truth_df["Day"] == day]["HS Files"].values]
-		mobile_fid = ground_truth_df["Mobile FID"][index]
-		dataset_names = ["%s-%s" % (fruits.lower(), types.replace("'", "").lower()) for fruits, types in ground_truth_df.loc[ground_truth_df["Day"] == day][["Fruit", "Type"]].values]
+		mobile_fids = [int(fids) for fids in ground_truth_df.loc[ground_truth_df["Day"] == day]["Mobile FID"].values]
+		dataset_names = ["%s-%s" % (fruits.lower(), types.lower()) for fruits, types in ground_truth_df.loc[ground_truth_df["Day"] == day][["Fruit", "Type"]].values]
+		date_combined = ["%s" % (date) for date in ground_truth_df.loc[ground_truth_df["Day"] == day]["Date"].values]
+		date, month = date_combined[0].split("-")
+		date = date.zfill(2)
 		fruit_name_short = ground_truth_df["Fruit"][index]
 		fruit_name_short = fruit_name_short[0] + fruit_name_short[-1]
 		
@@ -43,10 +44,10 @@ def main():
 		nir_glob_len = len(mobile_nirfilepath)
 		if int(day) not in days_processed:
 			if (rgb_glob_len != 1 or nir_glob_len != 1):
-				print("\t\t\tCheck file numbers for Date %s-%s, FID: %s, Fruit Short Name: %s" % (date, month, mobile_fid, fruit_name_short))
-				check_filenames.append("Date %s-%s, FID: %s, Fruit Short Name: %s" % (date, month, mobile_fid, fruit_name_short))
+				print("\t\t\tCheck file numbers for Date %s-%s, Fruit Short Name: %s" % (date, month, fruit_name_short))
+				check_filenames.append("Date %s-%s, Fruit Short Name: %s" % (date, month, fruit_name_short))
 		
-			for dataset_name, hs_filename, mobile_rgb, mobile_nir in zip(dataset_names, hs_filenames, sorted(mobile_rgbfilepath), sorted(mobile_nirfilepath)):
+			for dataset_name, mobile_fid, hs_filename, mobile_rgb, mobile_nir in zip(dataset_names, mobile_fids, hs_filenames, sorted(mobile_rgbfilepath), sorted(mobile_nirfilepath)):
 				mobile_dataset_output_directory = os.path.join("..", TEST_ROOT_DATASET_DIR, APPLICATION_NAME+"2", "%s_204ch" % dataset_name, OP_MOBILE_DATASET_DIR_NAME)
 				create_directory(mobile_dataset_output_directory)
 				rgb_image = imageio.imread(mobile_rgb)
@@ -58,10 +59,10 @@ def main():
 				rgb_image_aligned = fixedAlign(rgb_image, aligningFactorX=22, aligningFactorY=23, mobileImageXShape=480, mobileImageYShape=640)
 				nir_image_aligned = fixedAlign(nir_image, aligningFactorX=0, aligningFactorY=0, mobileImageXShape=480, mobileImageYShape=640)
 
-				viewImages(nir_image, rgb_image_aligned, nir_image_aligned, "NIR and RGB Images", dataset_name, hs_filename)
+				viewImages(nir_image, rgb_image_aligned, nir_image_aligned, "Dataset: %s Date: %s-%s FID: %d" % (dataset_name, date, month, mobile_fid), dataset_name, hs_filename)
 
-				print("Copied %s -> %s [Glob Len: %d]" % (os.path.split(mobile_rgb)[-1], "%s_RGB.png" % hs_filename, rgb_glob_len), "\tNumber of Files per day: %d\t" % check_number_of_files_per_day, "Fruit Name: %s\t" % fruit_name_short, "FID: %s\t" % mobile_fid, "Date: %s-%s" % (date, month))
-				print("Copied %s -> %s [Glob Len: %d]" % (os.path.split(mobile_nir)[-1], "%s_NIR.png" % hs_filename, nir_glob_len), "\tNumber of Files per day: %d\t" % check_number_of_files_per_day, "Fruit Name: %s\t" % fruit_name_short, "FID: %s\t" % mobile_fid, "Date: %s-%s" % (date, month))
+				print("Copied %s -> %s [Glob Len: %d]" % (os.path.split(mobile_rgb)[-1], "%s_RGB.png" % hs_filename, rgb_glob_len), "\tNumber of Files per day: %d\t" % check_number_of_files_per_day, "Fruit Name: %s\t" % dataset_name, "FID: %s\t" % mobile_fid, "Date: %s-%s" % (date, month))
+				print("Copied %s -> %s [Glob Len: %d]" % (os.path.split(mobile_nir)[-1], "%s_NIR.png" % hs_filename, nir_glob_len), "\tNumber of Files per day: %d\t" % check_number_of_files_per_day, "Fruit Name: %s\t" % dataset_name, "FID: %s\t" % mobile_fid, "Date: %s-%s" % (date, month))
 				nir_image = np.expand_dims(np.asarray(nir_image[:,:,0]), axis=-1)
 				daylight = commonLighting(rgb_image_aligned)
 

@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 
 from utils import create_directory
-from config import MOBILE_DATASET_DIR_NAME, TEST_ROOT_DATASET_DIR, VISUALIZATION_DIR_NAME, APPLICATION_NAME, SHELF_LIFE_GROUND_TRUTH_FILENAME
+from config import MOBILE_DATASET_DIR_NAME, TEST_ROOT_DATASET_DIR, VISUALIZATION_DIR_NAME, APPLICATION_NAME, SHELF_LIFE_GROUND_TRUTH_FILENAME, title_font_dict
 
 import matplotlib.pyplot as plt
 
@@ -32,7 +32,7 @@ def viewImages(rgb_image, nir_image, rgb_image_aligned, plot_title, dataset_name
 	rgb_image_for = Image.fromarray(rgb_image_aligned)
 	nir_image_for = Image.fromarray(nir_image)
 	fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(35, 30))
-	fig.suptitle(plot_title)
+	fig.suptitle(plot_title, **title_font_dict)
 	ax1.imshow(rgb_image)
 	ax2.imshow(nir_image)
 	ax3.imshow(rgb_image_aligned)
@@ -53,7 +53,7 @@ def main():
 		date = date.zfill(2)
 		hs_filenames = [int(x) for x in ground_truth_df["HS Files"][index].split(",")]
 		mobile_fid = ground_truth_df["Mobile FID"][index]
-		dataset_name = ground_truth_df["Fruit"][index].lower() + "-" + ground_truth_df["Type"][index].replace("'", "").lower()
+		dataset_name = ground_truth_df["Fruit"][index].lower() + "-" + ground_truth_df["Type"][index].lower()
 		fruit_name_short = ground_truth_df["Fruit"][index]
 		fruit_name_short = fruit_name_short[0] + fruit_name_short[-1]
 

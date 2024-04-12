@@ -91,7 +91,7 @@ def main():
 
 	for index in ground_truth_df.index:
 		hs_filenumbers = [int(x) for x in ground_truth_df["HS Files"][index].split(",")]
-		dataset_name = ground_truth_df["Fruit"][index].lower() + "-" + ground_truth_df["Type"][index].replace("'", "").lower()
+		dataset_name = ground_truth_df["Fruit"][index].lower() + "-" + ground_truth_df["Type"][index].lower()
 
 		output_hypercube_directory = os.path.join("..", TEST_ROOT_DATASET_DIR, APPLICATION_NAME, "%s_204ch" % dataset_name, GT_HYPERCUBES_DIR_NAME)
 
