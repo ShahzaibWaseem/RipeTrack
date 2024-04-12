@@ -25,7 +25,7 @@ def _no_grad_trunc_normal_(tensor, mean, std, a, b):
 		return tensor
 
 def trunc_normal_(tensor, mean=0., std=1., a=-2., b=2.):
-	# type: (Tensor, float, float, float, float) -> Tensor
+	""" type: (Tensor, float, float, float, float) -> Tensor """
 	return _no_grad_trunc_normal_(tensor, mean, std, a, b)
 
 def variance_scaling_(tensor, scale=1.0, mode='fan_in', distribution='normal'):
@@ -70,13 +70,14 @@ def conv(in_channels, out_channels, kernel_size, bias=False, padding = 1, stride
 		in_channels, out_channels, kernel_size,
 		padding=(kernel_size//2), bias=bias, stride=stride)
 
-def shift_back(inputs,step=2):          # input [bs,28,256,600]  output [bs, 28, 256, 256]
+def shift_back(inputs, step=2):
+	""" [bs, 28, 256, 600] -> [bs, 28, 256, 256] """
 	[bs, nC, row, col] = inputs.shape
 	down_sample = 256//row
 	step = float(step)/float(down_sample*down_sample)
 	out_col = row
 	for i in range(nC):
-		inputs[:,i,:,:out_col] = inputs[:,i,:,int(step*i):int(step*i)+out_col]
+		inputs[:, i, :, :out_col] = inputs[:, i, :, int(step*i):int(step*i)+out_col]
 	return inputs[:, :, :, :out_col]
 
 class MS_MSA(nn.Module):
@@ -98,30 +99,30 @@ class MS_MSA(nn.Module):
 
 	def forward(self, x_in):
 		"""
-		x_in: [b,h,w,c]
-		return out: [b,h,w,c]
+		x_in: [b, h, w, c]
+		return out: [b, h, w, c]
 		"""
 		b, h, w, c = x_in.shape
-		x = x_in.reshape(b,h*w,c)
+		x = x_in.reshape(b, h*w, c)
 		q_inp = self.to_q(x)
 		k_inp = self.to_k(x)
 		v_inp = self.to_v(x)
 		q, k, v = map(lambda t: rearrange(t, 'b n (h d) -> b h n d', h=self.num_heads), (q_inp, k_inp, v_inp))
 		v = v
-		# q: b,heads,hw,c
+		# q: b, heads, hw, c
 		q = q.transpose(-2, -1)
 		k = k.transpose(-2, -1)
 		v = v.transpose(-2, -1)
 		q = F.normalize(q, dim=-1, p=2)
 		k = F.normalize(k, dim=-1, p=2)
-		attn = (k @ q.transpose(-2, -1))   # A = K^T*Q
+		attn = (k @ q.transpose(-2, -1))	# A = K^T*Q
 		attn = attn * self.rescale
 		attn = attn.softmax(dim=-1)
-		x = attn @ v   # b,heads,d,hw
-		x = x.permute(0, 3, 1, 2)    # Transpose
+		x = attn @ v						# b, heads, d, hw
+		x = x.permute(0, 3, 1, 2)			# Transpose
 		x = x.reshape(b, h * w, self.num_heads * self.dim_head)
 		out_c = self.proj(x).view(b, h, w, c)
-		out_p = self.pos_emb(v_inp.reshape(b,h,w,c).permute(0, 3, 1, 2)).permute(0, 2, 3, 1)
+		out_p = self.pos_emb(v_inp.reshape(b, h, w, c).permute(0, 3, 1, 2)).permute(0, 2, 3, 1)
 		out = out_c + out_p
 
 		return out
@@ -139,8 +140,8 @@ class FeedForward(nn.Module):
 
 	def forward(self, x):
 		"""
-		x: [b,h,w,c]
-		return out: [b,h,w,c]
+		x: [b, h, w, c]
+		return out: [b, h, w, c]
 		"""
 		out = self.net(x.permute(0, 3, 1, 2))
 		return out.permute(0, 2, 3, 1)
@@ -154,8 +155,8 @@ class MSAB(nn.Module):
 
 	def forward(self, x):
 		"""
-		x: [b,c,h,w]
-		return out: [b,c,h,w]
+		x: [b, c, h, w]
+		return out: [b, c, h, w]
 		"""
 		x = x.permute(0, 2, 3, 1)
 		for (attn, ff) in self.blocks:
@@ -165,7 +166,7 @@ class MSAB(nn.Module):
 		return out
 
 class MST(nn.Module):
-	def __init__(self, in_dim=68, out_dim=68, dim=68, stage=2, num_blocks=[2,4,4]):
+	def __init__(self, in_dim=68, out_dim=68, dim=68, stage=2, num_blocks=[2, 4, 4]):
 		super(MST, self).__init__()
 		self.dim = dim
 		self.stage = stage
@@ -199,7 +200,7 @@ class MST(nn.Module):
 		# Output projection
 		self.mapping = nn.Conv2d(self.dim, out_dim, 3, 1, 1, bias=False)
 
-		#### activation function
+		# activation function
 		self.lrelu = nn.LeakyReLU(negative_slope=0.1, inplace=True)
 		self.apply(self._init_weights)
 
@@ -214,8 +215,8 @@ class MST(nn.Module):
 
 	def forward(self, x):
 		"""
-		x: [b,c,h,w]
-		return out:[b,c,h,w]
+		x: [b, c, h, w]
+		return out:[b, c, h, w]
 		"""
 
 		# Embedding
@@ -239,7 +240,6 @@ class MST(nn.Module):
 
 		# Mapping
 		out = self.mapping(fea) + x
-
 		return out
 
 class MST_Plus_Plus(nn.Module):
@@ -247,7 +247,7 @@ class MST_Plus_Plus(nn.Module):
 		super(MST_Plus_Plus, self).__init__()
 		self.stage = stage
 		self.conv_in = nn.Conv2d(in_channels, n_feat, kernel_size=3, padding=(3 - 1) // 2, bias=False)
-		modules_body = [MST(in_dim=n_feat, out_dim=n_feat, dim=n_feat, stage=2, num_blocks=[1,1,1]) for _ in range(stage)]
+		modules_body = [MST(in_dim=n_feat, out_dim=n_feat, dim=n_feat, stage=2, num_blocks=[1, 1, 1]) for _ in range(stage)]
 		self.body = nn.Sequential(*modules_body)
 		self.conv_out = nn.Conv2d(n_feat, out_channels, kernel_size=3, padding=(3 - 1) // 2, bias=False)
 
@@ -259,8 +259,8 @@ class MST_Plus_Plus(nn.Module):
 
 	def forward(self, x):
 		"""
-		x: [b,c,h,w]
-		return out:[b,c,h,w]
+		x: [b, c, h, w]
+		return out:[b, c, h, w]
 		"""
 		b, c, h_inp, w_inp = x.shape
 		hb, wb = 8, 8
