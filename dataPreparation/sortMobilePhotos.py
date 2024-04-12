@@ -38,8 +38,8 @@ def viewImages(rgb_image, nir_image, rgb_image_aligned, plot_title, dataset_name
 	ax3.imshow(rgb_image_aligned)
 	merged_image = Image.blend(rgb_image_for, nir_image_for, 0.5)
 	ax4.imshow(merged_image)
-	create_directory(os.path.join("..", TEST_ROOT_DATASET_DIR, APPLICATION_NAME+"2", "%s_204ch" % dataset_name, VISUALIZATION_DIR_NAME))
-	plt.savefig(os.path.join("..", TEST_ROOT_DATASET_DIR, APPLICATION_NAME+"2", "%s_204ch" % dataset_name, VISUALIZATION_DIR_NAME, "%s.png" % plot_filename))
+	create_directory(os.path.join("..", TEST_ROOT_DATASET_DIR, APPLICATION_NAME, "%s_204ch" % dataset_name, VISUALIZATION_DIR_NAME))
+	plt.savefig(os.path.join("..", TEST_ROOT_DATASET_DIR, APPLICATION_NAME, "%s_204ch" % dataset_name, VISUALIZATION_DIR_NAME, "%s.png" % plot_filename))
 	plt.close()
 
 def main():
@@ -57,8 +57,8 @@ def main():
 		fruit_name_short = ground_truth_df["Fruit"][index]
 		fruit_name_short = fruit_name_short[0] + fruit_name_short[-1]
 
-		mobile_dataset_input_directory = os.path.join("..", TEST_ROOT_DATASET_DIR, "mobile_%s_new" % APPLICATION_NAME, "rawImages")
-		mobile_dataset_output_directory = os.path.join("..", TEST_ROOT_DATASET_DIR, APPLICATION_NAME+"2", "%s_204ch" % dataset_name, MOBILE_DATASET_DIR_NAME)
+		mobile_dataset_input_directory = os.path.join("..", TEST_ROOT_DATASET_DIR, "mobile_%s" % APPLICATION_NAME, "rawImages")
+		mobile_dataset_output_directory = os.path.join("..", TEST_ROOT_DATASET_DIR, APPLICATION_NAME, "%s_204ch" % dataset_name, MOBILE_DATASET_DIR_NAME)
 
 		create_directory(mobile_dataset_output_directory)
 
@@ -79,7 +79,7 @@ def main():
 			nir_image = imageio.imread(mobile_nir)
 			rgb_image_aligned = fixedAlign(rgb_image)
 			plot_title = "Date %s-%s, FID: %s, Fruit Short Name: %s" % (date, month, mobile_fid, fruit_name_short)
-			viewImages(rgb_image, nir_image, rgb_image_aligned, plot_title, dataset_name, hs_filename)
+			# viewImages(rgb_image, nir_image, rgb_image_aligned, plot_title, dataset_name, hs_filename)
 
 			print("Copied %s -> %s [Glob Len: %d]" % (os.path.split(mobile_rgb)[-1], "%s_RGB.png" % hs_filename, rgb_glob_len), "\tNumber of Files per day: %d\t" % check_number_of_files_per_day, "Fruit Name: %s\t" % fruit_name_short, "FID: %s\t" % mobile_fid, "Date: %s-%s" % (date, month))
 			print("Copied %s -> %s [Glob Len: %d]" % (os.path.split(mobile_nir)[-1], "%s_NIR.png" % hs_filename, nir_glob_len), "\tNumber of Files per day: %d\t" % check_number_of_files_per_day, "Fruit Name: %s\t" % fruit_name_short, "FID: %s\t" % mobile_fid, "Date: %s-%s" % (date, month))
