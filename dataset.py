@@ -119,13 +119,11 @@ class DatasetFromDirectoryReconstructionTrain(Dataset):
 				nir_image = (nir_image - nir_image.min()) / (nir_image.max() - nir_image.min())
 				# nir_image = nir_image[movePixels:image_width-movePixels, movePixels:image_height-movePixels] if not self.transforms == None else nir_image
 				nir_image = np.expand_dims(np.asarray(nir_image), 2)
-				nir_image = np.transpose(nir_image, [2, 0, 1])
 
 				# image = rgb_image
 				image = np.dstack((rgb_image, nir_image))
 				image = np.transpose(image, [2, 0, 1])
 				rgbn_counter += 1
-
 				self.rgbn_images.append(image)
 
 				image_width, image_height = image.shape[1], image.shape[2]
@@ -214,7 +212,6 @@ class DatasetFromDirectoryReconstructionValid(Dataset):
 				nir_image = np.float32(imread(os.path.join(directory, GT_RGBN_DIR_NAME, os.path.split(filename)[-1].replace(".mat", "_NIR.png"))))
 				nir_image = (nir_image - nir_image.min()) / (nir_image.max() - nir_image.min())
 				nir_image = np.expand_dims(np.asarray(nir_image), 2)
-				nir_image = np.transpose(nir_image, [2, 0, 1])
 
 				# image = rgb_image
 				image = np.dstack((rgb_image, nir_image))

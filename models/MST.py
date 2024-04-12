@@ -1,10 +1,13 @@
-import torch.nn as nn
-import torch
-import torch.nn.functional as F
-from einops import rearrange
 import math
 import warnings
+from einops import rearrange
+
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 from torch.nn.init import _calculate_fan_in_and_fan_out
+
+from config import BANDS
 
 def _no_grad_trunc_normal_(tensor, mean, std, a, b):
 	def norm_cdf(x):
@@ -166,7 +169,7 @@ class MSAB(nn.Module):
 		return out
 
 class MST(nn.Module):
-	def __init__(self, in_dim=68, out_dim=68, dim=68, stage=2, num_blocks=[2, 4, 4]):
+	def __init__(self, in_dim=len(BANDS), out_dim=len(BANDS), dim=len(BANDS), stage=2, num_blocks=[2, 4, 4]):
 		super(MST, self).__init__()
 		self.dim = dim
 		self.stage = stage
@@ -243,7 +246,7 @@ class MST(nn.Module):
 		return out
 
 class MST_Plus_Plus(nn.Module):
-	def __init__(self, in_channels=4, out_channels=60, n_feat=60, stage=3):
+	def __init__(self, in_channels=4, out_channels=len(BANDS), n_feat=len(BANDS), stage=3):
 		super(MST_Plus_Plus, self).__init__()
 		self.stage = stage
 		self.conv_in = nn.Conv2d(in_channels, n_feat, kernel_size=3, padding=(3 - 1) // 2, bias=False)

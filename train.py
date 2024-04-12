@@ -46,12 +46,11 @@ def main():
 
 	# Log files
 	logger = initialize_logger(filename="train.log")
-
 	log_string = "Epoch [%3d], Iter[%7d], Time: %.9f, Learning Rate: %.9f, Train Loss: %.9f (%.9f, %.9f, %.9f)"
 	log_string_val = "Validation Loss: %.9f (%.9f, %.9f, %.9f)"
 
 	# make model
-	model = MST_Plus_Plus(in_channels=4, out_channels=len(BANDS), n_feat=len(BANDS), stage=3)
+	model = MST_Plus_Plus(in_channels=4, out_channels=len(BANDS), n_feat=len(BANDS), stage=1)
 	optimizer = torch.optim.Adam(model.parameters(), lr=init_lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.0001)
 	scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, int(train_data_loader.__len__())*end_epoch/batch_size, eta_min=1e-6)
 	# print(summary(model, (4, 64, 64), verbose=1))
@@ -61,12 +60,7 @@ def main():
 		model.load_state_dict(state_dict)
 		optimizer.load_state_dict(opt_state)
 		start_epoch = epoch
-
-	model.to(device)
-	# optimizer_to(optimizer, device)
-
-	print("\n" + model_run_title)
-	logger.info(model_run_title)
+		print("Loaded model from checkpoint: Filename: %s Epochs Run: %d, Validation Loss: %.9f" % (best_checkpoint_file, epoch, val_loss))
 
 	if transfer_learning:
 		module_count = 0
@@ -78,6 +72,12 @@ def main():
 				p.requires_grad = True
 			# print(_, p.requires_grad)
 		# print("Total number of modules: ", module_count)
+
+	model.to(device)
+	# optimizer_to(optimizer, device)
+
+	print("\n" + model_run_title)
+	logger.info(model_run_title)
 
 	for epoch in range(start_epoch+1, end_epoch):
 		# torch.cuda.synchronize()
