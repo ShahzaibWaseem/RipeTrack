@@ -212,7 +212,7 @@ def main():
 	model.load_state_dict(model_param)
 	model = model.to(device)
 	model.eval()
-	print(summary(model=model, input_data=(4, 512, 512)))
+	summary(model=model, input_data=(4, 512, 512))
 	inference(model, checkpoint_filename, mobile_reconstruction=use_mobile_dataset, patched_inference=PATCHED_INFERENCE)
 
 if __name__ == "__main__":

@@ -53,7 +53,7 @@ def test_model_only():
 	model = ModelWithAttention(input_channels=len(BANDS), num_classes=len(LABELS_DICT), num_subclasses=len(TIME_LEFT_DICT))
 	model = model.cuda()
 	model.eval()
-	print(summary(model=model, input_data=(68, 512, 512)))
+	summary(model=model, input_data=(68, 512, 512))
 	criterion = (torch.nn.CrossEntropyLoss(reduction="mean"), torch.nn.CrossEntropyLoss(reduction="mean"))
 	model.load_state_dict(state_dict)
 	test_loss, test_acc = test(test_data_loader, model, criterion)
@@ -81,6 +81,7 @@ def main():
 	model = ModelWithAttention(input_channels=len(BANDS), num_classes=len(LABELS_DICT), num_subclasses=len(TIME_LEFT_DICT))
 	# model.bottleneck.register_forward_hook(get_activation("bottleneck"))
 	model = model.cuda()
+	summary(model=model, input_data=(68, 512, 512))
 
 	criterion_class = torch.nn.CrossEntropyLoss(weight=class_weights, reduction="mean")
 	criterion_subclass = torch.nn.CrossEntropyLoss()
