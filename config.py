@@ -54,7 +54,7 @@ DEEP_WB_DIR = "deepWB"
 APPEND_SECONDARY_RGB_CAM_INPUT = False
 PATCHED_INFERENCE = False
 run_pretrained = False					# if True, the model is loaded from the checkpoint_file
-use_mobile_dataset = True				# if True, the model is trained on the mobile dataset
+use_mobile_dataset = False				# if True, the model is trained on the mobile dataset
 transfer_learning = False				# if True, the model will freeze all layers except the last MST block and conv layers
 
 PREDEF_TRANSFORMS_FILENAME = "transforms{}.pth".format("_appended" if APPEND_SECONDARY_RGB_CAM_INPUT else "")
@@ -80,7 +80,7 @@ BANDS_WAVELENGTHS = [397.32, 400.20, 403.09, 405.97, 408.85, 411.74, 414.63, 417
 
 ### Hyperparamters for the model ###
 batch_size = 25
-end_epoch = 51
+end_epoch = 101
 init_lr = 4e-4
 lossfunctions_considered = ["MRAE", "SAM", "SID"]			# Select which loss functions are considered for the reconstruction model training
 

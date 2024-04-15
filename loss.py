@@ -73,8 +73,8 @@ class Loss_SID(nn.Module):
 
 def mse(img_pred, img_gt):
 	""" Calculate the mean square error (NumPy - used in test_psnr())"""
-	error = (img_pred - img_gt)
-	mse = np.mean((np.power(error, 2)))
+	error = img_pred - img_gt
+	mse = np.mean(np.power(error, 2))
 	return mse
 
 def spectral_angle(a, b):
@@ -100,28 +100,27 @@ def test_rrmse(img_pred, img_gt, relative=False):
 	""" Calculate the relative Root Mean Square Error (NumPy - Test Error) """
 	error = img_pred - img_gt
 	error_relative = error/img_gt if relative else error
-	rrmse = np.sqrt(np.mean((np.power(error_relative, 2))))
+	rrmse = np.sqrt(np.mean(np.power(error_relative, 2)))
 	return rrmse
 
-def test_msam(img_pred, img_gt, max_value=1):
+def test_msam(img_pred, img_gt, max_value=1.0):
 	""" Calculate the mean spectral angle mapper (NumPy - Test Error) """
 	img_pred_flat = img_pred.reshape(-1, img_pred.shape[2])
 	img_gt_flat = img_gt.reshape(-1, img_gt.shape[2])
 	assert len(img_pred_flat) == len(img_gt_flat)
 	return np.mean([spectral_angle(img_pred_flat[i]/max_value, img_gt_flat[i]/max_value) for i in range(len(img_pred_flat))])
 
-def test_sid(img_pred, img_gt, max_value=1):
+def test_sid(img_pred, img_gt, max_value=1.0):
 	""" mean spectral information divergence """
-	# img_pred = np.clip(img_pred, 0, 1)
 	img_pred_flat = img_pred.reshape(-1, img_pred.shape[2])
 	img_gt_flat = img_gt.reshape(-1, img_gt.shape[2])
 	assert len(img_pred_flat) == len(img_gt_flat)
 	return np.mean([spectral_divergence(img_pred_flat[i]/max_value, img_gt_flat[i]/max_value) for i in range(len(img_pred_flat))])
 
-def test_psnr(img_pred, img_gt, max_value=1):
+def test_psnr(img_pred, img_gt, max_value=1.0):
 	""" Calculate the peak signal to noise ratio (NumPy - Test Error) """
 	return 10 * np.log10(max_value**2 / mse(img_pred, img_gt))
 
-def test_ssim(img_pred, img_gt, max_value=1):
+def test_ssim(img_pred, img_gt, max_value=1.0):
 	""" Calculate the structural simularity index measure (NumPy - Test Error) """
 	return structural_similarity(img_gt, img_pred, data_range=max_value, channel_axis=True)

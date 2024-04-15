@@ -50,7 +50,7 @@ def main():
 	log_string_val = "Validation Loss: %.9f (%.9f, %.9f, %.9f)"
 
 	# make model
-	model = MST_Plus_Plus(in_channels=4, out_channels=len(BANDS), n_feat=len(BANDS), stage=1)
+	model = MST_Plus_Plus(in_channels=4, out_channels=len(BANDS), n_feat=len(BANDS), stage=3)
 	optimizer = torch.optim.Adam(model.parameters(), lr=init_lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.0001)
 	scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, int(train_data_loader.__len__())*end_epoch/batch_size, eta_min=1e-6)
 	summary(model, (4, 512, 512), verbose=1)
