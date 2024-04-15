@@ -79,26 +79,23 @@ def inference(model, checkpoint_filename, mobile_reconstruction=False, patched_i
 		with open(os.path.join(TEST_DATASET_DIR, "%s_204ch" % test_dataset, TRAIN_VAL_TEST_SPLIT_DIR_NAME, "test.txt"), "r") as test_file:
 			hypercube_list = [filename.replace("\n", ".mat") for filename in test_file]
 
-		for mat_filename in hypercube_list:
-		# for mat_filename in sorted(glob(os.path.join(directory, "*.mat"))):
+		for filename in hypercube_list:
 			start_time = time.time()
-			mat_filename = os.path.split(mat_filename)[-1]
-			mat_number = mat_filename.split("_")[0].split(".")[0]
+			mat_number = filename.split("_")[0].split(".")[0]
 
-			hypercube = load_mat(os.path.join(directory, GT_HYPERCUBES_DIR_NAME, mat_filename))
-
-			# hypercube = load_mat(os.path.join(mat_filename))
+			hypercube = load_mat(os.path.join(directory, GT_HYPERCUBES_DIR_NAME, filename))
 			hypercube = hypercube[:, :, BANDS]
 			hypercube = (hypercube - hypercube.min()) / (hypercube.max() - hypercube.min())
 			min_hc, max_hc = min(min_hc, hypercube.min()), max(max_hc, hypercube.max())
 			# hypercube = np.maximum(np.minimum(hypercube, 1.0), 0.0)
 			hypercube = hypercube + EPS
+			hypercube = np.transpose(hypercube, [2, 0, 1])
 
-			rgb_filename = mat_filename.replace(".mat", "_RGB%s.png" % "-D")
+			rgb_filename = filename.replace(".mat", "_RGB%s.png" % "-D")
 			rgb_image = np.float32(imread(os.path.join(directory, GT_RGBN_DIR_NAME if not mobile_reconstruction else MOBILE_DATASET_DIR_NAME, rgb_filename)))
 			rgb_image = (rgb_image - rgb_image.min()) / (rgb_image.max() - rgb_image.min())
 
-			nir_filename = mat_filename.replace(".mat", "_NIR.png")
+			nir_filename = filename.replace(".mat", "_NIR.png")
 			nir_image = np.float32(imread(os.path.join(directory, GT_RGBN_DIR_NAME if not mobile_reconstruction else MOBILE_DATASET_DIR_NAME, nir_filename)))
 			nir_image = (nir_image - nir_image.min()) / (nir_image.max() - nir_image.min())
 			nir_image = np.expand_dims(np.asarray(nir_image), axis=-1)
@@ -112,15 +109,16 @@ def inference(model, checkpoint_filename, mobile_reconstruction=False, patched_i
 			with torch.no_grad():
 				hypercube_pred = model(image_tensor)
 
-			hypercube_pred = np.transpose(hypercube_pred.squeeze(0).cpu().detach().numpy(), [1, 2, 0])
+			hypercube_pred = hypercube_pred.squeeze(0).cpu().detach().numpy()
+			# hypercube_pred = np.transpose(hypercube_pred.squeeze(0).cpu().detach().numpy(), [1, 2, 0])
+			# hypercube_pred = np.maximum(np.minimum(hypercube_pred, 1.0), 0.0)
 			# hypercube_pred = hypercube_pred + EPS			# should work without this line but just in case
-			hypercube_pred = np.maximum(np.minimum(hypercube_pred, 1.0), 0.0)
 
 			min_phc, max_phc = min(min_phc, hypercube_pred.min()), max(max_phc, hypercube_pred.max())
 			# print("HC Min: {}, Max: {}\tPred Min: {}, Max: {}".format(min_hc, max_hc, min_phc, max_phc))
 
 			end_time = time.time() - start_time
-			hypercube_pred_filepath = os.path.join(OUT_PATH, mat_filename)
+			hypercube_pred_filepath = os.path.join(OUT_PATH, filename)
 			save_mat(hypercube_pred_filepath, hypercube_pred)
 
 			if not mobile_reconstruction:
@@ -140,11 +138,11 @@ def inference(model, checkpoint_filename, mobile_reconstruction=False, patched_i
 				losses_psnr_combined.update(psnr)
 				losses_ssim_combined.update(ssim)
 
-				print(log_string % (mat_filename, end_time, mrae, rrmse, msam, sid, psnr, ssim))
-				logger.info(log_string % (mat_filename, end_time, mrae, rrmse, msam, sid, psnr, ssim))
+				print(log_string % (filename, end_time, mrae, rrmse, msam, sid, psnr, ssim))
+				logger.info(log_string % (filename, end_time, mrae, rrmse, msam, sid, psnr, ssim))
 			else:
-				print("[%15s] Time: %0.9f" % (mat_filename, end_time))
-				logger.info("[%15s] Time: %0.9f" % (mat_filename, end_time))
+				print("[%15s] Time: %0.9f" % (filename, end_time))
+				logger.info("[%15s] Time: %0.9f" % (filename, end_time))
 
 			if patched_inference:
 				crop_record = crops_df[crops_df["image"].isin(["{}_RGB.png".format(mat_number)])]
@@ -185,8 +183,8 @@ def inference(model, checkpoint_filename, mobile_reconstruction=False, patched_i
 						# print(patch_i, patch_j, hypercube_pred.shape, hypercubeCrop.shape)
 
 						hypercube_combined[u"(%d, %d)"% (patch_i, patch_j)] = hypercube_pred
-				print(log_string % (mat_filename+"_patch", end_time, p_mrae/num_patches, p_rrmse/num_patches, p_msam/num_patches, p_sid/num_patches, p_psnr/num_patches, p_ssim/num_patches)) if not mobile_reconstruction else None
-				save_mat_patched(os.path.join(OUT_PATH, PATCHED_HS_DIR_NAME, mat_filename), hypercube_combined)
+				print(log_string % (filename+"_patch", end_time, p_mrae/num_patches, p_rrmse/num_patches, p_msam/num_patches, p_sid/num_patches, p_psnr/num_patches, p_ssim/num_patches)) if not mobile_reconstruction else None
+				save_mat_patched(os.path.join(OUT_PATH, PATCHED_HS_DIR_NAME, filename), hypercube_combined)
 		print(log_string_avg % ("Average %s" % test_dataset, losses_mrae.avg, losses_mrae.stddev, losses_rmse.avg, losses_rmse.stddev,
 						  losses_sam.avg, losses_sam.stddev, losses_sid.avg, losses_sid.stddev,
 						  losses_psnr.avg, losses_psnr.stddev, losses_ssim.avg, losses_ssim.stddev))
@@ -205,7 +203,7 @@ def inference(model, checkpoint_filename, mobile_reconstruction=False, patched_i
 def main():
 	# checkpoint_filename, epoch, iter, model_param, optimizer, val_loss, val_acc = get_best_checkpoint(task="reconstruction")
 	# checkpoint_filename = checkpoint_file
-	checkpoint_filename = "MSLP_MST++_shelflife_100 trained on all [half] RGBN to 68(Losses + NIR Augmentation) [corrected].pkl"
+	checkpoint_filename = "MSLP_MST++_shelflife_060 trained on all [test for number of self attention channels; original].pkl"
 	checkpoint = torch.load(os.path.join(MODEL_PATH, "reconstruction", "others", checkpoint_filename))
 	model_param = checkpoint["state_dict"]
 	model = MST_Plus_Plus(in_channels=4, out_channels=len(BANDS), n_feat=len(BANDS), stage=3)

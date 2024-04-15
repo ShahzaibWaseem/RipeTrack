@@ -111,14 +111,16 @@ class DatasetFromDirectoryReconstructionTrain(Dataset):
 				hypercube_counter += 1
 				self.hypercubes.append(hypercube)
 
-				rgb_image = np.float32(imread(os.path.join(directory, GT_RGBN_DIR_NAME if not use_auxiliary_input else GT_AUXILIARY_RGB_CAM_DIR_NAME, os.path.split(filename)[-1].replace(".mat", "_RGB%s.png" % "-D"))))
+				rgb_filename = os.path.split(filename)[-1].replace(".mat", "_RGB%s.png" % "-D")
+				rgb_image = np.float32(imread(os.path.join(directory, GT_RGBN_DIR_NAME if not use_auxiliary_input else GT_AUXILIARY_RGB_CAM_DIR_NAME, rgb_filename)))
 				rgb_image = (rgb_image - rgb_image.min()) / (rgb_image.max() - rgb_image.min())
 				# rgb_image = self.transforms(rgb_image) if not self.transforms == None else rgb_image
 
-				nir_image = np.float32(imread(os.path.join(directory, GT_RGBN_DIR_NAME, os.path.split(filename)[-1].replace(".mat", "_NIR.png"))))
+				nir_filename = os.path.split(filename)[-1].replace(".mat", "_NIR.png")
+				nir_image = np.float32(imread(os.path.join(directory, GT_RGBN_DIR_NAME, nir_filename)))
 				nir_image = (nir_image - nir_image.min()) / (nir_image.max() - nir_image.min())
 				# nir_image = nir_image[movePixels:image_width-movePixels, movePixels:image_height-movePixels] if not self.transforms == None else nir_image
-				nir_image = np.expand_dims(np.asarray(nir_image), 2)
+				nir_image = np.expand_dims(np.asarray(nir_image), -1)
 
 				# image = rgb_image
 				image = np.dstack((rgb_image, nir_image))
@@ -206,17 +208,18 @@ class DatasetFromDirectoryReconstructionValid(Dataset):
 				hypercube += EPS
 				self.hypercubes.append(hypercube)
 
-				rgb_image = np.float32(imread(os.path.join(directory, GT_RGBN_DIR_NAME if not use_auxiliary_input else GT_AUXILIARY_RGB_CAM_DIR_NAME, os.path.split(filename)[-1].replace(".mat", "_RGB%s.png" % "-D"))))
+				rgb_filename = os.path.split(filename)[-1].replace(".mat", "_RGB%s.png" % "-D")
+				rgb_image = np.float32(imread(os.path.join(directory, GT_RGBN_DIR_NAME if not use_auxiliary_input else GT_AUXILIARY_RGB_CAM_DIR_NAME, rgb_filename)))
 				rgb_image = (rgb_image - rgb_image.min()) / (rgb_image.max() - rgb_image.min())
 
-				nir_image = np.float32(imread(os.path.join(directory, GT_RGBN_DIR_NAME, os.path.split(filename)[-1].replace(".mat", "_NIR.png"))))
+				nir_filename = os.path.split(filename)[-1].replace(".mat", "_NIR.png")
+				nir_image = np.float32(imread(os.path.join(directory, GT_RGBN_DIR_NAME, nir_filename)))
 				nir_image = (nir_image - nir_image.min()) / (nir_image.max() - nir_image.min())
-				nir_image = np.expand_dims(np.asarray(nir_image), 2)
+				nir_image = np.expand_dims(np.asarray(nir_image), -1)
 
 				# image = rgb_image
 				image = np.dstack((rgb_image, nir_image))
 				image = np.transpose(image, [2, 0, 1])
-
 				self.rgbn_images.append(image)
 
 			print("{:>4} s".format(round(time.time()-dataset_load_time))) if verbose else None
