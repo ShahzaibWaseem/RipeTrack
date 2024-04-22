@@ -34,7 +34,7 @@ def inference(model, checkpoint_filename, mobile_reconstruction=False, patched_i
 	logger = initialize_logger(filename="test.log")
 	log_string = "[%15s] Time: %0.9f, MRAE: %0.9f, RRMSE: %0.9f, SAM: %0.9f, SID: %0.9f, PSNR: %0.9f, SSIM: %0.9f"
 	log_string_avg = "%15s, %0.4f \pm %0.2f, %0.4f \pm %0.2f, %0.4f \pm %0.2f, %0.4f \pm %0.2f, %0.1f \pm %0.1f, %0.4f \pm %0.2f"
-	log_string_avg_combined = "%15s, \\textbf{%0.4f \pm %0.2f}, \\textbf{%0.4f \pm %0.2f}, \\textbf{%0.4f \pm %0.2f}, \\textbf{%0.4f \pm %0.2f}, \\textbf{%0.1f \pm %0.1f}, \\textbf{%0.4f \pm %0.2f}"
+	log_string_avg_combined = "%15s, \\textbf{%0.4f \pm %0.2f}, \\textbf{%0.4f \pm %0.2f}, \\textbf{%0.4f \pm %0.2f}, \\textbf{%0.4f \pm %0.2f}, \\textbf{%0.1f \pm %0.1f}, \\textbf{%0.4f \pm %0.2f}, Time: \\textbf{%0.4f \pm %0.2f}"
 
 	TEST_DATASET_DIR = os.path.join(TEST_ROOT_DATASET_DIR, APPLICATION_NAME)
 
@@ -52,6 +52,7 @@ def inference(model, checkpoint_filename, mobile_reconstruction=False, patched_i
 	losses_sid_combined = AverageMeter()
 	losses_psnr_combined = AverageMeter()
 	losses_ssim_combined = AverageMeter()
+	avg_time_combined = AverageMeter()
 
 	for test_dataset in TEST_DATASETS:
 		losses_mrae = AverageMeter()
@@ -111,7 +112,7 @@ def inference(model, checkpoint_filename, mobile_reconstruction=False, patched_i
 
 			hypercube_pred = hypercube_pred.squeeze(0).cpu().detach().numpy()
 			# hypercube_pred = np.transpose(hypercube_pred.squeeze(0).cpu().detach().numpy(), [1, 2, 0])
-			# hypercube_pred = np.maximum(np.minimum(hypercube_pred, 1.0), 0.0)
+			hypercube_pred = np.maximum(np.minimum(hypercube_pred, 1.0), 0.0)
 			# hypercube_pred = hypercube_pred + EPS			# should work without this line but just in case
 
 			min_phc, max_phc = min(min_phc, hypercube_pred.min()), max(max_phc, hypercube_pred.max())
@@ -137,6 +138,7 @@ def inference(model, checkpoint_filename, mobile_reconstruction=False, patched_i
 				losses_sid_combined.update(sid)
 				losses_psnr_combined.update(psnr)
 				losses_ssim_combined.update(ssim)
+				avg_time_combined.update(end_time)
 
 				print(log_string % (filename, end_time, mrae, rrmse, msam, sid, psnr, ssim))
 				logger.info(log_string % (filename, end_time, mrae, rrmse, msam, sid, psnr, ssim))
@@ -193,17 +195,17 @@ def inference(model, checkpoint_filename, mobile_reconstruction=False, patched_i
 						  losses_psnr.avg, losses_psnr.stddev, losses_ssim.avg, losses_ssim.stddev))
 		print("Min Hypercube: %0.9f, Max Hypercube: %0.9f" % (min_hc, max_hc))
 		print("Min Predicted Hypercube: %0.9f, Max Predicted Hypercube: %0.9f" % (min_phc, max_phc))
-	print(log_string_avg_combined % ("Combined Average %s" % "", losses_mrae_combined.avg, losses_mrae_combined.stddev, losses_rmse_combined.avg, losses_rmse_combined.stddev,
+	print(log_string_avg_combined % ("Combined Average", losses_mrae_combined.avg, losses_mrae_combined.stddev, losses_rmse_combined.avg, losses_rmse_combined.stddev,
 						  losses_sam_combined.avg, losses_sam_combined.stddev, losses_sid_combined.avg, losses_sid_combined.stddev,
-						  losses_psnr_combined.avg, losses_psnr_combined.stddev, losses_ssim_combined.avg, losses_ssim_combined.stddev))
-	logger.info(log_string_avg_combined % ("Combined Average %s" % "", losses_mrae_combined.avg, losses_mrae_combined.stddev, losses_rmse_combined.avg, losses_rmse_combined.stddev,
+						  losses_psnr_combined.avg, losses_psnr_combined.stddev, losses_ssim_combined.avg, losses_ssim_combined.stddev, avg_time_combined.avg, avg_time_combined.stddev))
+	logger.info(log_string_avg_combined % ("Combined Average", losses_mrae_combined.avg, losses_mrae_combined.stddev, losses_rmse_combined.avg, losses_rmse_combined.stddev,
 						  losses_sam_combined.avg, losses_sam_combined.stddev, losses_sid_combined.avg, losses_sid_combined.stddev,
-						  losses_psnr_combined.avg, losses_psnr_combined.stddev, losses_ssim_combined.avg, losses_ssim_combined.stddev))
+						  losses_psnr_combined.avg, losses_psnr_combined.stddev, losses_ssim_combined.avg, losses_ssim_combined.stddev, avg_time_combined.avg, avg_time_combined.stddev))
 
 def main():
 	# checkpoint_filename, epoch, iter, model_param, optimizer, val_loss, val_acc = get_best_checkpoint(task="reconstruction")
 	# checkpoint_filename = checkpoint_file
-	checkpoint_filename = "MSLP_MST++_shelflife_060 trained on all [test for number of self attention channels; original].pkl"
+	checkpoint_filename = "MSLP_MST++_shelflife_100 trained on all [test for number of self attention channels; half attention].pkl"
 	checkpoint = torch.load(os.path.join(MODEL_PATH, "reconstruction", "others", checkpoint_filename))
 	model_param = checkpoint["state_dict"]
 	model = MST_Plus_Plus(in_channels=4, out_channels=len(BANDS), n_feat=len(BANDS), stage=3)
