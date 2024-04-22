@@ -90,6 +90,7 @@ class DatasetFromDirectoryReconstructionTrain(Dataset):
 		self.patch_per_image = self.patch_per_line*self.patch_per_column
 
 		print("Reading Images from:") if verbose else None
+		assert BANDS[-1] > 200, "Check use_mobile_dataset variable from config.py. It should be False during reconstruction."
 
 		for dataset in TEST_DATASETS:
 			with open(os.path.join(root, application_name, "%s_204ch" % dataset, TRAIN_VAL_TEST_SPLIT_DIR_NAME, "train.txt"), "r") as train_file:
@@ -193,6 +194,7 @@ class DatasetFromDirectoryReconstructionValid(Dataset):
 	rgbn_images, hypercubes = [], []
 
 	def __init__(self, root, application_name=APPLICATION_NAME, use_auxiliary_input=False, verbose=False):
+		assert BANDS[-1] > 200, "Check use_mobile_dataset variable from config.py. It should be False during reconstruction."
 		for dataset in TEST_DATASETS:
 			with open(os.path.join(root, application_name, "%s_204ch" % dataset, TRAIN_VAL_TEST_SPLIT_DIR_NAME, "validation.txt"), "r") as valid_file:
 				hypercube_list = [filename.replace("\n", ".mat") for filename in valid_file]
