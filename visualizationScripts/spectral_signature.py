@@ -6,7 +6,7 @@ from imageio import imread
 from skimage import exposure
 
 from utils import load_mat
-from config import BAND_SPACING, NORMALIZATION_FACTOR, TEST_ROOT_DATASET_DIR, text_font_dict
+from config import BANDS, TEST_ROOT_DATASET_DIR, VISUALIZATION_DIR_NAME, GT_HYPERCUBES_DIR_NAME, RECONSTRUCTED_HS_DIR_NAME, text_font_dict
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -18,13 +18,11 @@ def main():
 	rgb_img = imread(os.path.join(os.path.dirname(TEST_ROOT_DATASET_DIR), "1458.png"))
 	# rgb_img = np.array(rgb_img).T
 
-	gt_img = load_mat(os.path.join(TEST_ROOT_DATASET_DIR, "working_avocado", "avocado_h_204ch", "test", "mat", "1458.mat"))
-	gt_img = gt_img[:, :, ::BAND_SPACING] / NORMALIZATION_FACTOR
+	gt_hypercube = load_mat(os.path.join(TEST_ROOT_DATASET_DIR, "%s_204ch" % "avocado-hass", GT_HYPERCUBES_DIR_NAME, "1458.mat"))
+	gt_hypercube = gt_hypercube[:,:,BANDS]
+	gt_hypercube = (gt_hypercube - gt_hypercube.min()) / (gt_hypercube.max() - gt_hypercube.min())
 
-	inf_img = load_mat(os.path.join(TEST_ROOT_DATASET_DIR, "working_avocado", "avocado_h_204ch", "test", "inference", "resnext", "inf_1458.mat")) / NORMALIZATION_FACTOR
-
-	# hscnn_inf = load_mat(os.path.join("..", "HSCNN-R", "test", "inference", "HSCNN_4to51_steak_h", "inf_1885.mat")) / NORMALIZATION_FACTOR
-	# awan_inf = load_mat(os.path.join("..", "AWAN", "test", "inference", "AWAN_4to51_steak_h", "inf_1885.mat")) / NORMALIZATION_FACTOR
+	inf_hypercube = load_mat(os.path.join(TEST_ROOT_DATASET_DIR, "%s_204ch" % "avocado-hass", RECONSTRUCTED_HS_DIR_NAME, "1458.mat"))
 
 	fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(25, 10))
 	x=range(400, 1001, 12)
@@ -32,11 +30,11 @@ def main():
 	point1 = [350, 256]
 	point2 = [64, 350]
 
-	axs[0].plot(x, gt_img[point1[0], point1[1], :], "r--", label="Ground Truth (unripe)", linewidth=3)
-	axs[0].plot(x, inf_img[point1[0], point1[1], :], "r-", label="MobiSLP (unripe)", linewidth=3)
+	axs[0].plot(x, gt_hypercube[point1[0], point1[1], :], "r--", label="Ground Truth (unripe)", linewidth=3)
+	axs[0].plot(x, inf_hypercube[point1[0], point1[1], :], "r-", label="MobiSLP (unripe)", linewidth=3)
 
-	axs[0].plot(x, gt_img[point2[0], point2[1], :], "b--", label="Ground Truth (ripe)", linewidth=3)
-	axs[0].plot(x, inf_img[point2[0], point2[1], :], "b-", label="MobiSLP (ripe)", linewidth=3)
+	axs[0].plot(x, gt_hypercube[point2[0], point2[1], :], "b--", label="Ground Truth (ripe)", linewidth=3)
+	axs[0].plot(x, inf_hypercube[point2[0], point2[1], :], "b-", label="MobiSLP (ripe)", linewidth=3)
 	axs[0].set_xlim(xlim)
 	axs[0].set_xlabel("Wavelength (nm)")
 	axs[0].set_ylabel("Normalized Intensity")
@@ -53,7 +51,7 @@ def main():
 	axs[1].add_patch(circle2)
 	
 	fig.tight_layout(w_pad=-2.5)
-	plt.savefig(os.path.join("logs", "signature_avocado.pdf"), dpi=fig.dpi*2, bbox_inches="tight")
+	plt.savefig(os.path.join(VISUALIZATION_DIR_NAME, "signature_avocado.pdf"), dpi=fig.dpi*2, bbox_inches="tight")
 
 if __name__ == "__main__":
 	os.chdir("..")

@@ -22,10 +22,10 @@ def main():
 		inf_directory = os.path.join(directory, RECONSTRUCTED_HS_DIR_NAME)
 		print(" " * 19, "{0:62}".format(directory), RECONSTRUCTED_HS_DIR_NAME)
 		create_directory(os.path.join(directory, VISUALIZATION_DIR_NAME))
-		# bosc: 477, 479, 504, 560, 644, 645, 670, williams: 508, 513, 570, 624, 655, 681, 682, 737, 765, 766, 793, 795, 820, 851, 907, organic: 495, 516*, 521, 574, 603, 604, 632, 635, 661, 659, 663*, 718, 772, 796, 824, 825*, 852, 881, 909, emp: 498, 500, 524, 526*, 608, 612, 636, 637, 640*, 641, 664*, 665*, 666*, 667*, 696, 697*, 749, 753, 772, 777, 778, 860, 861, 889, 1006, 1007,
+
 		for filename in glob(os.path.join(directory, "664.mat")):
 			inf_hypercube = load_mat(os.path.join(inf_directory, os.path.split(filename)[-1]))
-			inf_hypercube = (inf_hypercube - inf_hypercube.min()) / (inf_hypercube.max() - inf_hypercube.min())
+
 			gt_hypercube = load_mat(filename)
 			gt_hypercube = gt_hypercube[:,:,BANDS]
 			gt_hypercube = (gt_hypercube - gt_hypercube.min()) / (gt_hypercube.max() - gt_hypercube.min())

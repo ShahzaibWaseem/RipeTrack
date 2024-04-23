@@ -222,9 +222,8 @@ if __name__ == "__main__":
 	# mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors = readDataFromFile(json_file=os.path.join("tempJSON","errors(RGBNto68)[VanillaMRAE].json"))
 	# plotBandErrors(mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors, filename=os.path.join("tempJSON", "errors(RGNto68)[VanillaMRAE].pdf"))
 	fruitname = "pear-bartlett"
-	processRawJSON("errorsRaw(RGBto68)[Vanilla].json", "Pear Bartlett", fruitname)
-	# processRawJSON("errorsRaw(RGBto68)[Vanilla].json", "Avocado Organic", "avocado-organic")
-
+	processRawJSON("errorsRaw(RGBNto68)[ThinModel].json", "Pear Bartlett", fruitname)
+	# processRawJSON("errorsRaw(RGBto68)[ThinModel].json", "Avocado Organic", fruitname)
 
 	# processRawJSON("errorsRaw(RGBto68)[IR Cutoff Removed].json", "RGB [IR CR]", fruitname)
 	# processRawJSON("errorsRaw(RGBNto68).json", "RGB+FaceID", fruitname)
@@ -245,4 +244,4 @@ if __name__ == "__main__":
 	# mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors = readDataFromFile(json_file=os.path.join("tempJSON","errors(RGBNto68)[Losses + NIR Augmentation].json"))
 	# combineAllArrays(mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors, "RGBN [L+A]")
 
-	plotAllBandErrors(filename="errors(%s).pdf" % ("VanillaMST"))
+	plotAllBandErrors(filename="errors(%s).pdf" % ("ThinModel"))
