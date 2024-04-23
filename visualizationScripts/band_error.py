@@ -34,7 +34,7 @@ def getBandErrors():
 	log_string = "[%15s] MRAE=%0.9f, RRMSE=%0.9f, SAM=%0.9f, SID=%0.9f, PSNR=%0.9f, SSIM=%0.9f"
 
 	for dataset in TEST_DATASETS:
-		directory = os.path.join(TEST_ROOT_DATASET_DIR, APPLICATION_NAME, "{}_204ch".format(dataset), GT_HYPERCUBES_DIR_NAME)
+		directory = os.path.join(TEST_ROOT_DATASET_DIR, APPLICATION_NAME, "{}_204ch".format(dataset))
 		inf_directory = os.path.join(directory, RECONSTRUCTED_HS_DIR_NAME)
 		print(" " * 19, "{0:62}".format(inf_directory))
 
@@ -42,16 +42,15 @@ def getBandErrors():
 			hypercube_list = [filename.replace("\n", ".mat") for filename in test_file]
 
 		for filename in hypercube_list:
-		# for filename in sorted(glob(os.path.join(directory, "*.mat"))):
 			mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors = [], [], [], [], [], []
 
 			inf_hypercube = load_mat(os.path.join(inf_directory, filename))
-			# inf_hypercube = (inf_hypercube - inf_hypercube.min()) / (inf_hypercube.max() - inf_hypercube.min())
-			gt_hypercube = load_mat(os.path.join(directory, filename))
+
+			gt_hypercube = load_mat(os.path.join(directory, GT_HYPERCUBES_DIR_NAME, filename))
 			gt_hypercube = gt_hypercube[:,:,BANDS]
 			gt_hypercube = (gt_hypercube - gt_hypercube.min()) / (gt_hypercube.max() - gt_hypercube.min())
-			# gt_hypercube = np.maximum(np.minimum(gt_hypercube, 1.0), 0.0)
 			gt_hypercube = gt_hypercube + EPS
+			gt_hypercube = np.transpose(gt_hypercube, [2, 0, 1])
 
 			for band in range(len(BANDS)):
 				inf_band = inf_hypercube[:,:,band]
@@ -133,7 +132,6 @@ def plotBandErrors(mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_error
 		plt.savefig(os.path.join(VISUALIZATION_DIR_NAME, filename), bbox_inches="tight")
 	plt.close()
 
-
 mrae_errors_combined, rrmse_errors_combined, sam_errors_combined, sid_errors_combined, psnr_errors_combined, ssim_errors_combined, titles = [], [], [], [], [], [], []
 
 def combineAllArrays(mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors, title):
@@ -204,23 +202,24 @@ if __name__ == "__main__":
 	os.chdir("..")
 	create_directory(os.path.join(VISUALIZATION_DIR_NAME, "tempJSON"))
 
-	# errors = getBandErrors()
-	# print(errors.keys())
-	# mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors = meanErrors(errors)
+	errors = getBandErrors()
+	print(errors.keys())
+	mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors = meanErrors(errors)
 
-	# jsonFile = open(os.path.join(VISUALIZATION_DIR_NAME, "tempJSON", "errorsRaw(RGBto68)[Vanilla].json"), "w")
-	# jsonFile.write(json.dumps(str(errors), indent=4))
-	# jsonFile.close()
+	jsonFile = open(os.path.join(VISUALIZATION_DIR_NAME, "tempJSON", "errorsRaw(RGBNto68)[ThinModel].json"), "w")
+	jsonFile.write(json.dumps(str(errors), indent=4))
+	jsonFile.close()
 
-	# errors = {}
-	# errors.update({"MSLP": {"MRAE": mrae_errors.tolist(), "RRMSE": rrmse_errors.tolist(), "SAM": sam_errors.tolist(), "SID": sid_errors.tolist(), "PSNR": psnr_errors.tolist(), "SSIM": ssim_errors.tolist()}})
+	errors = {}
+	errors.update({"MSLP": {"MRAE": mrae_errors.tolist(), "RRMSE": rrmse_errors.tolist(), "SAM": sam_errors.tolist(), "SID": sid_errors.tolist(), "PSNR": psnr_errors.tolist(), "SSIM": ssim_errors.tolist()}})
 
-	# jsonFile = open(os.path.join(VISUALIZATION_DIR_NAME, "tempJSON", "errors(RGBto68)[Vanilla].json"), "w")
-	# jsonFile.write(json.dumps(str(errors), indent=4))
-	# jsonFile.close()
+	jsonFile = open(os.path.join(VISUALIZATION_DIR_NAME, "tempJSON", "errors(RGBNto68)[ThinModel].json"), "w")
+	jsonFile.write(json.dumps(str(errors), indent=4))
+	jsonFile.close()
 
-	# mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors = readDataFromFile(json_file=os.path.join("tempJSON","errors(RGBNto68)[VanillaMRAE].json"))
-	# plotBandErrors(mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors, filename=os.path.join("tempJSON", "errors(RGNto68)[VanillaMRAE].pdf"))
+	mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors = readDataFromFile(json_file=os.path.join("tempJSON","errors(RGBNto68)[ThinModel].json"))
+	plotBandErrors(mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors, filename=os.path.join("tempJSON", "errors(RGBNto68)[ThinModel].pdf"))
+
 	fruitname = "pear-bartlett"
 	processRawJSON("errorsRaw(RGBNto68)[ThinModel].json", "Pear Bartlett", fruitname)
 	# processRawJSON("errorsRaw(RGBto68)[ThinModel].json", "Avocado Organic", fruitname)
