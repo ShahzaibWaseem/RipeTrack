@@ -68,11 +68,6 @@ class GELU(nn.Module):
 	def forward(self, x):
 		return F.gelu(x)
 
-def conv(in_channels, out_channels, kernel_size, bias=False, padding = 1, stride = 1):
-	return nn.Conv2d(
-		in_channels, out_channels, kernel_size,
-		padding=(kernel_size//2), bias=bias, stride=stride)
-
 def shift_back(inputs, step=2):
 	""" [bs, 28, 256, 600] -> [bs, 28, 256, 256] """
 	[bs, nC, row, col] = inputs.shape
@@ -182,7 +177,7 @@ class MST(nn.Module):
 		dim_stage = dim
 		for i in range(stage):
 			self.encoder_layers.append(nn.ModuleList([
-				MSAB(dim=dim_stage, num_blocks=num_blocks[i], dim_head=dim, heads=dim_stage // dim),
+				MSAB(dim=dim_stage, dim_head=dim, heads=dim_stage // dim, num_blocks=num_blocks[i]),
 				nn.Conv2d(dim_stage, dim_stage * 2, 4, 2, 1, bias=False)
 			]))
 			dim_stage *= 2
@@ -196,7 +191,7 @@ class MST(nn.Module):
 			self.decoder_layers.append(nn.ModuleList([
 				nn.ConvTranspose2d(dim_stage, dim_stage // 2, stride=2, kernel_size=2, padding=0, output_padding=0),
 				nn.Conv2d(dim_stage, dim_stage // 2, 1, 1, bias=False),
-				MSAB(dim=dim_stage // 2, num_blocks=num_blocks[stage - 1 - i], dim_head=dim, heads=(dim_stage // 2) // dim)
+				MSAB(dim=dim_stage // 2, dim_head=dim, heads=(dim_stage // 2) // dim, num_blocks=num_blocks[stage - 1 - i],)
 			]))
 			dim_stage //= 2
 
@@ -246,11 +241,15 @@ class MST(nn.Module):
 		return out
 
 class MST_Plus_Plus(nn.Module):
-	def __init__(self, in_channels=4, out_channels=len(BANDS), n_feat=len(BANDS), stage=3):
+	def __init__(self, in_channels=4, out_channels=len(BANDS), n_feat=len(BANDS), msab_stages=2, stage=3):
 		super(MST_Plus_Plus, self).__init__()
+		self.dim_explode = n_feat != out_channels
 		self.stage = stage
 		self.conv_in = nn.Conv2d(in_channels, n_feat, kernel_size=3, padding=(3 - 1) // 2, bias=False)
-		modules_body = [MST(in_dim=n_feat, out_dim=n_feat, dim=n_feat, stage=2, num_blocks=[1, 1, 1]) for _ in range(stage)]
+		if self.dim_explode:
+			# added here to make the dimension work
+			self.add_conv_out = nn.Conv2d(n_feat, out_channels, kernel_size=3, padding=(3 - 1) // 2, bias=False)
+		modules_body = [MST(in_dim=n_feat, out_dim=n_feat, dim=n_feat, stage=msab_stages, num_blocks=[1, 1, 1]) for _ in range(stage)]
 		self.body = nn.Sequential(*modules_body)
 		self.conv_out = nn.Conv2d(n_feat, out_channels, kernel_size=3, padding=(3 - 1) // 2, bias=False)
 
@@ -273,5 +272,5 @@ class MST_Plus_Plus(nn.Module):
 		x = self.conv_in(x)
 		h = self.body(x)
 		h = self.conv_out(h)
-		h += x
+		h += self.add_conv_out(x) if self.dim_explode else x
 		return h[:, :, :h_inp, :w_inp]

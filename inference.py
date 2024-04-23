@@ -205,10 +205,10 @@ def inference(model, checkpoint_filename, mobile_reconstruction=False, patched_i
 def main():
 	# checkpoint_filename, epoch, iter, model_param, optimizer, val_loss, val_acc = get_best_checkpoint(task="reconstruction")
 	# checkpoint_filename = checkpoint_file
-	checkpoint_filename = "MSLP_MST++_shelflife_100 trained on all [test for number of self attention channels; half attention].pkl"
+	checkpoint_filename = "MSLP_MST++_shelflife_100 trained on all [test for number of self attention channels; half attention; 1 MST++ stages].pkl"
 	checkpoint = torch.load(os.path.join(MODEL_PATH, "reconstruction", "others", checkpoint_filename))
 	model_param = checkpoint["state_dict"]
-	model = MST_Plus_Plus(in_channels=4, out_channels=len(BANDS), n_feat=len(BANDS), stage=3)
+	model = MST_Plus_Plus(in_channels=4, out_channels=len(BANDS), n_feat=len(BANDS)//2, msab_stages=2, stage=1)
 	model.load_state_dict(model_param)
 	model = model.to(device)
 	model.eval()
