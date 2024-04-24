@@ -88,9 +88,7 @@ def inference(model, checkpoint_filename, mobile_reconstruction=False, patched_i
 			hypercube = hypercube[:, :, BANDS]
 			hypercube = (hypercube - hypercube.min()) / (hypercube.max() - hypercube.min())
 			min_hc, max_hc = min(min_hc, hypercube.min()), max(max_hc, hypercube.max())
-			# hypercube = np.maximum(np.minimum(hypercube, 1.0), 0.0)
 			hypercube = hypercube + EPS
-			hypercube = np.transpose(hypercube, [2, 0, 1])
 
 			rgb_filename = filename.replace(".mat", "_RGB%s.png" % "-D")
 			rgb_image = np.float32(imread(os.path.join(directory, GT_RGBN_DIR_NAME if not mobile_reconstruction else MOBILE_DATASET_DIR_NAME, rgb_filename)))
@@ -110,8 +108,7 @@ def inference(model, checkpoint_filename, mobile_reconstruction=False, patched_i
 			with torch.no_grad():
 				hypercube_pred = model(image_tensor)
 
-			hypercube_pred = hypercube_pred.squeeze(0).cpu().detach().numpy()
-			# hypercube_pred = np.transpose(hypercube_pred.squeeze(0).cpu().detach().numpy(), [1, 2, 0])
+			hypercube_pred = np.transpose(hypercube_pred.squeeze(0).cpu().detach().numpy(), [1, 2, 0])
 			hypercube_pred = np.maximum(np.minimum(hypercube_pred, 1.0), 0.0)
 			# hypercube_pred = hypercube_pred + EPS			# should work without this line but just in case
 
