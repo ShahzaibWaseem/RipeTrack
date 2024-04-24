@@ -52,7 +52,7 @@ class Loss_SID(nn.Module):
 	""" Computes the Spectral Information Divergence Loss (PyTorch - Training Loss) """
 	def __init__(self):
 		super(Loss_SID, self).__init__()
-	
+
 	def forward(self, tensor_pred, tensor_gt):
 		assert tensor_pred.shape == tensor_gt.shape
 		EPS = 1e-3

@@ -2,6 +2,7 @@ import os
 import sys
 sys.path.append(os.path.join(".."))
 
+import time
 import json
 import numpy as np
 from glob import glob
@@ -31,7 +32,7 @@ def calculate_metrics(img_pred, img_gt, expand=False):
 def getBandErrors():
 	""" returns a dictionary containing band wise errors for all evaluated results eg: {'avocado_1111': {}} """
 	errors = {}
-	log_string = "[%15s] MRAE=%0.9f, RRMSE=%0.9f, SAM=%0.9f, SID=%0.9f, PSNR=%0.9f, SSIM=%0.9f"
+	log_string = "[%15s] Time: %0.9f, MRAE: %0.9f, RRMSE: %0.9f, SAM: %0.9f, SID: %0.9f, PSNR: %0.9f, SSIM: %0.9f"
 
 	for dataset in TEST_DATASETS:
 		directory = os.path.join(TEST_ROOT_DATASET_DIR, APPLICATION_NAME, "{}_204ch".format(dataset))
@@ -42,15 +43,16 @@ def getBandErrors():
 			hypercube_list = [filename.replace("\n", ".mat") for filename in test_file]
 
 		for filename in hypercube_list:
+			start_time = time.time()
 			mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors = [], [], [], [], [], []
 
 			inf_hypercube = load_mat(os.path.join(inf_directory, filename))
+			# inf_hypercube = np.maximum(np.minimum(inf_hypercube, 1.0), 0.0)
 
 			gt_hypercube = load_mat(os.path.join(directory, GT_HYPERCUBES_DIR_NAME, filename))
-			gt_hypercube = gt_hypercube[:,:,BANDS]
+			gt_hypercube = gt_hypercube[:, :, BANDS]
 			gt_hypercube = (gt_hypercube - gt_hypercube.min()) / (gt_hypercube.max() - gt_hypercube.min())
 			gt_hypercube = gt_hypercube + EPS
-			gt_hypercube = np.transpose(gt_hypercube, [2, 0, 1])
 
 			for band in range(len(BANDS)):
 				inf_band = inf_hypercube[:,:,band]
@@ -62,8 +64,9 @@ def getBandErrors():
 				sid_errors.append(sid)
 				psnr_errors.append(psnr)
 				ssim_errors.append(ssim)
+			end_time = time.time() - start_time
 
-			print(log_string % (os.path.split(filename)[-1], average(mrae_errors), average(rrmse_errors), average(sam_errors), average(sid_errors), average(psnr_errors), average(ssim_errors)))
+			print(log_string % (os.path.split(filename)[-1], end_time, average(mrae_errors), average(rrmse_errors), average(sam_errors), average(sid_errors), average(psnr_errors), average(ssim_errors)))
 			errors.update({dataset + "_" + filename: {"MRAE": mrae_errors, "RRMSE": rrmse_errors, "SAM": sam_errors, "SID": sid_errors, "PSNR": psnr_errors, "SSIM": ssim_errors}})
 	return errors
 
@@ -156,7 +159,7 @@ def plotAllBandErrors(filename="errors.pdf"):
 
 	fig, axs = plt.subplots(nrows=2, ncols=3, figsize=(30, 20))
 	colors = ["r", "g", "b", "c", "m", "y", "k", "w"]
-	
+
 	for ix, title in enumerate(titles):
 		plotSingleMetric(mrae_errors_combined[ix], axs[0][0], ylim=[0, 0.7], ylabel="MRAE", label=title, color=colors[ix])
 		plotSingleMetric(rrmse_errors_combined[ix], axs[0][1], ylim=[0, 0.4], ylabel="RRMSE", label=title, color=colors[ix])

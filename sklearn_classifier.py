@@ -67,7 +67,7 @@ def get_data(train_data_loader, valid_data_loader):
 			for j in range(0, hypercubes_sig.shape[2]):
 				X.append(hypercubes_sig[:, i, j])
 				y.append(labels.ravel().numpy())
-	
+
 	return np.asarray(X), np.asarray(y).ravel()
 
 def get_data_batch(train_data_loader, valid_data_loader):

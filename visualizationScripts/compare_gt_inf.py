@@ -10,7 +10,7 @@ from loss import test_psnr
 from utils import load_mat, create_directory
 from config import GT_HYPERCUBES_DIR_NAME, RECONSTRUCTED_HS_DIR_NAME, VISUALIZATION_DIR_NAME,\
 	TEST_DATASETS, TEST_ROOT_DATASET_DIR, BANDS, VIEW_BANDS, ACTUAL_BANDS, APPLICATION_NAME, IMAGE_SIZE,\
-	text_font_dict, title_font_dict, plt_dict
+	EPS, text_font_dict, title_font_dict, plt_dict
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -27,15 +27,16 @@ def main():
 			inf_hypercube = load_mat(os.path.join(inf_directory, os.path.split(filename)[-1]))
 
 			gt_hypercube = load_mat(filename)
-			gt_hypercube = gt_hypercube[:,:,BANDS]
+			gt_hypercube = gt_hypercube[:, :, BANDS]
 			gt_hypercube = (gt_hypercube - gt_hypercube.min()) / (gt_hypercube.max() - gt_hypercube.min())
+			gt_hypercube = gt_hypercube + EPS
 
 			fig, axs = plt.subplots(nrows=3, ncols=len(VIEW_BANDS), figsize=(15, 11))
 
 			for j in range(axs.shape[1]):
 				# Reconstructed Hypercube (gamma adjustment)
-				inf_band = inf_hypercube[:,:,VIEW_BANDS[j]].reshape(IMAGE_SIZE, IMAGE_SIZE)
-				gt_band = gt_hypercube[:,:,VIEW_BANDS[j]].reshape(IMAGE_SIZE, IMAGE_SIZE)
+				inf_band = inf_hypercube[:, :, VIEW_BANDS[j]].reshape(IMAGE_SIZE, IMAGE_SIZE)
+				gt_band = gt_hypercube[:, :, VIEW_BANDS[j]].reshape(IMAGE_SIZE, IMAGE_SIZE)
 
 				# Difference b/w the two hypercubes
 				diff_band = np.abs(gt_band - inf_band)

@@ -2,11 +2,12 @@ import os
 import sys
 sys.path.append(os.path.join(".."))
 
+import numpy as np
 from imageio import imread
 from skimage import exposure
 
 from utils import load_mat
-from config import BANDS, TEST_ROOT_DATASET_DIR, VISUALIZATION_DIR_NAME, GT_HYPERCUBES_DIR_NAME, RECONSTRUCTED_HS_DIR_NAME, text_font_dict
+from config import BANDS, TEST_ROOT_DATASET_DIR, VISUALIZATION_DIR_NAME, GT_HYPERCUBES_DIR_NAME, RECONSTRUCTED_HS_DIR_NAME, EPS, text_font_dict
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -19,8 +20,9 @@ def main():
 	# rgb_img = np.array(rgb_img).T
 
 	gt_hypercube = load_mat(os.path.join(TEST_ROOT_DATASET_DIR, "%s_204ch" % "avocado-hass", GT_HYPERCUBES_DIR_NAME, "1458.mat"))
-	gt_hypercube = gt_hypercube[:,:,BANDS]
+	gt_hypercube = gt_hypercube[:, :, BANDS]
 	gt_hypercube = (gt_hypercube - gt_hypercube.min()) / (gt_hypercube.max() - gt_hypercube.min())
+	gt_hypercube = gt_hypercube + EPS
 
 	inf_hypercube = load_mat(os.path.join(TEST_ROOT_DATASET_DIR, "%s_204ch" % "avocado-hass", RECONSTRUCTED_HS_DIR_NAME, "1458.mat"))
 
@@ -49,7 +51,7 @@ def main():
 	axs[1].add_patch(circle1)
 	circle2 = Circle((point2[1], point2[0]), 15, edgecolor="b", fill=0, linestyle="--", linewidth=7)
 	axs[1].add_patch(circle2)
-	
+
 	fig.tight_layout(w_pad=-2.5)
 	plt.savefig(os.path.join(VISUALIZATION_DIR_NAME, "signature_avocado.pdf"), dpi=fig.dpi*2, bbox_inches="tight")
 
