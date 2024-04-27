@@ -12,7 +12,7 @@ import torch
 from torchsummary import summary
 from models.MST import MST_Plus_Plus
 
-from loss import test_mrae, test_rrmse, test_msam, test_sid, test_psnr, test_ssim
+from loss import test_mrae, test_rrmse, test_msam, test_sid, test_psnr, test_ssim, test_ssim_db
 from utils import AverageMeter, create_directory, save_mat, save_mat_patched, load_mat, load_mat_patched, initialize_logger, visualize_gt_pred_hs_data, get_best_checkpoint
 from config import GT_RGBN_DIR_NAME, GT_REMOVED_IR_CUTOFF_DIR_NAME, GT_AUXILIARY_RGB_CAM_DIR_NAME, GT_HYPERCUBES_DIR_NAME, RECONSTRUCTED_HS_DIR_NAME,\
 	MOBILE_DATASET_DIR_NAME, MOBILE_RECONSTRUCTED_HS_DIR_NAME, GT_REMOVED_IR_CUTOFF_RECONSTRUCTED_DIR_NAME, PATCHED_HS_DIR_NAME, TRAIN_VAL_TEST_SPLIT_DIR_NAME,\
@@ -27,14 +27,15 @@ def calculate_metrics(img_pred, img_gt):
 	sid = test_sid(img_pred, img_gt, max_value=1)
 	psnr = test_psnr(img_pred, img_gt, max_value=1)
 	ssim = test_ssim(img_pred, img_gt, max_value=1)
+	# ssim = test_ssim_db(img_pred, img_gt, max_value=1)
 	return mrae, rrmse, msam, sid, psnr, ssim
 
 def inference(model, checkpoint_filename, mobile_reconstruction=False, patched_inference=False):
 	# input_transform, label_transform = get_required_transforms(task="reconstruction")
 	logger = initialize_logger(filename="test.log")
 	log_string = "[%15s] Time: %0.9f, MRAE: %0.9f, RRMSE: %0.9f, SAM: %0.9f, SID: %0.9f, PSNR: %0.9f, SSIM: %0.9f"
-	log_string_avg = "%15s, %0.4f \pm %0.2f, %0.4f \pm %0.2f, %0.4f \pm %0.2f, %0.4f \pm %0.2f, %0.1f \pm %0.1f, %0.4f \pm %0.2f"
-	log_string_avg_combined = "%15s, \\textbf{%0.4f \pm %0.2f}, \\textbf{%0.4f \pm %0.2f}, \\textbf{%0.4f \pm %0.2f}, \\textbf{%0.4f \pm %0.2f}, \\textbf{%0.1f \pm %0.1f}, \\textbf{%0.4f \pm %0.2f}, Time: \\textbf{%0.4f \pm %0.2f}"
+	log_string_avg = "%15s, %0.4f \pm %0.3f, %0.4f \pm %0.3f, %0.4f \pm %0.3f, %0.4f \pm %0.3f, %0.1f \pm %0.1f, %0.4f \pm %0.3f"
+	log_string_avg_combined = "%15s, \\textbf{%0.4f \pm %0.3f}, \\textbf{%0.4f \pm %0.3f}, \\textbf{%0.4f \pm %0.3f}, \\textbf{%0.4f \pm %0.3f}, \\textbf{%0.1f \pm %0.1f}, \\textbf{%0.4f \pm %0.3f}"
 
 	TEST_DATASET_DIR = os.path.join(TEST_ROOT_DATASET_DIR, APPLICATION_NAME)
 
@@ -194,10 +195,12 @@ def inference(model, checkpoint_filename, mobile_reconstruction=False, patched_i
 		print("Min Predicted Hypercube: %0.9f, Max Predicted Hypercube: %0.9f" % (min_phc, max_phc))
 	print(log_string_avg_combined % ("Combined Average", losses_mrae_combined.avg, losses_mrae_combined.stddev, losses_rmse_combined.avg, losses_rmse_combined.stddev,
 						  losses_sam_combined.avg, losses_sam_combined.stddev, losses_sid_combined.avg, losses_sid_combined.stddev,
-						  losses_psnr_combined.avg, losses_psnr_combined.stddev, losses_ssim_combined.avg, losses_ssim_combined.stddev, avg_time_combined.avg, avg_time_combined.stddev))
+						  losses_psnr_combined.avg, losses_psnr_combined.stddev, losses_ssim_combined.avg, losses_ssim_combined.stddev))
+	print("Time: \\textbf{%0.4f \pm %0.3f}" % (avg_time_combined.avg, avg_time_combined.stddev))
 	logger.info(log_string_avg_combined % ("Combined Average", losses_mrae_combined.avg, losses_mrae_combined.stddev, losses_rmse_combined.avg, losses_rmse_combined.stddev,
 						  losses_sam_combined.avg, losses_sam_combined.stddev, losses_sid_combined.avg, losses_sid_combined.stddev,
-						  losses_psnr_combined.avg, losses_psnr_combined.stddev, losses_ssim_combined.avg, losses_ssim_combined.stddev, avg_time_combined.avg, avg_time_combined.stddev))
+						  losses_psnr_combined.avg, losses_psnr_combined.stddev, losses_ssim_combined.avg, losses_ssim_combined.stddev))
+	logger.info("Time: \\textbf{%0.4f \pm %0.3f}" % (avg_time_combined.avg, avg_time_combined.stddev))
 
 def main():
 	# checkpoint_filename, epoch, iter, model_param, optimizer, val_loss, val_acc = get_best_checkpoint(task="reconstruction")
