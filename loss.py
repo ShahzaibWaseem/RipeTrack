@@ -124,3 +124,8 @@ def test_psnr(img_pred, img_gt, max_value=1.0):
 def test_ssim(img_pred, img_gt, max_value=1.0):
 	""" Calculate the structural simularity index measure (NumPy - Test Error) """
 	return structural_similarity(img_gt, img_pred, data_range=max_value, channel_axis=True)
+
+def test_ssim_db(img_pred, img_gt, max_value=1.0):
+	""" Calculate the structural simularity index measure in decibels (NumPy - Test Error) """
+	ssim = test_ssim(img_pred, img_gt, max_value)
+	return -10 * np.log10(1- ssim)
