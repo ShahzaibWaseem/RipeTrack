@@ -12,7 +12,7 @@ SHELF_LIFE_GROUND_TRUTH_FILENAME = "ShelfLifeGroundTruth.csv"
 
 ### Datagenerator Directories ###
 CAMERA_OUTPUT_ROOT_PATH = os.path.join("..", "Catalog")
-CAMERA_EXTRACT_DATASETS = ["pear-bosc", "pear-bartlett", "avocado-organic", "avocado-hass"]
+CAMERA_EXTRACT_DATASETS = ["pear-bosc", "pear-bartlett", "pear-bartlettnew", "avocado-organic", "avocado-organicnew", "avocado-hass", "banana-ecuador", "banana-guatamala"]
 
 ### Root directories for train and test dataset loading ###
 TRAIN_DATASET_DIR = os.path.join("..", "h5datasets")
@@ -24,7 +24,7 @@ LOGS_PATH = os.path.join(".", "logs")
 DATA_PREP_PATH = os.path.join(".", "dataPreparation")
 
 ### Using the following datasets for training and testing ###
-TEST_DATASETS = ["pear-bosc", "pear-bartlett", "avocado-organic", "avocado-hass"]
+TEST_DATASETS = ["pear-bartlett", "pear-bartlettnew", "avocado-organic", "avocado-organicnew", "banana-ecuador", "banana-guatamala"]
 
 ### Dictionaries for the Classification labels ###
 FRUITS_DICT = OrderedDict([("Pear Bosc", 0), ("Pear Bartlett", 1), ("Avocado Organic", 2), ("Avocado Hass", 3)])
