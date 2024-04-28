@@ -33,10 +33,10 @@ def main():
 	point2 = [64, 350]
 
 	axs[0].plot(x, gt_hypercube[point1[0], point1[1], :], "r--", label="Ground Truth (unripe)", linewidth=3)
-	axs[0].plot(x, inf_hypercube[point1[0], point1[1], :], "r-", label="MobiSLP (unripe)", linewidth=3)
+	axs[0].plot(x, inf_hypercube[point1[0], point1[1], :], "r-", label="RipeTrack (unripe)", linewidth=3)
 
 	axs[0].plot(x, gt_hypercube[point2[0], point2[1], :], "b--", label="Ground Truth (ripe)", linewidth=3)
-	axs[0].plot(x, inf_hypercube[point2[0], point2[1], :], "b-", label="MobiSLP (ripe)", linewidth=3)
+	axs[0].plot(x, inf_hypercube[point2[0], point2[1], :], "b-", label="RipeTrack (ripe)", linewidth=3)
 	axs[0].set_xlim(xlim)
 	axs[0].set_xlabel("Wavelength (nm)")
 	axs[0].set_ylabel("Normalized Intensity")

@@ -13,7 +13,7 @@ Clone the repository
 The directory tree should look something like this:
 
 ```
-MobiSLP
+RipeTrack
 │
 └── checkpoints			Pretrained models (created)
 │
@@ -71,7 +71,7 @@ shelflife
 
 Some of the directories (mobile-reconstructed, reconstructed, rgbnir-sensor-reconstructed) are created when the `inference.py` script is run.
 
-`split` directory is created when `MobiSLP/dataPreparation/trainTestDiv.py` script is executed.
+`split` directory is created when `RipeTrack/dataPreparation/trainTestDiv.py` script is executed.
 
 ### Training
 In order to train the spectral upsampling model, you can use the following command:
