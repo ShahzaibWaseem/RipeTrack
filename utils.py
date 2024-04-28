@@ -212,7 +212,7 @@ def save_checkpoint(epoch, iteration, model, optimizer, val_loss, val_acc_labels
 			 "val_acc": (val_acc_labels, val_acc_sublabels),
 			 "bands": bands}
 
-	torch.save(state, os.path.join(MODEL_PATH, task, "MSLP_%s_%s.pkl" % (checkpoint_fileprestring if task=="reconstruction" else classification_checkpoint_fileprestring, str(epoch).zfill(3))))
+	torch.save(state, os.path.join(MODEL_PATH, task, "RT_%s_%s.pkl" % (checkpoint_fileprestring if task=="reconstruction" else classification_checkpoint_fileprestring, str(epoch).zfill(3))))
 
 def get_best_checkpoint(task="reconstruction"):
 	""" Get the model with best validation loss and validation accuracy. """
