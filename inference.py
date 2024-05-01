@@ -34,8 +34,8 @@ def inference(model, checkpoint_filename, mobile_reconstruction=False, patched_i
 	# input_transform, label_transform = get_required_transforms(task="reconstruction")
 	logger = initialize_logger(filename="test.log")
 	log_string = "[%15s] Time: %0.9f, MRAE: %0.9f, RRMSE: %0.9f, SAM: %0.9f, SID: %0.9f, PSNR: %0.9f, SSIM: %0.9f"
-	log_string_avg = "%15s, %0.4f \pm %0.3f, %0.4f \pm %0.3f, %0.4f \pm %0.3f, %0.4f \pm %0.3f, %0.1f \pm %0.1f, %0.4f \pm %0.3f"
-	log_string_avg_combined = "%15s, \\textbf{%0.4f \pm %0.3f}, \\textbf{%0.4f \pm %0.3f}, \\textbf{%0.4f \pm %0.3f}, \\textbf{%0.4f \pm %0.3f}, \\textbf{%0.1f \pm %0.1f}, \\textbf{%0.4f \pm %0.3f}"
+	log_string_avg = "%15s, %0.4f $\pm$ %0.3f, %0.4f $\pm$ %0.3f, %0.4f $\pm$ %0.3f, %0.4f $\pm$ %0.3f, %0.1f $\pm$ %0.1f, %0.4f $\pm$ %0.3f"
+	log_string_avg_combined = "%15s, \\textbf{%0.4f $\pm$ %0.3f}, \\textbf{%0.4f $\pm$ %0.3f}, \\textbf{%0.4f $\pm$ %0.3f}, \\textbf{%0.4f $\pm$ %0.3f}, \\textbf{%0.1f $\pm$ %0.1f}, \\textbf{%0.4f $\pm$ %0.3f}"
 
 	TEST_DATASET_DIR = os.path.join(TEST_ROOT_DATASET_DIR, APPLICATION_NAME)
 
@@ -196,11 +196,11 @@ def inference(model, checkpoint_filename, mobile_reconstruction=False, patched_i
 	print(log_string_avg_combined % ("Combined Average", losses_mrae_combined.avg, losses_mrae_combined.stddev, losses_rmse_combined.avg, losses_rmse_combined.stddev,
 						  losses_sam_combined.avg, losses_sam_combined.stddev, losses_sid_combined.avg, losses_sid_combined.stddev,
 						  losses_psnr_combined.avg, losses_psnr_combined.stddev, losses_ssim_combined.avg, losses_ssim_combined.stddev))
-	print("Time: \\textbf{%0.4f \pm %0.3f}" % (avg_time_combined.avg, avg_time_combined.stddev))
+	print("Time: \\textbf{%0.4f $\pm$ %0.3f}" % (avg_time_combined.avg, avg_time_combined.stddev))
 	logger.info(log_string_avg_combined % ("Combined Average", losses_mrae_combined.avg, losses_mrae_combined.stddev, losses_rmse_combined.avg, losses_rmse_combined.stddev,
 						  losses_sam_combined.avg, losses_sam_combined.stddev, losses_sid_combined.avg, losses_sid_combined.stddev,
 						  losses_psnr_combined.avg, losses_psnr_combined.stddev, losses_ssim_combined.avg, losses_ssim_combined.stddev))
-	logger.info("Time: \\textbf{%0.4f \pm %0.3f}" % (avg_time_combined.avg, avg_time_combined.stddev))
+	logger.info("Time: \\textbf{%0.4f $\pm$ %0.3f}" % (avg_time_combined.avg, avg_time_combined.stddev))
 
 def main():
 	# checkpoint_filename, epoch, iter, model_param, optimizer, val_loss, val_acc = get_best_checkpoint(task="reconstruction")

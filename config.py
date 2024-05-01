@@ -24,7 +24,7 @@ LOGS_PATH = os.path.join(".", "logs")
 DATA_PREP_PATH = os.path.join(".", "dataPreparation")
 
 ### Using the following datasets for training and testing ###
-TEST_DATASETS = ["pear-bartlett", "pear-bartlettnew", "avocado-organic", "avocado-organicnew", "banana-ecuador", "banana-guatamala"]
+TEST_DATASETS = ["pear-bosc", "pear-bartlett", "avocado-organic", "avocado-hass"]
 
 ### Dictionaries for the Classification labels ###
 FRUITS_DICT = OrderedDict([("Pear Bosc", 0), ("Pear Bartlett", 1), ("Avocado Organic", 2), ("Avocado Hass", 3)])
