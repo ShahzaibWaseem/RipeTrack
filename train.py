@@ -56,11 +56,15 @@ def main():
 	summary(model, (4, 512, 512), verbose=1)
 
 	if run_pretrained:
-		best_checkpoint_file, epoch, iter, state_dict, opt_state, val_loss, val_acc = get_best_checkpoint(task="reconstruction")
+		# checkpoint_filename, epoch, iter, state_dict, optimizer, val_loss, val_acc = get_best_checkpoint(task="reconstruction")
+		checkpoint_filename = "RT_MST++_shelflife_080 RGBNIR Final [ThinModel][L+A].pkl"
+		checkpoint = torch.load(os.path.join(MODEL_PATH, "reconstruction", "others", checkpoint_filename))
+		epoch, iter, state_dict, optimizer, val_loss, val_acc = checkpoint["epoch"], checkpoint["iter"], checkpoint["state_dict"],\
+			checkpoint["optimizer"], checkpoint["val_loss"], checkpoint["val_acc"]
 		model.load_state_dict(state_dict)
-		optimizer.load_state_dict(opt_state)
+		optimizer.load_state_dict(optimizer)
 		start_epoch = epoch
-		print("Loaded model from checkpoint: Filename: %s Epochs Run: %d, Validation Loss: %.9f" % (best_checkpoint_file, epoch, val_loss))
+		print("Loaded model from checkpoint: Filename: %s Epochs Run: %d, Validation Loss: %.9f" % (checkpoint_filename, epoch, val_loss))
 
 	if transfer_learning:
 		module_count = 0
