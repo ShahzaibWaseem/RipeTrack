@@ -14,29 +14,29 @@ import pandas as pd
 from utils import create_directory
 from config import OP_MOBILE_DATASET_DIR_NAME, TEST_ROOT_DATASET_DIR, APPLICATION_NAME, SHELF_LIFE_GROUND_TRUTH_FILENAME
 
-months = {"Aug": "08", "Sep": "09", "Mar": "03"}
+months = {"Aug": "08", "Sep": "09", "Mar": "03", "Apr": "04", "May": "05"}
 
 def main():
-	ground_truth_df = pd.read_csv(os.path.join("ShelfLifeGroundTruth(New).csv"))
+	ground_truth_df = pd.read_csv(os.path.join("ShelfLifeGroundTruth(NewNew).csv"))
 	check_filenames, days_processed = [], []
 	commonLighting = CommonLighting()
 
 	for index in ground_truth_df.index:
 		day = ground_truth_df["Day"][index]
 		hs_filenames = [int(filenames.split(",")[0]) for filenames in ground_truth_df.loc[ground_truth_df["Day"] == day]["HS Files"].values]
-		mobile_fids = [int(fids) for fids in ground_truth_df.loc[ground_truth_df["Day"] == day]["Mobile FID"].values]
+		mobile_fids = [int(fids) for fids in ground_truth_df.loc[ground_truth_df["Day"] == day]["Fruit ID"].values]
 		dataset_names = ["%s-%s" % (fruits.lower(), types.lower()) for fruits, types in ground_truth_df.loc[ground_truth_df["Day"] == day][["Fruit", "Type"]].values]
 		date_combined = ["%s" % (date) for date in ground_truth_df.loc[ground_truth_df["Day"] == day]["Date"].values]
 		date, month = date_combined[0].split("-")
 		date = date.zfill(2)
 		fruit_name_short = ground_truth_df["Fruit"][index]
 		fruit_name_short = fruit_name_short[0] + fruit_name_short[-1]
-		
-		mobile_dataset_input_directory = os.path.join("..", TEST_ROOT_DATASET_DIR, "mobile_%s" % APPLICATION_NAME, "OnePlus Data")
+
+		mobile_dataset_input_directory = os.path.join("..", TEST_ROOT_DATASET_DIR, "mobile_%s_newnew" % APPLICATION_NAME, "OnePlus Data")
 
 		# 1709672942769_RGB.jpg
-		mobile_rgbfilepath = glob(os.path.join(mobile_dataset_input_directory, "ShelfLife (Day %d)" % (day), "*_RGB.jpg"))
-		mobile_nirfilepath = glob(os.path.join(mobile_dataset_input_directory, "ShelfLife (Day %d)" % (day), "*_NIR.jpg"))
+		mobile_rgbfilepath = glob(os.path.join(mobile_dataset_input_directory, "ShelfLife (Day %d) Halogen" % (day), "*_RGB.jpg"))
+		mobile_nirfilepath = glob(os.path.join(mobile_dataset_input_directory, "ShelfLife (Day %d) Halogen" % (day), "*_NIR.jpg"))
 		check_number_of_files_per_day = len(mobile_rgbfilepath + mobile_nirfilepath)
 
 		# Checks if the files captured on Mobile have correct names. Soft Assertion/Warning
@@ -46,9 +46,9 @@ def main():
 			if (rgb_glob_len != 1 or nir_glob_len != 1):
 				print("\t\t\tCheck file numbers for Date %s-%s, Fruit Short Name: %s" % (date, month, fruit_name_short))
 				check_filenames.append("Date %s-%s, Fruit Short Name: %s" % (date, month, fruit_name_short))
-		
+
 			for dataset_name, mobile_fid, hs_filename, mobile_rgb, mobile_nir in zip(dataset_names, mobile_fids, hs_filenames, sorted(mobile_rgbfilepath), sorted(mobile_nirfilepath)):
-				mobile_dataset_output_directory = os.path.join("..", TEST_ROOT_DATASET_DIR, APPLICATION_NAME, "%s_204ch" % dataset_name, OP_MOBILE_DATASET_DIR_NAME)
+				mobile_dataset_output_directory = os.path.join("..", TEST_ROOT_DATASET_DIR, APPLICATION_NAME + "2", "%s_204ch" % dataset_name, OP_MOBILE_DATASET_DIR_NAME)
 				create_directory(mobile_dataset_output_directory)
 				rgb_image = imageio.imread(mobile_rgb)
 				nir_image = imageio.imread(mobile_nir)
@@ -56,8 +56,8 @@ def main():
 				rgb_image = cv2.resize(rgb_image, (600, 800))
 				nir_image = cv2.resize(nir_image, (600, 800))
 
-				rgb_image_aligned = fixedAlign(rgb_image, aligningFactorX=22, aligningFactorY=23, mobileImageXShape=480, mobileImageYShape=640)
-				nir_image_aligned = fixedAlign(nir_image, aligningFactorX=0, aligningFactorY=0, mobileImageXShape=480, mobileImageYShape=640)
+				rgb_image_aligned = fixedAlign(rgb_image, aligningFactorX=0, aligningFactorY=0, mobileImageXShape=480, mobileImageYShape=640)
+				nir_image_aligned = fixedAlign(nir_image, aligningFactorX=18, aligningFactorY=25, mobileImageXShape=480, mobileImageYShape=640)
 
 				viewImages(nir_image, rgb_image_aligned, nir_image_aligned, "Dataset: %s Date: %s-%s FID: %d" % (dataset_name, date, month, mobile_fid), dataset_name, hs_filename)
 
