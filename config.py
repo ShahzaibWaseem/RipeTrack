@@ -24,12 +24,12 @@ LOGS_PATH = os.path.join(".", "logs")
 DATA_PREP_PATH = os.path.join(".", "dataPreparation")
 
 ### Using the following datasets for training and testing ###
-TEST_DATASETS = ["pear-bosc", "pear-bartlett", "avocado-organic", "avocado-hass"]
+# TEST_DATASETS = ["pear-bosc", "pear-bartlett", "avocado-organic", "avocado-hass"]
+TEST_DATASETS = ["banana-ecuador", "banana-guatamala"]
 
 ### Dictionaries for the Classification labels ###
 FRUITS_DICT = OrderedDict([("Pear Bosc", 0), ("Pear Bartlett", 1), ("Avocado Organic", 2), ("Avocado Hass", 3)])
 LABELS_DICT = OrderedDict([("Unripe", 0), ("Ripe", 1), ("Expired", 2)])
-SUB_LABELS_DICT = OrderedDict([("Pretty Unripe", 0), ("Almost Ripe", 1), ("Ripening", 2), ("Perfectly Ripe", 3), ("Almost Expired", 4), ("Just Expired", 5), ("Rotten", 6)])
 TIME_LEFT_DICT = OrderedDict([("100%", 0), ("90%", 1), ("80%", 2), ("70%", 3), ("60%", 4), ("50%", 5), ("40%", 6), ("30%", 7), ("20%", 8), ("10%", 9), ("0%", 10)])
 
 ### Directories for the datasets ###
@@ -53,9 +53,10 @@ DEEP_WB_DIR = "deepWB"
 ### Parameters for the models and data loading ###
 APPEND_SECONDARY_RGB_CAM_INPUT = False
 PATCHED_INFERENCE = False
-run_pretrained = False					# if True, the model is loaded from the checkpoint_file
+run_pretrained = True					# if True, the model is loaded from the checkpoint_file
 use_mobile_dataset = False				# if True, the model is trained on the mobile dataset
-transfer_learning = False				# if True, the model will freeze all layers except the last MST block and conv layers
+transfer_learning = True				# if True, the model will freeze all layers except the last MST block and conv layers
+run_pretrained = True if transfer_learning else run_pretrained
 
 PREDEF_TRANSFORMS_FILENAME = "transforms{}.pth".format("_appended" if APPEND_SECONDARY_RGB_CAM_INPUT else "")
 
@@ -115,9 +116,9 @@ tflite_filename = "model.tflite"
 
 ### Formatting used for the visualizations ###
 plt_dict = {"mathtext.default": "regular", "axes.linewidth": 2}
-confusion_font_dict = {"family" : "serif", "weight": "normal", "size" : 24}
-text_font_dict = {"family": "serif", "size": 25}
-title_font_dict = {"fontname": "serif", "size": 25}
+confusion_font_dict = {"family" : "serif", "weight": "normal", "size" : 30}
+text_font_dict = {"family": "serif", "size": 30}
+title_font_dict = {"fontname": "serif", "size": 30}
 
 def sampler():
 	global BANDS, NUMBER_OF_BANDS, BANDS_WAVELENGTHS

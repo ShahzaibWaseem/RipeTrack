@@ -19,7 +19,7 @@ from config import GT_RGBN_DIR_NAME, GT_REMOVED_IR_CUTOFF_DIR_NAME, GT_AUXILIARY
 	MOBILE_DATASET_DIR_NAME, MOBILE_RECONSTRUCTED_HS_DIR_NAME, OP_MOBILE_DATASET_DIR_NAME, PATCHED_HS_DIR_NAME, TRAIN_VAL_TEST_SPLIT_DIR_NAME,\
 	PATCHED_INFERENCE, BANDS, BANDS_WAVELENGTHS, BAND_SPACING, RGBN_BANDS, NIR_BANDS, TEST_DATASETS, TRAIN_DATASET_DIR, TEST_ROOT_DATASET_DIR, DATA_PREP_PATH,\
 	TRAIN_DATASET_FILES, VALID_DATASET_FILES, APPEND_SECONDARY_RGB_CAM_INPUT, APPLICATION_NAME, IMAGE_SIZE, PATCH_SIZE, CLASSIFICATION_PATCH_SIZE, STRIDE,\
-	SHELF_LIFE_GROUND_TRUTH_FILENAME, GT_DATASET_CROPS_FILENAME, MOBILE_DATASET_CROPS_FILENAME, LABELS_DICT, SUB_LABELS_DICT, TIME_LEFT_DICT, FRUITS_DICT, EPS,\
+	SHELF_LIFE_GROUND_TRUTH_FILENAME, GT_DATASET_CROPS_FILENAME, MOBILE_DATASET_CROPS_FILENAME, LABELS_DICT, TIME_LEFT_DICT, FRUITS_DICT, EPS,\
 	batch_size, device, use_mobile_dataset
 
 class DatasetFromHdf5(Dataset):
@@ -103,7 +103,7 @@ class DatasetFromDirectoryReconstructionTrain(Dataset):
 					continue
 				image_width, image_height = IMAGE_SIZE, IMAGE_SIZE
 				hypercube = load_mat(os.path.join(directory, GT_HYPERCUBES_DIR_NAME, filename))
-				# nir_image = np.float32(hypercube[:, :, random.choices(NIR_BANDS)])
+				nir_image = np.float32(hypercube[:, :, random.choices(NIR_BANDS)])
 				hypercube = hypercube[:, :, BANDS]
 				# hypercube = hypercube[movePixels:image_width-movePixels, movePixels:image_height-movePixels, :] if not self.transforms == None else hypercube
 				hypercube = (hypercube - hypercube.min()) / (hypercube.max() - hypercube.min())
@@ -117,11 +117,11 @@ class DatasetFromDirectoryReconstructionTrain(Dataset):
 				rgb_image = (rgb_image - rgb_image.min()) / (rgb_image.max() - rgb_image.min())
 				# rgb_image = self.transforms(rgb_image) if not self.transforms == None else rgb_image
 
-				nir_filename = os.path.split(filename)[-1].replace(".mat", "_NIR.png")
-				nir_image = np.float32(imread(os.path.join(directory, GT_RGBN_DIR_NAME, nir_filename)))
+				# nir_filename = os.path.split(filename)[-1].replace(".mat", "_NIR.png")
+				# nir_image = np.float32(imread(os.path.join(directory, GT_RGBN_DIR_NAME, nir_filename)))
 				nir_image = (nir_image - nir_image.min()) / (nir_image.max() - nir_image.min())
 				# nir_image = nir_image[movePixels:image_width-movePixels, movePixels:image_height-movePixels] if not self.transforms == None else nir_image
-				nir_image = np.expand_dims(np.asarray(nir_image), -1)
+				# nir_image = np.expand_dims(np.asarray(nir_image), -1)
 
 				# image = rgb_image
 				image = np.dstack((rgb_image, nir_image))

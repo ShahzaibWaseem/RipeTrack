@@ -19,7 +19,7 @@ from models.classifier import ModelWithAttention
 
 from dataset import get_dataloaders_classification
 from utils import AverageMeter, create_directory, initialize_logger, save_checkpoint, get_best_checkpoint
-from config import VISUALIZATION_DIR_NAME, MODEL_PATH, TEST_DATASETS, BANDS, LABELS_DICT, SUB_LABELS_DICT, TIME_LEFT_DICT,\
+from config import VISUALIZATION_DIR_NAME, MODEL_PATH, TEST_DATASETS, BANDS, LABELS_DICT, TIME_LEFT_DICT,\
 	end_epoch, classicication_run_title, run_pretrained, confusion_font_dict
 
 import matplotlib
@@ -81,7 +81,7 @@ def main():
 	model = ModelWithAttention(input_channels=len(BANDS), num_classes=len(LABELS_DICT), num_subclasses=len(TIME_LEFT_DICT))
 	# model.bottleneck.register_forward_hook(get_activation("bottleneck"))
 	model = model.cuda()
-	summary(model=model, input_data=(68, 512, 512))
+	# summary(model=model, input_data=(68, 512, 512))
 
 	criterion_class = torch.nn.CrossEntropyLoss(weight=class_weights, reduction="mean")
 	criterion_subclass = torch.nn.CrossEntropyLoss()
@@ -327,39 +327,39 @@ def pr_auc_curve(y_true_labels, y_pred_labels_proba, y_test, labels_dict=LABELS_
 	# setup plot details
 	colors = ["r", "b", "g", "k", "r", "b", "g", "k", "r", "b", "g"]
 	linestyles = ["solid", "solid", "solid", "solid", "dashdot", "dashdot", "dashdot", "dashed", "dashed", "dashed", "dotted"]
-	_, ax = plt.subplots(figsize=(10, 10))
+	_, ax = plt.subplots(figsize=(13, 10))
 
 	f_scores = np.linspace(0.2, 0.8, num=4)
 	lines, labels = [], []
 	for f_score in f_scores:
 		x = np.linspace(0.01, 1)
 		y = f_score * x / (2 * x - f_score)
-		(l,) = plt.plot(x[y >= 0], y[y >= 0], color="gray", alpha=0.2)
-		plt.annotate("f1={0:0.1f}".format(f_score), xy=(0.9, y[45] + 0.02))
+		# (l,) = plt.plot(x[y >= 0], y[y >= 0], color="gray", alpha=0.2)
+		# plt.annotate("f1={0:0.1f}".format(f_score), xy=(0.9, y[45] + 0.02))
 
-	display = PrecisionRecallDisplay(recall=recall["micro"], precision=precision["micro"], average_precision=average_precision["micro"], prevalence_pos_label=Counter(y_test)[1] / len(y_test))
-	display.plot(ax=ax, name="μ-avg P-R", color="gold", linestyle=":", plot_chance_level=True, linewidth=2.5)
+	# display = PrecisionRecallDisplay(recall=recall["micro"], precision=precision["micro"], average_precision=average_precision["micro"], prevalence_pos_label=Counter(y_test)[1] / len(y_test))
+	# display.plot(ax=ax, name="μ-avg P-R", color="gold", linestyle=":", plot_chance_level=True, linewidth=2.5)
 	linestyles_idx, color_idx = 0, 0
 	for i in range(nclasses):
 		print("Class: {}\tPrecision: {}\tRecall: {}\tF1: {}\tThresholds: {}".format(list(labels_dict.keys())[i], precision[i], recall[i], fScores[i], thresholds[i]))
 		max_idx = np.argmax(fScores[i])
 		print("Best Threshold: {}\t FScore: {}\tPrecision: {}\tRecall: {}".format(thresholds[i][max_idx], fScores[i][max_idx], precision[i][max_idx], recall[i][max_idx]))
-		display = PrecisionRecallDisplay(recall=recall[i], precision=precision[i], average_precision=average_precision[i])
+		display = PrecisionRecallDisplay(recall=recall[i], precision=precision[i])
 		display.plot(ax=ax, name=f"{list(labels_dict.keys())[i]}", color=colors[color_idx], linestyle=linestyles[linestyles_idx], linewidth=2.5)
 		ax.scatter(recall[i][max_idx], precision[i][max_idx], marker="o", color=colors[color_idx], linewidth=4)
 		linestyles_idx = (linestyles_idx + 1) % len(linestyles)
 		color_idx = (color_idx + 1) % len(colors)
 
 	# add the legend for the iso-f1 curves
-	handles, labels = display.ax_.get_legend_handles_labels()
-	handles.extend([l])
-	labels.extend(["iso-f1 curves"])
+	# handles, labels = display.ax_.get_legend_handles_labels()
+	# handles.extend([l])
+	# labels.extend(["iso-f1 curves"])
 	# set the legend and the axes
 	ax.set_xlim([0.0, 1.0])
 	ax.set_ylim([0.0, 1.05])
-	ax.legend(handles=handles, labels=labels, loc="best")
-	ax.set_title("Precision-Recall curve for {}Classes".format("Sub-" if labels_dict == TIME_LEFT_DICT else ""))
-	plt.tight_layout()
+	# ax.legend(handles=handles, labels=labels, loc="best")
+	# ax.set_title("Precision-Recall curve for {}Classes".format("Sub-" if labels_dict == TIME_LEFT_DICT else ""))
+	plt.tight_layout(pad=0)
 	plt.savefig(os.path.join(VISUALIZATION_DIR_NAME, "pr_auc_curve_{}.pdf".format("subclasses" if labels_dict == TIME_LEFT_DICT else "classes")))
 	plt.show()
 	plt.close()
@@ -396,10 +396,10 @@ def get_ovr_roc(y_true_labels, y_pred_labels_proba, labels_dict=LABELS_DICT):
 
 	print(f"Macro-averaged One-vs-Rest ROC AUC score:\n{macro_roc_auc_ovr:.2f}")
 
-	fig, ax = plt.subplots(figsize=(10, 10))
+	fig, ax = plt.subplots(figsize=(13, 10))
 
-	plt.plot(fpr["micro"], tpr["micro"], label=f"μ-avg ROC (AUC = {roc_auc['micro']:.2f})", color="deeppink", linestyle=":", linewidth=4)
-	plt.plot(fpr["macro"], tpr["macro"], label=f"μ-avg ROC (AUC = {roc_auc['macro']:.2f})", color="navy", linestyle=":", linewidth=4)
+	# plt.plot(fpr["micro"], tpr["micro"], label=f"μ-avg ROC (AUC = {roc_auc['micro']:.2f})", color="deeppink", linestyle=":", linewidth=4)
+	# plt.plot(fpr["macro"], tpr["macro"], label=f"μ-avg ROC (AUC = {roc_auc['macro']:.2f})", color="navy", linestyle=":", linewidth=4)
 
 	linestyles_idx, color_idx = 0, 0
 	colors = ["r", "b", "g", "k", "r", "b", "g", "k", "r", "b", "g"]
@@ -407,16 +407,16 @@ def get_ovr_roc(y_true_labels, y_pred_labels_proba, labels_dict=LABELS_DICT):
 
 	for class_id in range(nclasses):
 		RocCurveDisplay.from_predictions(y_true_labels[:, class_id], y_pred_labels_proba[:, class_id],
-			name=f"{list(labels_dict.keys())[class_id]}", color=colors[color_idx], linestyle=linestyles[linestyles_idx], ax=ax, plot_chance_level=(class_id == (len(labels_dict) - 1)), linewidth=2.5)
+			name=f"{list(labels_dict.keys())[class_id]}", color=colors[color_idx], linestyle=linestyles[linestyles_idx], ax=ax, plot_chance_level=False, linewidth=2.5)
 		linestyles_idx = (linestyles_idx + 1) % len(linestyles)
 		color_idx = (color_idx + 1) % len(colors)
 
 	plt.axis("square")
 	plt.xlabel("False Positive Rate", **confusion_font_dict)
 	plt.ylabel("True Positive Rate", **confusion_font_dict)
-	plt.title("Receiver Operating Characteristic curve for {}Classes\n(One-vs-Rest)".format("Sub-" if labels_dict == TIME_LEFT_DICT else ""))
+	# plt.title("Receiver Operating Characteristic curve for {}Classes\n(One-vs-Rest)".format("Sub-" if labels_dict == TIME_LEFT_DICT else ""))
 	plt.legend()
-	plt.tight_layout()
+	plt.tight_layout(pad=0)
 	plt.savefig(os.path.join(VISUALIZATION_DIR_NAME, "roc_ovr_curve_{}.pdf".format("subclasses" if labels_dict == TIME_LEFT_DICT else "classes")))
 	plt.show()
 	plt.close()
@@ -434,20 +434,17 @@ def wrap_labels(ax, width, break_long_words=False):
 def classification_evaluate(y_true, y_pred, title, labels_dict=LABELS_DICT, acc=0.0):
 	confusion_mat = confusion_matrix(y_true, y_pred)
 	df_confusion_mat = pd.DataFrame(confusion_mat / np.sum(confusion_mat, axis=1)[:, None], index = [key for key, value in labels_dict.items()], columns = [key for key, value in labels_dict.items()])
-	fig, ax = plt.subplots(figsize=(10, 10))
-	sns.heatmap(df_confusion_mat, annot=True, fmt=".0%", cmap="Blues")
+	fig, ax = plt.subplots(figsize=(13, 10))
+	sns.heatmap(round(df_confusion_mat * 100, 0), annot=True, cmap="Blues" if labels_dict == LABELS_DICT else "Oranges")
 	# wrap_labels(ax, 10) if title.split("_")[-1] == "sublabels" else None
 	print("Title: {}, Accuracy: {}, {}".format(title, accuracy_score(y_true, y_pred), acc))
 	print(classification_report(y_true, y_pred, target_names=[key for key, value in labels_dict.items()]))
 	plt.tight_layout()
-	# print(df_confusion_mat)
+	print(df_confusion_mat)
 	plt.savefig(os.path.join(VISUALIZATION_DIR_NAME, "confusion_matrix_{}.pdf".format(title)))
 	plt.show()
 	plt.close()
-	confusion_mat = confusion_matrix(y_true, y_pred)
-	df_confusion_mat = pd.DataFrame(confusion_mat / np.sum(confusion_mat, axis=1)[:, None], index = [key for key, value in labels_dict.items()], columns = [key for key, value in labels_dict.items()])
-	fig, ax = plt.subplots(figsize=(10, 10))
-	print(df_confusion_mat)
+
 
 if __name__ == "__main__":
 	create_directory(os.path.join(VISUALIZATION_DIR_NAME))

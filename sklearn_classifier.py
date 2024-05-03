@@ -16,7 +16,7 @@ from sklearn.metrics import confusion_matrix, classification_report, accuracy_sc
 from sklearn.model_selection import KFold, StratifiedKFold, train_test_split, cross_validate
 
 from dataset import get_dataloaders_classification
-from config import VISUALIZATION_DIR_NAME, MODEL_PATH, LABELS_DICT, SUB_LABELS_DICT
+from config import VISUALIZATION_DIR_NAME, MODEL_PATH, LABELS_DICT, TIME_LEFT_DICT
 
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -126,10 +126,10 @@ def main2():
 	X_sublabels_train, X_sublabels_test, y_sublabels_train, y_sublabels_test = train_test_split(X, y_sublabels, test_size=0.15, random_state=42, shuffle=True)
 	print("SubLabels\tX Train: {}, X Test: {}, y Train: {}, y Test: {}".format(X_sublabels_train.shape, X_sublabels_test.shape, y_sublabels_train.shape, y_sublabels_test.shape))
 
-	# fit_model(mlp, X_sublabels_train, y_sublabels_train, X_sublabels_test, y_sublabels_test, "MLP", labels_dict=SUB_LABELS_DICT)
-	fit_model(logR, X_sublabels_train, y_sublabels_train, X_sublabels_test, y_sublabels_test, "LogisticRegression", labels_dict=SUB_LABELS_DICT)
-	fit_model(svm, X_sublabels_train, y_sublabels_train, X_sublabels_test, y_sublabels_test, "SVM", labels_dict=SUB_LABELS_DICT)
-	fit_model(sgd, X_sublabels_train, y_sublabels_train, X_sublabels_test, y_sublabels_test, "SGD", labels_dict=SUB_LABELS_DICT)
+	# fit_model(mlp, X_sublabels_train, y_sublabels_train, X_sublabels_test, y_sublabels_test, "MLP", labels_dict=TIME_LEFT_DICT)
+	fit_model(logR, X_sublabels_train, y_sublabels_train, X_sublabels_test, y_sublabels_test, "LogisticRegression", labels_dict=TIME_LEFT_DICT)
+	fit_model(svm, X_sublabels_train, y_sublabels_train, X_sublabels_test, y_sublabels_test, "SVM", labels_dict=TIME_LEFT_DICT)
+	fit_model(sgd, X_sublabels_train, y_sublabels_train, X_sublabels_test, y_sublabels_test, "SGD", labels_dict=TIME_LEFT_DICT)
 
 	# fit_model(mlp, X_train, y_train, X_test, y_test, "MLP")
 	# fit_model(logR, X_train, y_train, X_test, y_test, "LogisticRegression")

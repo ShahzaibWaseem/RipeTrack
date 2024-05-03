@@ -5,6 +5,7 @@ sys.path.append(os.path.join(".."))
 import time
 import json
 import numpy as np
+import pandas as pd
 from glob import glob
 
 from utils import load_mat, average
@@ -12,8 +13,8 @@ from loss import test_mrae, test_rrmse, test_msam, test_sid, test_psnr, test_ssi
 
 from utils import create_directory
 from config import GT_HYPERCUBES_DIR_NAME, RECONSTRUCTED_HS_DIR_NAME, GT_REMOVED_IR_CUTOFF_RECONSTRUCTED_DIR_NAME,\
-	TRAIN_VAL_TEST_SPLIT_DIR_NAME, VISUALIZATION_DIR_NAME, TEST_ROOT_DATASET_DIR, TEST_DATASETS, LOGS_PATH,\
-	EPS, BANDS, APPLICATION_NAME, text_font_dict, plt_dict
+	TRAIN_VAL_TEST_SPLIT_DIR_NAME, VISUALIZATION_DIR_NAME, TEST_ROOT_DATASET_DIR, DATA_PREP_PATH, GT_DATASET_CROPS_FILENAME,\
+	TEST_DATASETS, LOGS_PATH, EPS, BANDS, APPLICATION_NAME, text_font_dict, plt_dict
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -221,11 +222,11 @@ if __name__ == "__main__":
 	jsonFile.write(json.dumps(str(errors), indent=4))
 	jsonFile.close()
 
-	mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors = readDataFromFile(json_file=os.path.join("tempJSON","errors(RGBNto68)[ThinModel].json"))
+	# mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors = readDataFromFile(json_file=os.path.join("tempJSON","errors(RGBNto68)[ThinModel].json"))
 	plotBandErrors(mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors, filename=os.path.join("tempJSON", "errors(RGBNto68)[ThinModel].pdf"))
 
-	fruitname = "pear-bartlett"
-	processRawJSON("errorsRaw(RGBNto68)[ThinModel].json", "Pear Bartlett", fruitname)
+	# fruitname = "pear-bartlett"
+	# processRawJSON("errorsRaw(RGBNto68)[ThinModel].json", "Pear Bartlett", fruitname)
 	# processRawJSON("errorsRaw(RGBto68)[ThinModel].json", "Avocado Organic", fruitname)
 
 	# processRawJSON("errorsRaw(RGBto68)[IR Cutoff Removed].json", "RGB [IR CR]", fruitname)
@@ -247,4 +248,4 @@ if __name__ == "__main__":
 	# mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors = readDataFromFile(json_file=os.path.join("tempJSON","errors(RGBNto68)[Losses + NIR Augmentation].json"))
 	# combineAllArrays(mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors, "RGBN [L+A]")
 
-	plotAllBandErrors(filename="errors(%s).pdf" % ("ThinModel"))
+	# plotAllBandErrors(filename="errors(%s).pdf" % ("ThinModel"))

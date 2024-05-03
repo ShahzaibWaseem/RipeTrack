@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from config import BANDS, LABELS_DICT, SUB_LABELS_DICT
+from config import BANDS, LABELS_DICT, TIME_LEFT_DICT
 
 class FeatureExtractionBlock(nn.Module):
 	def __init__(self, input_channels):
@@ -21,7 +21,7 @@ class FeatureExtractionBlock(nn.Module):
 		return x
 
 class ModelWithAttention(nn.Module):
-	def __init__(self, input_channels=len(BANDS), num_classes=len(LABELS_DICT), num_subclasses=len(SUB_LABELS_DICT)):
+	def __init__(self, input_channels=len(BANDS), num_classes=len(LABELS_DICT), num_subclasses=len(TIME_LEFT_DICT)):
 		super().__init__()
 		self.ssattn = SSAttention(input_channels)
 		self.relu = nn.LeakyReLU(inplace=True)
@@ -103,7 +103,8 @@ class SpatialAttention(nn.Module):
 		return att
 
 	def agg_channel(self, x, pool = "max"):
-		b,c,h,w = x.size()
+		b, c, h, w = x.size()
+		# c = 68
 		x = x.view(b, c, h*w)
 		x = x.permute(0, 2, 1)
 		if pool == "max":
