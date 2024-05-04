@@ -59,10 +59,10 @@ def main():
 		# checkpoint_filename, epoch, iter, state_dict, optimizer, val_loss, val_acc = get_best_checkpoint(task="reconstruction")
 		checkpoint_filename = "RT_MST++_shelflife_080 RGBNIR Final [ThinModel][L+A].pkl"
 		checkpoint = torch.load(os.path.join(MODEL_PATH, "reconstruction", "others", checkpoint_filename))
-		epoch, iter, state_dict, optimizer, val_loss, val_acc = checkpoint["epoch"], checkpoint["iter"], checkpoint["state_dict"],\
+		epoch, iter, state_dict, opt_state, val_loss, val_acc = checkpoint["epoch"], checkpoint["iter"], checkpoint["state_dict"],\
 			checkpoint["optimizer"], checkpoint["val_loss"], checkpoint["val_acc"]
 		model.load_state_dict(state_dict)
-		optimizer.load_state_dict(optimizer)
+		optimizer.load_state_dict(opt_state)
 		start_epoch = epoch
 		print("Loaded model from checkpoint: Filename: %s Epochs Run: %d, Validation Loss: %.9f" % (checkpoint_filename, epoch, val_loss))
 
@@ -70,16 +70,16 @@ def main():
 		module_count = 0
 		for param in model.parameters():
 			param.requires_grad = False
-		for _, p in model.state_dict().items():
+		for module, p in model.state_dict().items():
 			module_count += 1
-			if module_count > 151:		# 151 layers onwards are parameters in the last MST block
+			if module_count > 2:		# 78 is the last convolutional layer
 				p.requires_grad = True
-			# print(_, p.requires_grad)
-		# print("Total number of modules: ", module_count)
+			print("%2d %r %s" % (module_count, p.requires_grad, module))
+		print("Total number of modules: ", module_count)
 
+	start_epoch = 0
 	model.to(device)
 	# optimizer_to(optimizer, device)
-
 	print("\n" + model_run_title)
 	logger.info(model_run_title)
 
@@ -135,6 +135,7 @@ def train(train_data_loader, model, criterions, optimizer, iteration, scheduler)
 		loss_sam = torch.mul(criterion_sam(output, labels), 0.1) if "SAM" in lossfunctions_considered else torch.tensor(0)
 		loss_sid = torch.mul(criterion_sid(output, labels), 0.0001) if "SID" in lossfunctions_considered else torch.tensor(0)
 		loss = loss_mrae + loss_sam + loss_sid
+		loss = torch.autograd.Variable(loss, requires_grad = True)
 
 		loss.backward()
 
