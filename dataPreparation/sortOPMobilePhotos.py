@@ -17,13 +17,16 @@ from config import OP_MOBILE_DATASET_DIR_NAME, TEST_ROOT_DATASET_DIR, APPLICATIO
 months = {"Aug": "08", "Sep": "09", "Mar": "03", "Apr": "04", "May": "05"}
 
 def main():
-	ground_truth_df = pd.read_csv(os.path.join("ShelfLifeGroundTruth(NewNew).csv"))
+	ground_truth_df = pd.read_csv(os.path.join("ShelfLifeGroundTruthMobile(NewNew).csv"))
 	check_filenames, days_processed = [], []
 	commonLighting = CommonLighting()
+	lighting = "Mixed"
+	lighting_s = lighting[0]
 
 	for index in ground_truth_df.index:
 		day = ground_truth_df["Day"][index]
-		hs_filenames = [int(filenames.split(",")[0]) for filenames in ground_truth_df.loc[ground_truth_df["Day"] == day]["HS Files"].values]
+		# hs_filenames = [int(filenames.split(",")[0]) for filenames in ground_truth_df.loc[ground_truth_df["Day"] == day]["HS Files"].values]		# For GT dataset[2 HS records, 1 OP image]
+		hs_filenames = [filenames for filenames in ground_truth_df.loc[ground_truth_df["Day"] == day]["HS Files"].values]							# For Mobile dataset[1 record, 1 OP image]
 		mobile_fids = [int(fids) for fids in ground_truth_df.loc[ground_truth_df["Day"] == day]["Fruit ID"].values]
 		dataset_names = ["%s-%s" % (fruits.lower(), types.lower()) for fruits, types in ground_truth_df.loc[ground_truth_df["Day"] == day][["Fruit", "Type"]].values]
 		date_combined = ["%s" % (date) for date in ground_truth_df.loc[ground_truth_df["Day"] == day]["Date"].values]
@@ -35,8 +38,8 @@ def main():
 		mobile_dataset_input_directory = os.path.join("..", TEST_ROOT_DATASET_DIR, "mobile_%s_newnew" % APPLICATION_NAME, "OnePlus Data")
 
 		# 1709672942769_RGB.jpg
-		mobile_rgbfilepath = glob(os.path.join(mobile_dataset_input_directory, "ShelfLife (Day %d) Halogen" % (day), "*_RGB.jpg"))
-		mobile_nirfilepath = glob(os.path.join(mobile_dataset_input_directory, "ShelfLife (Day %d) Halogen" % (day), "*_NIR.jpg"))
+		mobile_rgbfilepath = glob(os.path.join(mobile_dataset_input_directory, "ShelfLife (Day %d) %s" % (day, lighting), "*_RGB.jpg"))
+		mobile_nirfilepath = glob(os.path.join(mobile_dataset_input_directory, "ShelfLife (Day %d) %s" % (day, lighting), "*_NIR.jpg"))
 		check_number_of_files_per_day = len(mobile_rgbfilepath + mobile_nirfilepath)
 
 		# Checks if the files captured on Mobile have correct names. Soft Assertion/Warning
@@ -61,14 +64,14 @@ def main():
 
 				viewImages(nir_image, rgb_image_aligned, nir_image_aligned, "Dataset: %s Date: %s-%s FID: %d" % (dataset_name, date, month, mobile_fid), dataset_name, hs_filename)
 
-				print("Copied %s -> %s [Glob Len: %d]" % (os.path.split(mobile_rgb)[-1], "%s_RGB.png" % hs_filename, rgb_glob_len), "\tNumber of Files per day: %d\t" % check_number_of_files_per_day, "Fruit Name: %s\t" % dataset_name, "FID: %s\t" % mobile_fid, "Date: %s-%s" % (date, month))
-				print("Copied %s -> %s [Glob Len: %d]" % (os.path.split(mobile_nir)[-1], "%s_NIR.png" % hs_filename, nir_glob_len), "\tNumber of Files per day: %d\t" % check_number_of_files_per_day, "Fruit Name: %s\t" % dataset_name, "FID: %s\t" % mobile_fid, "Date: %s-%s" % (date, month))
+				print("Copied %s -> %s [Glob Len: %d]" % (os.path.split(mobile_rgb)[-1], "%s_RGB_%s.png" % (hs_filename, lighting_s), rgb_glob_len), "\tNumber of Files per day: %d\t" % check_number_of_files_per_day, "Fruit Name: %s\t" % dataset_name, "FID: %s\t" % mobile_fid, "Date: %s-%s" % (date, month))
+				print("Copied %s -> %s [Glob Len: %d]" % (os.path.split(mobile_nir)[-1], "%s_NIR_%s.png" % (hs_filename, lighting_s), nir_glob_len), "\tNumber of Files per day: %d\t" % check_number_of_files_per_day, "Fruit Name: %s\t" % dataset_name, "FID: %s\t" % mobile_fid, "Date: %s-%s" % (date, month))
 				nir_image = np.expand_dims(np.asarray(nir_image[:,:,0]), axis=-1)
 				daylight = commonLighting(rgb_image_aligned)
 
-				imageio.imwrite(os.path.join(mobile_dataset_output_directory, "%s_RGB.png" % hs_filename), rgb_image_aligned)
-				imageio.imwrite(os.path.join(mobile_dataset_output_directory, "%s_RGB-D.png" % hs_filename), daylight)
-				imageio.imwrite(os.path.join(mobile_dataset_output_directory, "%s_NIR.png" % hs_filename), nir_image_aligned)
+				imageio.imwrite(os.path.join(mobile_dataset_output_directory, "%s_RGB_%s.png" % (hs_filename, lighting_s)), rgb_image_aligned)
+				imageio.imwrite(os.path.join(mobile_dataset_output_directory, "%s_RGB-D_%s.png" % (hs_filename, lighting_s)), daylight)
+				imageio.imwrite(os.path.join(mobile_dataset_output_directory, "%s_NIR_%s.png" % (hs_filename, lighting_s)), nir_image_aligned)
 		days_processed.append(int(day))
 
 if __name__ == "__main__":
