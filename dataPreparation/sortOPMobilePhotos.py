@@ -17,7 +17,7 @@ from config import OP_MOBILE_DATASET_DIR_NAME, TEST_ROOT_DATASET_DIR, APPLICATIO
 months = {"Aug": "08", "Sep": "09", "Mar": "03", "Apr": "04", "May": "05"}
 
 def main():
-	ground_truth_df = pd.read_csv(os.path.join("ShelfLifeGroundTruthMobile(NewNew).csv"))
+	ground_truth_df = pd.read_csv(os.path.join(SHELF_LIFE_GROUND_TRUTH_FILENAME))
 	check_filenames, days_processed = [], []
 	commonLighting = CommonLighting()
 	lighting = "Mixed"
@@ -35,7 +35,7 @@ def main():
 		fruit_name_short = ground_truth_df["Fruit"][index]
 		fruit_name_short = fruit_name_short[0] + fruit_name_short[-1]
 
-		mobile_dataset_input_directory = os.path.join("..", TEST_ROOT_DATASET_DIR, "mobile_%s_newnew" % APPLICATION_NAME, "OnePlus Data")
+		mobile_dataset_input_directory = os.path.join("..", TEST_ROOT_DATASET_DIR, "mobile_%s" % APPLICATION_NAME, "OnePlus Data")
 
 		# 1709672942769_RGB.jpg
 		mobile_rgbfilepath = glob(os.path.join(mobile_dataset_input_directory, "ShelfLife (Day %d) %s" % (day, lighting), "*_RGB.jpg"))
@@ -51,7 +51,7 @@ def main():
 				check_filenames.append("Date %s-%s, Fruit Short Name: %s" % (date, month, fruit_name_short))
 
 			for dataset_name, mobile_fid, hs_filename, mobile_rgb, mobile_nir in zip(dataset_names, mobile_fids, hs_filenames, sorted(mobile_rgbfilepath), sorted(mobile_nirfilepath)):
-				mobile_dataset_output_directory = os.path.join("..", TEST_ROOT_DATASET_DIR, APPLICATION_NAME + "2", "%s_204ch" % dataset_name, OP_MOBILE_DATASET_DIR_NAME)
+				mobile_dataset_output_directory = os.path.join("..", TEST_ROOT_DATASET_DIR, APPLICATION_NAME, "%s_204ch" % dataset_name, OP_MOBILE_DATASET_DIR_NAME)
 				create_directory(mobile_dataset_output_directory)
 				rgb_image = imageio.imread(mobile_rgb)
 				nir_image = imageio.imread(mobile_nir)

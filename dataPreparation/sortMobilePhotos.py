@@ -38,13 +38,12 @@ def viewImages(rgb_image, nir_image, rgb_image_aligned, plot_title, dataset_name
 	ax3.imshow(rgb_image_aligned)
 	merged_image = Image.blend(rgb_image_for, nir_image_for, 0.5)
 	ax4.imshow(merged_image)
-	create_directory(os.path.join("..", TEST_ROOT_DATASET_DIR, APPLICATION_NAME, "%s_204ch" % dataset_name, VISUALIZATION_DIR_NAME))
-	plt.savefig(os.path.join("..", TEST_ROOT_DATASET_DIR, APPLICATION_NAME, "%s_204ch" % dataset_name, VISUALIZATION_DIR_NAME, "%s.png" % plot_filename))
+	create_directory(os.path.join("..", TEST_ROOT_DATASET_DIR, APPLICATION_NAME + "2", "%s_204ch" % dataset_name, VISUALIZATION_DIR_NAME))
+	plt.savefig(os.path.join("..", TEST_ROOT_DATASET_DIR, APPLICATION_NAME + "2", "%s_204ch" % dataset_name, VISUALIZATION_DIR_NAME, "%s.png" % plot_filename))
 	plt.close()
 
 def main():
-	ground_truth_df = pd.read_csv(os.path.join("ShelfLifeGroundTruth(NewNew).csv"))
-	# ground_truth_df = pd.read_csv(os.path.join(SHELF_LIFE_GROUND_TRUTH_FILENAME))
+	ground_truth_df = pd.read_csv(os.path.join(SHELF_LIFE_GROUND_TRUTH_FILENAME))
 	check_filenames = []
 	commonLighting = CommonLighting()
 
@@ -57,8 +56,8 @@ def main():
 		fruit_name_short = ground_truth_df["Fruit"][index]
 		fruit_name_short = fruit_name_short[0] + fruit_name_short[-1]
 
-		mobile_dataset_input_directory = os.path.join("..", TEST_ROOT_DATASET_DIR, "mobile_%s" % APPLICATION_NAME, "rawImages")
-		mobile_dataset_output_directory = os.path.join("..", TEST_ROOT_DATASET_DIR, APPLICATION_NAME, "%s_204ch" % dataset_name, MOBILE_DATASET_DIR_NAME)
+		mobile_dataset_input_directory = os.path.join("..", TEST_ROOT_DATASET_DIR, "mobile_%s_newnew" % APPLICATION_NAME, "rawImages")
+		mobile_dataset_output_directory = os.path.join("..", TEST_ROOT_DATASET_DIR, APPLICATION_NAME+"2", "%s_204ch" % dataset_name, MOBILE_DATASET_DIR_NAME)
 
 		create_directory(mobile_dataset_output_directory)
 
