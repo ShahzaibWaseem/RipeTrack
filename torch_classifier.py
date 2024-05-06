@@ -48,14 +48,18 @@ def get_label_weights(train_data_loader, val_data_loader):
 	return class_weights
 
 def test_model_only():
-	best_checkpoint_file, epoch, iter, state_dict, optimizer, val_loss, (val_acc_labels, val_acc_sublabels) = get_best_checkpoint(task="classification")
-	test_data_loader, _ = get_dataloaders_classification(trainset_size=1.0)
+	# checkpoint_filename, epoch, iter, state_dict, optimizer, val_loss, (val_acc_labels, val_acc_sublabels) = get_best_checkpoint(task="classification")
+	checkpoint_filename = "RT_ModelWithAttention_shelflife_030 transferLearning on new Fruits [Reconstructed].pkl"
+	checkpoint = torch.load(os.path.join(MODEL_PATH, "classification", "others", checkpoint_filename))
+	epoch, iter, state_dict, opt_state, val_loss, (val_acc_labels, val_acc_sublabels) = checkpoint["epoch"], checkpoint["iter"], checkpoint["state_dict"],\
+		checkpoint["optimizer"], checkpoint["val_loss"], checkpoint["val_acc"]
 	model = ModelWithAttention(input_channels=len(BANDS), num_classes=len(LABELS_DICT), num_subclasses=len(TIME_LEFT_DICT))
 	model = model.cuda()
 	model.eval()
 	summary(model=model, input_data=(68, 512, 512))
 	criterion = (torch.nn.CrossEntropyLoss(reduction="mean"), torch.nn.CrossEntropyLoss(reduction="mean"))
 	model.load_state_dict(state_dict)
+	test_data_loader, _ = get_dataloaders_classification(trainset_size=1.0)
 	test_loss, test_acc = test(test_data_loader, model, criterion)
 	print("Test Loss: {}, Test Accuracy: {}".format(test_loss, test_acc))
 
@@ -92,10 +96,19 @@ def main():
 	epoch, iteration, best_epoch, best_val_loss, best_val_acc_labels, best_val_acc_sublabels = 0, 0, 0, 0, 0, 0
 
 	if run_pretrained:
-		best_checkpoint_file, epoch, iteration, state_dict, optimizer, val_loss, (val_acc_labels, val_acc_sublabels) = get_best_checkpoint(task="classification")
+		# checkpoint_filename, epoch, iteration, state_dict, optimizer, val_loss, (val_acc_labels, val_acc_sublabels) = get_best_checkpoint(task="classification")
+		checkpoint_filename = "RT_ModelWithAttention_shelflife_100 final trained on 4 fruits.pkl"
+		checkpoint = torch.load(os.path.join(MODEL_PATH, "classification", "others", checkpoint_filename))
+		epoch, iter, state_dict, opt_state, val_loss, (val_acc_labels, val_acc_sublabels) = checkpoint["epoch"], checkpoint["iter"], checkpoint["state_dict"],\
+			checkpoint["optimizer"], checkpoint["val_loss"], checkpoint["val_acc"]
 		model.load_state_dict(state_dict)
+		optimizer.load_state_dict(opt_state)
+		start_epoch = epoch
+		print("Loaded model from checkpoint: Filename: %s Epochs Run: %d, Validation Loss: %.9f" % (checkpoint_filename, epoch, val_loss))
 
-	for epoch in range(1, end_epoch):
+	start_epoch = 1
+
+	for epoch in range(start_epoch, end_epoch):
 		start_time = time.time()
 		(train_loss, train_loss_labels, train_loss_sublabels), (train_acc_labels, train_acc_sublabels), iteration = train(train_data_loader, model, criterion, iteration, optimizer)
 		(val_loss, val_loss_labels, val_loss_sublabels), (val_acc_labels, val_acc_sublabels) = validate(valid_data_loader, model, criterion)
@@ -269,11 +282,6 @@ def test(test_data_loader, model, criterion):
 		losses_class.update(loss_class.item())
 		losses_subclass.update(loss_subclass.item())
 
-	pear_bosc_indices = find_indices(fruit_labels, "Pear Bosc")
-	pear_bartlett_indices = find_indices(fruit_labels, "Pear Bartlett")
-	avo_hass_indices = find_indices(fruit_labels, "Avocado Hass")
-	avo_organic_indices = find_indices(fruit_labels, "Avocado Organic")
-
 	y_true_labels = np.asarray(y_true_labels)
 	y_pred_labels = np.asarray(y_pred_labels)
 	y_true_sublabels = np.asarray(y_true_sublabels)
@@ -432,22 +440,22 @@ def wrap_labels(ax, width, break_long_words=False):
 	ax.tick_params(axis="y", which="major", pad=15)
 
 def classification_evaluate(y_true, y_pred, title, labels_dict=LABELS_DICT, acc=0.0):
-	confusion_mat = confusion_matrix(y_true, y_pred)
-	df_confusion_mat = pd.DataFrame(confusion_mat / np.sum(confusion_mat, axis=1)[:, None], index = [key for key, value in labels_dict.items()], columns = [key for key, value in labels_dict.items()])
-	fig, ax = plt.subplots(figsize=(13, 10))
-	sns.heatmap(round(df_confusion_mat * 100, 0), annot=True, cmap="Blues" if labels_dict == LABELS_DICT else "Oranges")
+	# confusion_mat = confusion_matrix(y_true, y_pred)
+	# df_confusion_mat = pd.DataFrame(confusion_mat / np.sum(confusion_mat, axis=1)[:, None], index = [key for key, value in labels_dict.items()], columns = [key for key, value in labels_dict.items()])
+	# fig, ax = plt.subplots(figsize=(13, 10))
+	# sns.heatmap(round(df_confusion_mat * 100, 0), annot=True, cmap="Blues" if labels_dict == LABELS_DICT else "Oranges")
 	# wrap_labels(ax, 10) if title.split("_")[-1] == "sublabels" else None
 	print("Title: {}, Accuracy: {}, {}".format(title, accuracy_score(y_true, y_pred), acc))
-	print(classification_report(y_true, y_pred, target_names=[key for key, value in labels_dict.items()]))
-	plt.tight_layout()
-	print(df_confusion_mat)
-	plt.savefig(os.path.join(VISUALIZATION_DIR_NAME, "confusion_matrix_{}.pdf".format(title)))
-	plt.show()
-	plt.close()
+	# print(classification_report(y_true, y_pred, target_names=[key for key, value in labels_dict.items()]))
+	# plt.tight_layout()
+	# print(df_confusion_mat)
+	# plt.savefig(os.path.join(VISUALIZATION_DIR_NAME, "confusion_matrix_{}.pdf".format(title)))
+	# plt.show()
+	# plt.close()
 
 
 if __name__ == "__main__":
 	create_directory(os.path.join(VISUALIZATION_DIR_NAME))
 	create_directory(os.path.join(MODEL_PATH, "classification"))
-	main()
-	# test_model_only()
+	# main()
+	test_model_only()
