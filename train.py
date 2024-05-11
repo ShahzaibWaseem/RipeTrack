@@ -26,7 +26,7 @@ disable_tqdm = args.disable_tqdm
 
 def main():
 	torch.backends.cudnn.benchmark = True
-	train_data_loader, valid_data_loader = get_dataloaders_reconstruction()
+	train_data_loader, valid_data_loader = get_dataloaders_reconstruction(transfer_learning=transfer_learning)
 	whole_dataset_size = len(train_data_loader.dataset) + len(valid_data_loader.dataset)
 	# train_data_loader, valid_data_loader = train_data_loader.to(device), valid_data_loader.to(device)
 
