@@ -4,11 +4,12 @@ sys.path.append(os.path.join(".."))
 
 import numpy as np
 from glob import glob
+from imageio import imread
 from skimage import exposure
 
 from loss import test_psnr
 from utils import load_mat, create_directory
-from config import GT_HYPERCUBES_DIR_NAME, RECONSTRUCTED_HS_DIR_NAME, VISUALIZATION_DIR_NAME,\
+from config import GT_HYPERCUBES_DIR_NAME, RECONSTRUCTED_HS_DIR_NAME, GT_RGBN_DIR_NAME, VISUALIZATION_DIR_NAME,\
 	TEST_DATASETS, TEST_ROOT_DATASET_DIR, BANDS, VIEW_BANDS, ACTUAL_BANDS, APPLICATION_NAME, IMAGE_SIZE,\
 	EPS, text_font_dict, title_font_dict, plt_dict
 
@@ -16,27 +17,39 @@ import matplotlib
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
-def main():
-	for dataset in TEST_DATASETS:
-		directory = os.path.join(TEST_ROOT_DATASET_DIR, APPLICATION_NAME, "{}_204ch".format(dataset), GT_HYPERCUBES_DIR_NAME)
-		inf_directory = os.path.join(directory, RECONSTRUCTED_HS_DIR_NAME)
-		print(" " * 19, "{0:62}".format(directory), RECONSTRUCTED_HS_DIR_NAME)
-		create_directory(os.path.join(directory, VISUALIZATION_DIR_NAME))
+hypercubes_considered = ["512.mat", "887.mat"]
+crops = {"887.mat": [50, 350, 100, 400], "512.mat": [0, 300, 100, 400]}
 
-		for filename in glob(os.path.join(directory, "664.mat")):
+def main():
+	for dataset in ["pear-bartlett", "avocado-organic"]:
+		directory = os.path.join(TEST_ROOT_DATASET_DIR, APPLICATION_NAME, "{}_204ch".format(dataset), GT_HYPERCUBES_DIR_NAME)
+		inf_directory = os.path.join(os.path.dirname(directory), RECONSTRUCTED_HS_DIR_NAME)
+		print(" " * 19, "{0:62}".format(directory), RECONSTRUCTED_HS_DIR_NAME)
+		create_directory(os.path.join(os.path.dirname(directory), VISUALIZATION_DIR_NAME))
+		hypercube_filename = hypercubes_considered[1]
+
+		for filename in glob(os.path.join(directory, hypercube_filename)):
+			hypercube_number = os.path.split(filename)[-1].split(".")[0]
+			xmin, xmax, ymin, ymax = crops[hypercube_number + ".mat"]
+
 			inf_hypercube = load_mat(os.path.join(inf_directory, os.path.split(filename)[-1]))
+			inf_hypercube = inf_hypercube[xmin:xmax, ymin:ymax, :]
 
 			gt_hypercube = load_mat(filename)
 			gt_hypercube = gt_hypercube[:, :, BANDS]
 			gt_hypercube = (gt_hypercube - gt_hypercube.min()) / (gt_hypercube.max() - gt_hypercube.min())
+			gt_hypercube = gt_hypercube[xmin:xmax, ymin:ymax, :]
 			gt_hypercube = gt_hypercube + EPS
 
-			fig, axs = plt.subplots(nrows=3, ncols=len(VIEW_BANDS), figsize=(15, 11))
+			rgb_image = imread(os.path.join(os.path.dirname(directory), GT_RGBN_DIR_NAME, hypercube_number + "_RGB.png"))
+			rgb_image = rgb_image[xmin:xmax, ymin:ymax, :]
+
+			fig, axs = plt.subplots(nrows=3, ncols=len(VIEW_BANDS), figsize=(15, 8))
 
 			for j in range(axs.shape[1]):
 				# Reconstructed Hypercube (gamma adjustment)
-				inf_band = inf_hypercube[:, :, VIEW_BANDS[j]].reshape(IMAGE_SIZE, IMAGE_SIZE)
-				gt_band = gt_hypercube[:, :, VIEW_BANDS[j]].reshape(IMAGE_SIZE, IMAGE_SIZE)
+				inf_band = inf_hypercube[:, :, VIEW_BANDS[j]]
+				gt_band = gt_hypercube[:, :, VIEW_BANDS[j]]
 
 				# Difference b/w the two hypercubes
 				diff_band = np.abs(gt_band - inf_band)
@@ -57,7 +70,7 @@ def main():
 				axs[2, j].imshow(diff_band, interpolation="nearest", cmap="hot_r")
 				axs[2, j].set_xticks([])
 				axs[2, j].set_yticks([])
-				axs[2, j].set_xlabel("PSNR=%.2f" % psnr, **text_font_dict)
+				# axs[2, j].set_xlabel("PSNR=%.2f" % psnr, **text_font_dict)
 
 			# inserting colorbar showing the range of errors
 			norm = matplotlib.colors.Normalize(0, 1)
@@ -69,12 +82,12 @@ def main():
 			axs[0, len(VIEW_BANDS) - 1].yaxis.set_label_position("right")
 			axs[0, len(VIEW_BANDS) - 1].set_ylabel("RipeTrack", loc="center", rotation=-90, labelpad=30, **text_font_dict)
 			axs[1, len(VIEW_BANDS) - 1].yaxis.set_label_position("right")
-			axs[1, len(VIEW_BANDS) - 1].set_ylabel("Ground Truth", loc="center", rotation=-90, labelpad=30, **text_font_dict)
+			axs[1, len(VIEW_BANDS) - 1].set_ylabel("GT", loc="center", rotation=-90, labelpad=30, **text_font_dict)
 			axs[2, len(VIEW_BANDS) - 1].yaxis.set_label_position("right")
 			# axs[2, len(VIEW_BANDS) - 1].set_ylabel("Error Map", loc="center", rotation=-90, labelpad=30, **text_font_dict)
 
-			fig.tight_layout(pad=1, h_pad=1, w_pad=-5)
-			fig.savefig(os.path.join(directory, VISUALIZATION_DIR_NAME, "%s.pdf" % (os.path.split(filename)[-1].split(".")[0])), dpi=fig.dpi*2, bbox_inches="tight")
+			fig.tight_layout(pad=1)
+			fig.savefig(os.path.join(VISUALIZATION_DIR_NAME, "visualResultsAO.pdf"), dpi=fig.dpi*2, bbox_inches="tight")
 			plt.show()
 
 if __name__ == "__main__":
