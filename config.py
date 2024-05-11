@@ -8,6 +8,7 @@ EPS = 0.0001
 
 GT_DATASET_CROPS_FILENAME = "gtShelfLifeCrops.csv"
 MOBILE_DATASET_CROPS_FILENAME = "mobileShelfLifeCrops.csv"
+MOBILE_OP_DATASET_CROPS_FILENAME = "mobileOPShelfLifeCrops.csv"
 SHELF_LIFE_GROUND_TRUTH_FILENAME = "ShelfLifeGroundTruth.csv"
 
 ### Datagenerator Directories ###
@@ -24,8 +25,8 @@ LOGS_PATH = os.path.join(".", "logs")
 DATA_PREP_PATH = os.path.join(".", "dataPreparation")
 
 ### Using the following datasets for training and testing ###
-# TEST_DATASETS = ["pear-bosc", "pear-bartlett", "avocado-organic", "avocado-hass"]
-TEST_DATASETS = ["banana-ecuador", "banana-guatamala"]
+TEST_DATASETS = ["pear-bosc", "pear-bartlett", "avocado-organic", "avocado-hass"]
+# TEST_DATASETS = ["mango-ataulfo", "banana-ecuador", "banana-guatamala", "nectarine-chile"]
 
 ### Dictionaries for the Classification labels ###
 FRUITS_DICT = OrderedDict([("Pear Bosc", 0), ("Pear Bartlett", 1), ("Avocado Organic", 2), ("Avocado Hass", 3)])
@@ -45,6 +46,7 @@ MOBILE_RECONSTRUCTED_HS_DIR_NAME = "mobile-reconstructed"
 OP_MOBILE_RECONSTRUCTED_HS_DIR_NAME = "op-mobile-reconstructed"
 RAW_MOBILE_RECONSTRUCTED_HS_DIR_NAME = "raw-mobile-reconstructed"
 PATCHED_HS_DIR_NAME = "patched"
+DISTANCE_DIR_NAME = "distance"
 VISUALIZATION_DIR_NAME = "visualizations"
 MOBILE_MODELS_DIR_NAME = "mobileModels"
 TRAIN_VAL_TEST_SPLIT_DIR_NAME = "split"
@@ -53,10 +55,10 @@ DEEP_WB_DIR = "deepWB"
 ### Parameters for the models and data loading ###
 APPEND_SECONDARY_RGB_CAM_INPUT = False
 PATCHED_INFERENCE = False
-run_pretrained = True					# if True, the model is loaded from the checkpoint_file
+run_pretrained = False					# if True, the model is loaded from the checkpoint_file
 use_mobile_dataset = False				# if True, the model is trained on the mobile dataset
-transfer_learning = True				# if True, the model will freeze all layers except the last MST block and conv layers
-run_pretrained = True if transfer_learning else run_pretrained
+transfer_learning = False				# if True, the model will freeze all layers except the last MST block and conv layers
+# run_pretrained = True if transfer_learning else run_pretrained
 
 PREDEF_TRANSFORMS_FILENAME = "transforms{}.pth".format("_appended" if APPEND_SECONDARY_RGB_CAM_INPUT else "")
 
@@ -89,14 +91,17 @@ lossfunctions_considered = ["MRAE", "SAM", "SID"]			# Select which loss function
 APPLICATION_NAME = "shelflife"
 MODEL_NAME = "MST++"
 CLASSIFIER_MODEL_NAME = "ModelWithAttention"
-ILLUMINATIONS = ["h"]
+ILLUMINATIONS = ["H", "L", "C", "M"]
 
-if "h" in ILLUMINATIONS and "cfl_led" in ILLUMINATIONS:
-	illumination_string = "halogen + CFL-LED"
-elif "h" in ILLUMINATIONS:
-	illumination_string = "halogen"
-elif "cfl_led" in ILLUMINATIONS:
-	illumination_string = "CFL-LED"
+illumination_string = ""
+if "H" in ILLUMINATIONS:
+	illumination_string += "Halogen"
+if "L" in ILLUMINATIONS:
+	illumination_string += " + LED"
+if "C" in ILLUMINATIONS:
+	illumination_string += " + CFL"
+if "M" in ILLUMINATIONS:
+	illumination_string += " + Mixed"
 
 model_run_title = "Model: %s\tDataset: %s\tIllumination: %s\tLosses: %s\tFull Image or Patches: %s\n" \
 	% (MODEL_NAME, APPLICATION_NAME, illumination_string, lossfunctions_considered, "Full Image" if PATCH_SIZE == IMAGE_SIZE else "Patches")
@@ -116,9 +121,9 @@ tflite_filename = "model.tflite"
 
 ### Formatting used for the visualizations ###
 plt_dict = {"mathtext.default": "regular", "axes.linewidth": 2}
-confusion_font_dict = {"family" : "serif", "weight": "normal", "size" : 30}
+confusion_font_dict = {"family" : "serif", "weight": "normal", "size" : 45}
 text_font_dict = {"family": "serif", "size": 30}
-title_font_dict = {"fontname": "serif", "size": 30}
+title_font_dict = {"fontname": "serif", "size": 40}
 
 def sampler():
 	global BANDS, NUMBER_OF_BANDS, BANDS_WAVELENGTHS
@@ -126,7 +131,7 @@ def sampler():
 
 	for band_segment in range(len(BANDS)):
 		sampled_bands.append(list(BANDS[band_segment]))
-	
+
 	BANDS = [band for sampled_list in sampled_bands for band in sampled_list]
 	NUMBER_OF_BANDS = len(BANDS)
 	BANDS_WAVELENGTHS = [int(round(BANDS_WAVELENGTHS[band])) for band in BANDS]
@@ -137,5 +142,5 @@ sampler()
 BANDS = [band for band in range(len(BANDS))] if use_mobile_dataset else BANDS
 
 ### Bands for text in the visualizations ###
-VIEW_BANDS = [7, 16, 53, 61]
-ACTUAL_BANDS = [BANDS_WAVELENGTHS[band] for band in VIEW_BANDS]
+VIEW_BANDS = [12, 23, 35, 46, 57, 67]
+ACTUAL_BANDS = [round(BANDS_WAVELENGTHS[band], -2) for band in VIEW_BANDS]
