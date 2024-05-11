@@ -14,10 +14,10 @@ import torch
 from torchvision import transforms
 from torch.utils.data import Dataset, DataLoader, Subset, random_split
 
-from utils import load_mat, load_mat_patched, read_image, data_augmentation, get_normalization_parameters, visualize_data_item
+from utils import load_mat, read_image, data_augmentation, get_normalization_parameters, visualize_data_item
 from config import GT_RGBN_DIR_NAME, GT_REMOVED_IR_CUTOFF_DIR_NAME, GT_AUXILIARY_RGB_CAM_DIR_NAME, GT_HYPERCUBES_DIR_NAME, RECONSTRUCTED_HS_DIR_NAME,\
-	MOBILE_DATASET_DIR_NAME, MOBILE_RECONSTRUCTED_HS_DIR_NAME, OP_MOBILE_DATASET_DIR_NAME, PATCHED_HS_DIR_NAME, DISTANCE_DIR_NAME, TRAIN_VAL_TEST_SPLIT_DIR_NAME,\
-	PATCHED_INFERENCE, BANDS, BANDS_WAVELENGTHS, BAND_SPACING, RGBN_BANDS, NIR_BANDS, TEST_DATASETS, TRAIN_DATASET_DIR, TEST_ROOT_DATASET_DIR, DATA_PREP_PATH,\
+	MOBILE_DATASET_DIR_NAME, MOBILE_RECONSTRUCTED_HS_DIR_NAME, OP_MOBILE_DATASET_DIR_NAME, DISTANCE_DIR_NAME, TRAIN_VAL_TEST_SPLIT_DIR_NAME,\
+	BANDS, BANDS_WAVELENGTHS, BAND_SPACING, RGBN_BANDS, NIR_BANDS, TEST_DATASETS, TRAIN_DATASET_DIR, TEST_ROOT_DATASET_DIR, DATA_PREP_PATH,\
 	TRAIN_DATASET_FILES, VALID_DATASET_FILES, APPEND_SECONDARY_RGB_CAM_INPUT, APPLICATION_NAME, IMAGE_SIZE, PATCH_SIZE, CLASSIFICATION_PATCH_SIZE, STRIDE,\
 	SHELF_LIFE_GROUND_TRUTH_FILENAME, GT_DATASET_CROPS_FILENAME, MOBILE_DATASET_CROPS_FILENAME, MOBILE_OP_DATASET_CROPS_FILENAME, LABELS_DICT, TIME_LEFT_DICT, FRUITS_DICT, EPS,\
 	batch_size, device, use_mobile_dataset
@@ -388,7 +388,6 @@ def get_dataloaders_classification(trainset_size=0.7):
 		application_name=APPLICATION_NAME,
 		hypercube_directory=MOBILE_RECONSTRUCTED_HS_DIR_NAME if use_mobile_dataset else None,
 		transforms=classificationTransforms,
-		patched_inference=PATCHED_INFERENCE,
 		verbose=True
 	)
 	train_indices, valid_indices = dataset.divide_train_test(trainset_size)
@@ -422,7 +421,7 @@ def get_dataloaders_classification(trainset_size=0.7):
 class DatasetFromDirectoryClassification(Dataset):
 	images, hypercubes, labels, sublabels, fruits, illuminations = [], [], [], [], [], []
 
-	def __init__(self, root, application_name=APPLICATION_NAME, hypercube_directory=None, patched_inference=True, transforms=None, verbose=False):
+	def __init__(self, root, application_name=APPLICATION_NAME, hypercube_directory=None, transforms=None, verbose=False):
 		global class_sizes, subclass_sizes
 		self.transforms = transforms
 
@@ -506,19 +505,6 @@ class DatasetFromDirectoryClassification(Dataset):
 						class_sizes[label_name] += 1
 						subclass_sizes[sublabel] += 1
 
-				if patched_inference:
-					patched_filename = os.path.join(directory, PATCHED_HS_DIR_NAME, os.path.split(filename)[-1])
-					hypercube_combined = load_mat_patched(patched_filename)
-					for hypercube in hypercube_combined.values():
-						hypercube = np.transpose(hypercube, [2, 0, 1]) + EPS
-						self.hypercubes.append(hypercube)
-						self.labels.append(label)
-						self.sublabels.append(sublabel)
-						self.fruits.append(fruit_name)
-						self.illuminations.append(illumination)
-						class_sizes[label_name] += 1
-						subclass_sizes[sublabel] += 1
-
 				hypercube_counter += 1
 			print("{:>3}s".format(round(time.time()-dataset_load_time)))
 
@@ -529,7 +515,6 @@ class DatasetFromDirectoryClassification(Dataset):
 			print("Actual Bands:".ljust(40), BANDS_WAVELENGTHS)
 			print("Number of Bands:".ljust(40), len(BANDS))
 			print("Number of Hypercubes Files:".ljust(40), hypercube_counter)
-			print("Using Patched Hypercubes:".ljust(40), patched_inference)
 			print("Hypercube Dataset Size:".ljust(40), len(self.hypercubes))
 			print("Labels Dataset Size:".ljust(40), len(self.labels))
 			print("Sublabels Dataset Size:".ljust(40), len(self.sublabels))
