@@ -119,7 +119,7 @@ class DatasetFromDirectoryReconstructionTrain(Dataset):
 				# nir_filename = os.path.split(filename)[-1].replace(".mat", "_NIR.png")
 				# nir_image = np.float32(imread(os.path.join(directory, GT_RGBN_DIR_NAME, nir_filename)))
 				nir_image = (nir_image - nir_image.min()) / (nir_image.max() - nir_image.min())
-				nir_image = np.expand_dims(np.asarray(nir_image), -1)
+				# nir_image = np.expand_dims(np.asarray(nir_image), -1)
 
 				# image = rgb_image
 				image = np.dstack((rgb_image, nir_image))
@@ -211,7 +211,6 @@ class DatasetFromDirectoryReconstructionValid(Dataset):
 			dataset_load_time = time.time()
 			for filename in hypercube_list:
 				hypercube = load_mat(os.path.join(directory, GT_HYPERCUBES_DIR_NAME, filename))
-				nir_image = np.float32(hypercube[:, :, random.choice(NIR_BANDS)])
 				hypercube = hypercube[:, :, BANDS]
 				hypercube = (hypercube - hypercube.min()) / (hypercube.max() - hypercube.min())
 				hypercube = np.transpose(hypercube, [2, 0, 1])
@@ -221,8 +220,8 @@ class DatasetFromDirectoryReconstructionValid(Dataset):
 				rgb_image = np.float32(imread(os.path.join(directory, GT_RGBN_DIR_NAME if not use_auxiliary_input else GT_AUXILIARY_RGB_CAM_DIR_NAME, rgb_filename)))
 				rgb_image = (rgb_image - rgb_image.min()) / (rgb_image.max() - rgb_image.min())
 
-				# nir_filename = os.path.split(filename)[-1].replace(".mat", "_NIR.png")
-				# nir_image = np.float32(imread(os.path.join(directory, GT_RGBN_DIR_NAME, nir_filename)))
+				nir_filename = os.path.split(filename)[-1].replace(".mat", "_NIR.png")
+				nir_image = np.float32(imread(os.path.join(directory, GT_RGBN_DIR_NAME, nir_filename)))
 				nir_image = (nir_image - nir_image.min()) / (nir_image.max() - nir_image.min())
 				nir_image = np.expand_dims(np.asarray(nir_image), -1)
 
@@ -302,10 +301,10 @@ class DatasetFromDirectoryReconstructionTransfer(Dataset):
 				rgb_image = np.float32(imread(os.path.join(directory, GT_RGBN_DIR_NAME, rgb_filename)))
 				rgb_image = (rgb_image - rgb_image.min()) / (rgb_image.max() - rgb_image.min())
 
-				nir_filename = os.path.split(filename)[-1].replace(".mat", "_NIR.png")
-				nir_image = np.float32(imread(os.path.join(directory, GT_RGBN_DIR_NAME, nir_filename)))
+				# nir_filename = os.path.split(filename)[-1].replace(".mat", "_NIR.png")
+				# nir_image = np.float32(imread(os.path.join(directory, GT_RGBN_DIR_NAME, nir_filename)))
 				nir_image = (nir_image - nir_image.min()) / (nir_image.max() - nir_image.min())
-				nir_image = np.expand_dims(np.asarray(nir_image), -1)
+				# nir_image = np.expand_dims(np.asarray(nir_image), -1)
 
 				image = np.dstack((rgb_image, nir_image))
 				image = image[ymin:ymax, xmin:xmax, :]
