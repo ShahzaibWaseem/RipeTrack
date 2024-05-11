@@ -10,6 +10,7 @@ images/
 tfmodel/
 dataPreparation/HSI_Annotations/
 dataPreparation/anomalies.txt
+dataPreparation/processRAWImages.py
 *.ipynb
 dataPreparation/ShelfLifeGroundTruthOld.csv
 dataPreparation/ShelfLifeGroundTruth(New).csv
