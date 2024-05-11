@@ -19,9 +19,10 @@ from models.classifier import ModelWithAttention
 
 from dataset import get_dataloaders_classification
 from utils import AverageMeter, create_directory, initialize_logger, save_checkpoint, get_best_checkpoint
-from config import VISUALIZATION_DIR_NAME, MODEL_PATH, TEST_DATASETS, BANDS, LABELS_DICT, TIME_LEFT_DICT,\
-	end_epoch, classicication_run_title, run_pretrained, confusion_font_dict
+from config import VISUALIZATION_DIR_NAME, MODEL_PATH, TEST_DATASETS, BANDS, LABELS_DICT, TIME_LEFT_DICT, ILLUMINATIONS,\
+	device, end_epoch, classicication_run_title, run_pretrained, transfer_learning, confusion_font_dict
 
+import textwrap
 import matplotlib
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -37,9 +38,9 @@ disable_tqdm = args.disable_tqdm
 
 def get_label_weights(train_data_loader, val_data_loader):
 	class_labels = []
-	for _, labels, sublabels, _ in train_data_loader:
+	for _, labels, sublabels, _, _ in train_data_loader:
 		class_labels.extend(labels.numpy().reshape(-1,))
-	for _, labels, sublabels, _ in val_data_loader:
+	for _, labels, sublabels, _, _ in val_data_loader:
 		class_labels.extend(labels.numpy().reshape(-1,))
 	class_labels = np.asarray(class_labels)
 	class_labels = class_labels.reshape((-1,))
@@ -49,17 +50,17 @@ def get_label_weights(train_data_loader, val_data_loader):
 
 def test_model_only():
 	# checkpoint_filename, epoch, iter, state_dict, optimizer, val_loss, (val_acc_labels, val_acc_sublabels) = get_best_checkpoint(task="classification")
-	checkpoint_filename = "RT_ModelWithAttention_shelflife_030 transferLearning on new Fruits [Reconstructed].pkl"
+	checkpoint_filename = "RT_ModelWithAttention_shelflife_030 transferLearning on new Fruits Illumination GP [Reconstructed].pkl"
 	checkpoint = torch.load(os.path.join(MODEL_PATH, "classification", "others", checkpoint_filename))
 	epoch, iter, state_dict, opt_state, val_loss, (val_acc_labels, val_acc_sublabels) = checkpoint["epoch"], checkpoint["iter"], checkpoint["state_dict"],\
 		checkpoint["optimizer"], checkpoint["val_loss"], checkpoint["val_acc"]
 	model = ModelWithAttention(input_channels=len(BANDS), num_classes=len(LABELS_DICT), num_subclasses=len(TIME_LEFT_DICT))
 	model = model.cuda()
 	model.eval()
-	summary(model=model, input_data=(68, 512, 512))
+	# summary(model=model, input_data=(68, 512, 512))
 	criterion = (torch.nn.CrossEntropyLoss(reduction="mean"), torch.nn.CrossEntropyLoss(reduction="mean"))
 	model.load_state_dict(state_dict)
-	test_data_loader, _ = get_dataloaders_classification(trainset_size=1.0)
+	test_data_loader, _ = get_dataloaders_classification(trainset_size=0.5)
 	test_loss, test_acc = test(test_data_loader, model, criterion)
 	print("Test Loss: {}, Test Accuracy: {}".format(test_loss, test_acc))
 
@@ -84,8 +85,8 @@ def main():
 
 	model = ModelWithAttention(input_channels=len(BANDS), num_classes=len(LABELS_DICT), num_subclasses=len(TIME_LEFT_DICT))
 	# model.bottleneck.register_forward_hook(get_activation("bottleneck"))
-	model = model.cuda()
-	# summary(model=model, input_data=(68, 512, 512))
+	model = model.to(device)
+	# summary(model=model, input_data=(68, 64, 64))
 
 	criterion_class = torch.nn.CrossEntropyLoss(weight=class_weights, reduction="mean")
 	criterion_subclass = torch.nn.CrossEntropyLoss()
@@ -106,9 +107,20 @@ def main():
 		start_epoch = epoch
 		print("Loaded model from checkpoint: Filename: %s Epochs Run: %d, Validation Loss: %.9f" % (checkpoint_filename, epoch, val_loss))
 
+	if transfer_learning:
+		module_count = 0
+		for param in model.parameters():
+			param.requires_grad = False
+		for module, p in model.state_dict().items():
+			module_count += 1
+			if module_count > 2:		# 78 is the last convolutional layer
+				p.requires_grad = True
+			print("%2d %r %s" % (module_count, p.requires_grad, module))
+		print("Total number of modules: ", module_count)
+	
 	start_epoch = 1
 
-	for epoch in range(start_epoch, end_epoch):
+	for epoch in range(start_epoch, 31):
 		start_time = time.time()
 		(train_loss, train_loss_labels, train_loss_sublabels), (train_acc_labels, train_acc_sublabels), iteration = train(train_data_loader, model, criterion, iteration, optimizer)
 		(val_loss, val_loss_labels, val_loss_sublabels), (val_acc_labels, val_acc_sublabels) = validate(valid_data_loader, model, criterion)
@@ -121,8 +133,8 @@ def main():
 			best_optimizer = optimizer
 			iteration_passed = iteration
 		if epoch % 10 == 0:
-				save_checkpoint(int(round(epoch, -1)), iteration_passed, best_model, best_optimizer, best_val_loss, best_val_acc_labels, best_val_acc_sublabels, bands=BANDS, task="classification")
-		if epoch % 50 == 0:
+			save_checkpoint(int(round(epoch, -1)), iteration_passed, best_model, best_optimizer, best_val_loss, best_val_acc_labels, best_val_acc_sublabels, bands=BANDS, task="classification")
+		if epoch % 10 == 0:
 			test_loss, test_acc = test(valid_data_loader, best_model, criterion)
 		# scheduler.step(val_loss)
 
@@ -171,7 +183,7 @@ def train(train_data_loader, model, criterion, iteration, optimizer):
 	running_correct_labels, running_correct_sublabels = 0, 0
 	criterion_class, criterion_subclass = criterion
 
-	for hypercubes, labels, sublabels, _ in tqdm(train_data_loader, desc="Train", total=len(train_data_loader), disable=disable_tqdm):
+	for hypercubes, labels, sublabels, _, _ in tqdm(train_data_loader, desc="Train", total=len(train_data_loader), disable=disable_tqdm):
 		hypercubes = hypercubes.cuda()
 		labels = labels.cuda()
 		sublabels = sublabels.cuda()
@@ -211,7 +223,7 @@ def validate(val_data_loader, model, criterion):
 	running_correct_labels, running_correct_sublabels = 0, 0
 	criterion_class, criterion_subclass = criterion
 
-	for hypercubes, labels, sublabels, _ in tqdm(val_data_loader, desc="Valid", total=len(val_data_loader), disable=disable_tqdm):
+	for hypercubes, labels, sublabels, _, _ in tqdm(val_data_loader, desc="Valid", total=len(val_data_loader), disable=disable_tqdm):
 		hypercubes = hypercubes.cuda()
 		labels = labels.cuda()
 		sublabels = sublabels.cuda()
@@ -245,9 +257,9 @@ def test(test_data_loader, model, criterion):
 	losses, losses_class, losses_subclass = AverageMeter(), AverageMeter(), AverageMeter()
 	running_correct_labels, running_correct_sublabels = 0, 0
 	criterion_class, criterion_subclass = criterion
-	y_pred_labels, y_true_labels, y_pred_sublabels, y_true_sublabels, y_pred_labels_proba, y_pred_sublabels_proba, fruit_labels = [], [], [], [], [], [], []
+	y_pred_labels, y_true_labels, y_pred_sublabels, y_true_sublabels, y_pred_labels_proba, y_pred_sublabels_proba, fruit_labels, illuminations = [], [], [], [], [], [], [], []
 
-	for hypercubes, labels, sublabels, fruits in tqdm(test_data_loader, desc="Test", total=len(test_data_loader), disable=disable_tqdm):
+	for hypercubes, labels, sublabels, fruits, illumination in tqdm(test_data_loader, desc="Test", total=len(test_data_loader), disable=disable_tqdm):
 		y_true_labels.extend(labels.data.numpy())
 		y_true_sublabels.extend(sublabels.data.numpy())
 		hypercubes = hypercubes.cuda()
@@ -277,6 +289,7 @@ def test(test_data_loader, model, criterion):
 		y_pred_labels_proba.extend(preds_labels_proba.data.cpu().numpy())
 		y_pred_sublabels_proba.extend(preds_sublabels_proba.data.cpu().numpy())
 		fruit_labels.extend(fruits)
+		illuminations.extend(illumination)
 
 		losses.update(loss.item())
 		losses_class.update(loss_class.item())
@@ -295,12 +308,12 @@ def test(test_data_loader, model, criterion):
 	classification_evaluate(y_true_labels, y_pred_labels, "all", acc=accuracy_labels)
 	classification_evaluate(y_true_sublabels, y_pred_sublabels, "all_sublabels", labels_dict=TIME_LEFT_DICT, acc=accuracy_sublabels)
 
-	for fruit in TEST_DATASETS:
-		fruit_fullname = " ".join(elem.capitalize() for elem in fruit.split("-"))
-		fruit_indices = find_indices(fruit_labels, fruit_fullname)
-		print(fruit_fullname, fruit)
-		classification_evaluate(y_true_labels[fruit_indices], y_pred_labels[fruit_indices], fruit)
-		classification_evaluate(y_true_sublabels[fruit_indices], y_pred_sublabels[fruit_indices], fruit + "_sublabels", labels_dict=TIME_LEFT_DICT)
+	for illumination in ILLUMINATIONS:
+		# fruit_fullname = " ".join(elem.capitalize() for elem in fruit.split("-"))
+		fruit_indices = find_indices(illuminations, illumination)
+		print(illumination)
+		classification_evaluate(y_true_labels[fruit_indices], y_pred_labels[fruit_indices], illumination)
+		classification_evaluate(y_true_sublabels[fruit_indices], y_pred_sublabels[fruit_indices], illumination + "_sublabels", labels_dict=TIME_LEFT_DICT)
 
 	label_binarizer = LabelBinarizer().fit(y_true_labels)
 	y_onehot_labels_test = label_binarizer.transform(y_true_labels)
@@ -419,7 +432,6 @@ def get_ovr_roc(y_true_labels, y_pred_labels_proba, labels_dict=LABELS_DICT):
 		linestyles_idx = (linestyles_idx + 1) % len(linestyles)
 		color_idx = (color_idx + 1) % len(colors)
 
-	plt.axis("square")
 	plt.xlabel("False Positive Rate", **confusion_font_dict)
 	plt.ylabel("True Positive Rate", **confusion_font_dict)
 	# plt.title("Receiver Operating Characteristic curve for {}Classes\n(One-vs-Rest)".format("Sub-" if labels_dict == TIME_LEFT_DICT else ""))
@@ -429,30 +441,26 @@ def get_ovr_roc(y_true_labels, y_pred_labels_proba, labels_dict=LABELS_DICT):
 	plt.show()
 	plt.close()
 
-import textwrap
 def wrap_labels(ax, width, break_long_words=False):
 	labels = []
 	for label in ax.get_xticklabels():
 		text = label.get_text()
 		labels.append(textwrap.fill(text, width=width, break_long_words=break_long_words))
-	ax.set_xticklabels(labels, rotation=0)
-	ax.set_yticklabels(labels, rotation=90, horizontalalignment="center")
-	ax.tick_params(axis="y", which="major", pad=15)
+	ax.set_xticklabels(labels, rotation=45)
 
 def classification_evaluate(y_true, y_pred, title, labels_dict=LABELS_DICT, acc=0.0):
 	# confusion_mat = confusion_matrix(y_true, y_pred)
 	# df_confusion_mat = pd.DataFrame(confusion_mat / np.sum(confusion_mat, axis=1)[:, None], index = [key for key, value in labels_dict.items()], columns = [key for key, value in labels_dict.items()])
 	# fig, ax = plt.subplots(figsize=(13, 10))
 	# sns.heatmap(round(df_confusion_mat * 100, 0), annot=True, cmap="Blues" if labels_dict == LABELS_DICT else "Oranges")
-	# wrap_labels(ax, 10) if title.split("_")[-1] == "sublabels" else None
+	# wrap_labels(ax, 5) if title.split("_")[-1] == "sublabels" else None
 	print("Title: {}, Accuracy: {}, {}".format(title, accuracy_score(y_true, y_pred), acc))
 	# print(classification_report(y_true, y_pred, target_names=[key for key, value in labels_dict.items()]))
-	# plt.tight_layout()
+	# plt.tight_layout(pad=0)
 	# print(df_confusion_mat)
 	# plt.savefig(os.path.join(VISUALIZATION_DIR_NAME, "confusion_matrix_{}.pdf".format(title)))
 	# plt.show()
 	# plt.close()
-
 
 if __name__ == "__main__":
 	create_directory(os.path.join(VISUALIZATION_DIR_NAME))
