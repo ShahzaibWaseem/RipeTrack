@@ -13,10 +13,10 @@ from torchsummary import summary
 from models.MST import MST_Plus_Plus
 
 from loss import test_mrae, test_rrmse, test_msam, test_sid, test_psnr, test_ssim, test_ssim_db
-from utils import AverageMeter, create_directory, save_mat, save_mat_patched, load_mat, load_mat_patched, initialize_logger, visualize_gt_pred_hs_data, get_best_checkpoint
+from utils import AverageMeter, create_directory, save_mat, load_mat, initialize_logger, visualize_gt_pred_hs_data, get_best_checkpoint
 from config import GT_RGBN_DIR_NAME, GT_REMOVED_IR_CUTOFF_DIR_NAME, GT_AUXILIARY_RGB_CAM_DIR_NAME, GT_HYPERCUBES_DIR_NAME, RECONSTRUCTED_HS_DIR_NAME,\
-	MOBILE_DATASET_DIR_NAME, MOBILE_RECONSTRUCTED_HS_DIR_NAME, GT_REMOVED_IR_CUTOFF_RECONSTRUCTED_DIR_NAME, PATCHED_HS_DIR_NAME, TRAIN_VAL_TEST_SPLIT_DIR_NAME,\
-	PATCHED_INFERENCE, CLASSIFICATION_PATCH_SIZE, STRIDE, DATA_PREP_PATH, GT_DATASET_CROPS_FILENAME, MOBILE_DATASET_CROPS_FILENAME,\
+	MOBILE_DATASET_DIR_NAME, MOBILE_RECONSTRUCTED_HS_DIR_NAME, GT_REMOVED_IR_CUTOFF_RECONSTRUCTED_DIR_NAME, TRAIN_VAL_TEST_SPLIT_DIR_NAME,\
+	CLASSIFICATION_PATCH_SIZE, STRIDE, DATA_PREP_PATH, GT_DATASET_CROPS_FILENAME, MOBILE_DATASET_CROPS_FILENAME,\
 	TEST_DATASETS, TEST_ROOT_DATASET_DIR, MODEL_PATH, APPLICATION_NAME, BANDS, EPS,\
 	device, var_name, use_mobile_dataset, transfer_learning, model_run_title, checkpoint_file
 
@@ -30,7 +30,7 @@ def calculate_metrics(img_pred, img_gt):
 	ssim_db = test_ssim_db(img_pred, img_gt, max_value=1)
 	return mrae, rrmse, msam, sid, psnr, ssim, ssim_db
 
-def inference(model, checkpoint_filename, mobile_reconstruction=False, patched_inference=False, transfer_learning=transfer_learning):
+def inference(model, checkpoint_filename, mobile_reconstruction=False, transfer_learning=transfer_learning):
 	# input_transform, label_transform = get_required_transforms(task="reconstruction")
 	logger = initialize_logger(filename="test.log")
 	log_string = "[%15s] Time: %0.9f, MRAE: %0.9f, RRMSE: %0.9f, SAM: %0.9f, SID: %0.9f, PSNR: %0.9f, SSIM: %0.9f, SSIM (dB): %0.9f"
@@ -68,7 +68,6 @@ def inference(model, checkpoint_filename, mobile_reconstruction=False, patched_i
 		directory = os.path.join(TEST_DATASET_DIR, "%s_204ch" % test_dataset)
 		OUT_PATH = os.path.join(directory, RECONSTRUCTED_HS_DIR_NAME) if not mobile_reconstruction else os.path.join(directory, MOBILE_RECONSTRUCTED_HS_DIR_NAME)
 		create_directory(OUT_PATH)
-		create_directory(os.path.join(OUT_PATH, PATCHED_HS_DIR_NAME)) if patched_inference else None
 
 		print("\n" + model_run_title)
 		logger.info(model_run_title)
@@ -184,7 +183,7 @@ def main():
 	model = model.to(device)
 	model.eval()
 	summary(model=model, input_data=(4, 512, 512))
-	inference(model, checkpoint_filename, mobile_reconstruction=use_mobile_dataset, patched_inference=PATCHED_INFERENCE, transfer_learning=transfer_learning)
+	inference(model, checkpoint_filename, mobile_reconstruction=use_mobile_dataset, transfer_learning=transfer_learning)
 
 if __name__ == "__main__":
 	main()

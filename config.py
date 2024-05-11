@@ -45,7 +45,6 @@ RECONSTRUCTED_HS_DIR_NAME = "reconstructed"
 MOBILE_RECONSTRUCTED_HS_DIR_NAME = "mobile-reconstructed"
 OP_MOBILE_RECONSTRUCTED_HS_DIR_NAME = "op-mobile-reconstructed"
 RAW_MOBILE_RECONSTRUCTED_HS_DIR_NAME = "raw-mobile-reconstructed"
-PATCHED_HS_DIR_NAME = "patched"
 DISTANCE_DIR_NAME = "distance"
 VISUALIZATION_DIR_NAME = "visualizations"
 MOBILE_MODELS_DIR_NAME = "mobileModels"
@@ -54,7 +53,6 @@ DEEP_WB_DIR = "deepWB"
 
 ### Parameters for the models and data loading ###
 APPEND_SECONDARY_RGB_CAM_INPUT = False
-PATCHED_INFERENCE = False
 run_pretrained = False					# if True, the model is loaded from the checkpoint_file
 use_mobile_dataset = False				# if True, the model is trained on the mobile dataset
 transfer_learning = False				# if True, the model will freeze all layers except the last MST block and conv layers
