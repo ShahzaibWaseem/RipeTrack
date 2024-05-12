@@ -93,8 +93,8 @@ def inference(model, checkpoint_filename, mobile_reconstruction=False, transfer_
 
 			hypercube = load_mat(os.path.join(directory, GT_HYPERCUBES_DIR_NAME, filename))
 			hypercube = hypercube[:, :, BANDS]
-			hypercube = hypercube[ymin:ymax, xmin:xmax, :] if transfer_learning else hypercube
 			hypercube = (hypercube - hypercube.min()) / (hypercube.max() - hypercube.min())
+			hypercube = hypercube[ymin:ymax, xmin:xmax, :] if transfer_learning else hypercube
 			min_hc, max_hc = min(min_hc, hypercube.min()), max(max_hc, hypercube.max())
 			hypercube = hypercube + EPS
 
@@ -175,7 +175,7 @@ def inference(model, checkpoint_filename, mobile_reconstruction=False, transfer_
 def main():
 	# checkpoint_filename, epoch, iter, model_param, optimizer, val_loss, val_acc = get_best_checkpoint(task="reconstruction")
 	# checkpoint_filename = checkpoint_file
-	checkpoint_filename = "RT_MST++_shelflife_080 RGBNIR Final [ThinModel][L+A].pkl"
+	checkpoint_filename = "RT_MST++_shelflife_100 TransferLearning on other fruits [patched] [correct].pkl"
 	checkpoint = torch.load(os.path.join(MODEL_PATH, "reconstruction", "others", checkpoint_filename))
 	model_param = checkpoint["state_dict"]
 	model = MST_Plus_Plus(in_channels=4, out_channels=len(BANDS), n_feat=len(BANDS)//2, msab_stages=2, stage=1)
