@@ -50,7 +50,7 @@ def get_label_weights(train_data_loader, val_data_loader):
 
 def test_model_only():
 	# checkpoint_filename, epoch, iter, state_dict, optimizer, val_loss, (val_acc_labels, val_acc_sublabels) = get_best_checkpoint(task="classification")
-	checkpoint_filename = "RT_ModelWithAttention_shelflife_030 transferLearning on new Fruits Illumination GP [Reconstructed].pkl"
+	checkpoint_filename = "RT_ModelWithAttention_shelflife_100 corrected trained on all 4 fruits [Reconstructed].pkl"
 	checkpoint = torch.load(os.path.join(MODEL_PATH, "classification", "others", checkpoint_filename))
 	epoch, iter, state_dict, opt_state, val_loss, (val_acc_labels, val_acc_sublabels) = checkpoint["epoch"], checkpoint["iter"], checkpoint["state_dict"],\
 		checkpoint["optimizer"], checkpoint["val_loss"], checkpoint["val_acc"]
@@ -117,7 +117,7 @@ def main():
 				p.requires_grad = True
 			print("%2d %r %s" % (module_count, p.requires_grad, module))
 		print("Total number of modules: ", module_count)
-	
+
 	start_epoch = 1
 
 	for epoch in range(start_epoch, 31):
@@ -348,7 +348,7 @@ def pr_auc_curve(y_true_labels, y_pred_labels_proba, y_test, labels_dict=LABELS_
 	# setup plot details
 	colors = ["r", "b", "g", "k", "r", "b", "g", "k", "r", "b", "g"]
 	linestyles = ["solid", "solid", "solid", "solid", "dashdot", "dashdot", "dashdot", "dashed", "dashed", "dashed", "dotted"]
-	_, ax = plt.subplots(figsize=(13, 10))
+	fig, ax = plt.subplots(figsize=(13, 10))
 
 	f_scores = np.linspace(0.2, 0.8, num=4)
 	lines, labels = [], []
@@ -383,7 +383,7 @@ def pr_auc_curve(y_true_labels, y_pred_labels_proba, y_test, labels_dict=LABELS_
 	plt.tight_layout(pad=0)
 	plt.savefig(os.path.join(VISUALIZATION_DIR_NAME, "pr_auc_curve_{}.pdf".format("subclasses" if labels_dict == TIME_LEFT_DICT else "classes")))
 	plt.show()
-	plt.close()
+	plt.close(fig)
 
 def get_ovr_roc(y_true_labels, y_pred_labels_proba, labels_dict=LABELS_DICT):
 	""" Gets the ROC curve for One vs Rest classification """
@@ -439,7 +439,7 @@ def get_ovr_roc(y_true_labels, y_pred_labels_proba, labels_dict=LABELS_DICT):
 	plt.tight_layout(pad=0)
 	plt.savefig(os.path.join(VISUALIZATION_DIR_NAME, "roc_ovr_curve_{}.pdf".format("subclasses" if labels_dict == TIME_LEFT_DICT else "classes")))
 	plt.show()
-	plt.close()
+	plt.close(fig)
 
 def wrap_labels(ax, width, break_long_words=False):
 	labels = []
@@ -460,10 +460,10 @@ def classification_evaluate(y_true, y_pred, title, labels_dict=LABELS_DICT, acc=
 	# print(df_confusion_mat)
 	# plt.savefig(os.path.join(VISUALIZATION_DIR_NAME, "confusion_matrix_{}.pdf".format(title)))
 	# plt.show()
-	# plt.close()
+	# plt.close(fig)
 
 if __name__ == "__main__":
 	create_directory(os.path.join(VISUALIZATION_DIR_NAME))
 	create_directory(os.path.join(MODEL_PATH, "classification"))
-	# main()
-	test_model_only()
+	main()
+	# test_model_only()

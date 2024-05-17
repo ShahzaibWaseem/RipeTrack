@@ -421,13 +421,11 @@ def get_dataloaders_classification(trainset_size=0.7):
 class DatasetFromDirectoryClassification(Dataset):
 	images, hypercubes, labels, sublabels, fruits, illuminations = [], [], [], [], [], []
 
-	def __init__(self, root, application_name=APPLICATION_NAME, hypercube_directory=None, transforms=None, verbose=False):
+	def __init__(self, root, application_name=APPLICATION_NAME, patch_size=PATCH_SIZE, stride=STRIDE, hypercube_directory=None, transforms=None, verbose=False):
 		global class_sizes, subclass_sizes
-		self.transforms = transforms
 
 		image_width, image_height = 512, 512
-		self.patch_size = CLASSIFICATION_PATCH_SIZE
-		self.stride = STRIDE
+		self.transforms = transforms
 		hypercube_counter = 0
 
 		crops_df = pd.read_csv(os.path.join(DATA_PREP_PATH, MOBILE_DATASET_CROPS_FILENAME if hypercube_directory == MOBILE_RECONSTRUCTED_HS_DIR_NAME else GT_DATASET_CROPS_FILENAME))
@@ -455,6 +453,16 @@ class DatasetFromDirectoryClassification(Dataset):
 					hypercube_number = hypercube_number[0]
 				else:
 					hypercube_number, illumination = hypercube_number
+
+				crop_record = crops_df[crops_df["image"].isin(["{}_RGB_{}.png".format(hypercube_number, illumination)])]
+				if len(crop_record) != 0:
+					xmin = int(crop_record["xmin"].iloc[0])
+					ymin = int(crop_record["ymin"].iloc[0])
+					xmax = int(crop_record["xmax"].iloc[0])
+					ymax = int(crop_record["ymax"].iloc[0])
+				else:
+					continue
+
 				shelflife_record = shelflife_df[shelflife_df["HS Files"].str.contains(hypercube_number)]
 
 				if len(shelflife_record) == 0: continue
@@ -465,23 +473,9 @@ class DatasetFromDirectoryClassification(Dataset):
 				hypercube = load_mat(filename)
 				hypercube = hypercube[:, :, BANDS] if hypercube_directory == None else hypercube
 				hypercube = (hypercube - hypercube.min()) / (hypercube.max() - hypercube.min())
+				# hypercube = hypercube[ymin:ymax, xmin:xmax, :]
 				hypercube = np.transpose(hypercube, [2, 0, 1]) + EPS
 				_, height, width = hypercube.shape
-
-				crop_record = crops_df[crops_df["image"].isin(["{}_RGB_{}.png".format(hypercube_number, illumination)])]
-				if len(crop_record != 0):
-					xmin = int(crop_record["xmin"].iloc[0])
-					ymin = int(crop_record["ymin"].iloc[0])
-					xmax = int(crop_record["xmax"].iloc[0])
-					ymax = int(crop_record["ymax"].iloc[0])
-				else:
-					continue
-
-				if height != 640 and width != 480:
-					xmin = 0
-					xmax = width
-					ymin = 0
-					ymax = height
 
 				label_name = shelflife_record["Shelf Life Label"]
 				sublabel_name = shelflife_record["Remaining Life"]
@@ -489,13 +483,13 @@ class DatasetFromDirectoryClassification(Dataset):
 				sublabel = TIME_LEFT_DICT.get(sublabel_name)
 				fruit_name = "{} {}".format(shelflife_record["Fruit"], shelflife_record["Type"])
 
-				for patch_i in range(xmin, xmax, self.stride):
-					if patch_i+self.patch_size > xmax: continue
-					for patch_j in range(ymin, ymax, self.stride):
-						if patch_j+self.patch_size > ymax: continue
+				for patch_i in range(0, height, stride):
+					if patch_i+patch_size > height: continue
+					for patch_j in range(0, width, stride):
+						if patch_j+patch_size > width: continue
 
-						hypercubeCrop = hypercube[:, patch_i:patch_i+self.patch_size, patch_j:patch_j+self.patch_size]
-						if (hypercubeCrop.shape[1:3] != (self.patch_size, self.patch_size)):
+						hypercubeCrop = hypercube[:, patch_i:patch_i+patch_size, patch_j:patch_j+patch_size]
+						if (hypercubeCrop.shape[1:3] != (patch_size, patch_size)):
 							continue
 						self.hypercubes.append(hypercubeCrop)
 						self.labels.append(label)
