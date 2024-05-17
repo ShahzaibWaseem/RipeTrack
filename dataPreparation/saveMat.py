@@ -93,11 +93,11 @@ def main():
 		hs_filenumbers = [int(x) for x in ground_truth_df["HS Files"][index].split(",")]
 		dataset_name = ground_truth_df["Fruit"][index].lower() + "-" + ground_truth_df["Type"][index].lower()
 
-		output_hypercube_directory = os.path.join("..", TEST_ROOT_DATASET_DIR, APPLICATION_NAME, "%s_204ch" % dataset_name, GT_HYPERCUBES_DIR_NAME)
+		output_hypercube_directory = os.path.join("..", TEST_ROOT_DATASET_DIR, APPLICATION_NAME, "%s_204ch" % dataset_name)
 
 		output_rgbn_directory = os.path.join(output_hypercube_directory, GT_RGBN_DIR_NAME)
 		output_secondary_rgbn_directory = os.path.join(output_hypercube_directory, GT_AUXILIARY_RGB_CAM_DIR_NAME)
-		create_directory(output_hypercube_directory)
+		create_directory(os.path.join(output_hypercube_directory, GT_HYPERCUBES_DIR_NAME))
 		create_directory(output_rgbn_directory)
 		create_directory(output_secondary_rgbn_directory)
 
@@ -129,7 +129,7 @@ def main():
 			print("[%30s] Hypercube Shape: %s [Range: %d - %3d], RGB Image Shape: %s [Range: %d - %3d], NIR Image Shape: %s [Range: %d - %3d], RGB Secondary: [Range: %d - %3d]"
 	 			% (os.path.join(os.path.split(output_hypercube_directory)[-1], "%s.mat" % hs_filenumber), hypercube[var_name].shape, hypercube[var_name].min(), hypercube[var_name].max(),
 				   rgb_image.shape, np.min(rgb_image), np.max(rgb_image), nir_image.shape, np.min(nir_image), np.max(nir_image), np.min(rgb_secondary_image), np.max(rgb_secondary_image)))
-			savemat(os.path.join(output_hypercube_directory, "%s.mat" % hs_filenumber), hypercube)
+			savemat(os.path.join(output_hypercube_directory, GT_HYPERCUBES_DIR_NAME, "%s.mat" % hs_filenumber), hypercube)
 			
 			daylight = commonLighting(rgb_image)
 			imageio.imwrite(os.path.join(output_rgbn_directory, "%s_RGB.png" % hs_filenumber), rgb_image)
