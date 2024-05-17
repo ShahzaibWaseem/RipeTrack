@@ -15,9 +15,9 @@ from models.MST import MST_Plus_Plus
 from loss import test_mrae, test_rrmse, test_msam, test_sid, test_psnr, test_ssim, test_ssim_db
 from utils import AverageMeter, create_directory, save_mat, load_mat, initialize_logger, visualize_gt_pred_hs_data, get_best_checkpoint
 from config import GT_RGBN_DIR_NAME, GT_REMOVED_IR_CUTOFF_DIR_NAME, GT_AUXILIARY_RGB_CAM_DIR_NAME, GT_HYPERCUBES_DIR_NAME, RECONSTRUCTED_HS_DIR_NAME,\
-	MOBILE_DATASET_DIR_NAME, MOBILE_RECONSTRUCTED_HS_DIR_NAME, GT_REMOVED_IR_CUTOFF_RECONSTRUCTED_DIR_NAME, TRAIN_VAL_TEST_SPLIT_DIR_NAME,\
+	MOBILE_DATASET_DIR_NAME, MOBILE_RECONSTRUCTED_HS_DIR_NAME, GT_REMOVED_IR_CUTOFF_RECONSTRUCTED_DIR_NAME, DISTANCE_DIR_NAME, TRAIN_VAL_TEST_SPLIT_DIR_NAME,\
 	CLASSIFICATION_PATCH_SIZE, STRIDE, DATA_PREP_PATH, GT_DATASET_CROPS_FILENAME, MOBILE_DATASET_CROPS_FILENAME,\
-	TEST_DATASETS, TEST_ROOT_DATASET_DIR, MODEL_PATH, APPLICATION_NAME, BANDS, EPS,\
+	ILLUMINATIONS, TEST_DATASETS, TEST_ROOT_DATASET_DIR, MODEL_PATH, APPLICATION_NAME, BANDS, EPS,\
 	device, var_name, use_mobile_dataset, transfer_learning, model_run_title, checkpoint_file
 
 def calculate_metrics(img_pred, img_gt):
@@ -175,7 +175,7 @@ def inference(model, checkpoint_filename, mobile_reconstruction=False, transfer_
 def main():
 	# checkpoint_filename, epoch, iter, model_param, optimizer, val_loss, val_acc = get_best_checkpoint(task="reconstruction")
 	# checkpoint_filename = checkpoint_file
-	checkpoint_filename = "RT_MST++_shelflife_100 TransferLearning on other fruits [patched] [correct].pkl"
+	checkpoint_filename = "RT_MST++_shelflife_080 RGBNIR Final [ThinModel][L+A].pkl"
 	checkpoint = torch.load(os.path.join(MODEL_PATH, "reconstruction", "others", checkpoint_filename))
 	model_param = checkpoint["state_dict"]
 	model = MST_Plus_Plus(in_channels=4, out_channels=len(BANDS), n_feat=len(BANDS)//2, msab_stages=2, stage=1)
