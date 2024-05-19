@@ -10,26 +10,31 @@ from skimage import exposure
 from loss import test_psnr
 from utils import load_mat, create_directory
 from config import GT_HYPERCUBES_DIR_NAME, RECONSTRUCTED_HS_DIR_NAME, GT_RGBN_DIR_NAME, VISUALIZATION_DIR_NAME,\
-	TEST_DATASETS, TEST_ROOT_DATASET_DIR, BANDS, VIEW_BANDS, ACTUAL_BANDS, APPLICATION_NAME, IMAGE_SIZE,\
+	TRAIN_VAL_TEST_SPLIT_DIR_NAME, TEST_ROOT_DATASET_DIR, BANDS, VIEW_BANDS, ACTUAL_BANDS, APPLICATION_NAME,\
 	EPS, text_font_dict, title_font_dict, plt_dict
 
 import matplotlib
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
-hypercubes_considered = ["512.mat", "887.mat"]
-crops = {"887.mat": [50, 350, 100, 400], "512.mat": [0, 300, 100, 400]}
+hypercubes_considered = ["483.mat", "887.mat"]
+crops = {"887.mat": [50, 350, 100, 400], "483.mat": [50, 350, 150, 450]}
 
 def main():
 	for dataset in ["pear-bartlett", "avocado-organic"]:
-		directory = os.path.join(TEST_ROOT_DATASET_DIR, APPLICATION_NAME, "{}_204ch".format(dataset), GT_HYPERCUBES_DIR_NAME)
-		inf_directory = os.path.join(os.path.dirname(directory), RECONSTRUCTED_HS_DIR_NAME)
+		directory = os.path.join(TEST_ROOT_DATASET_DIR, APPLICATION_NAME, "{}_204ch".format(dataset))
+		inf_directory = os.path.join(directory, RECONSTRUCTED_HS_DIR_NAME)
 		print(" " * 19, "{0:62}".format(directory), RECONSTRUCTED_HS_DIR_NAME)
-		create_directory(os.path.join(os.path.dirname(directory), VISUALIZATION_DIR_NAME))
-		hypercube_filename = hypercubes_considered[1]
+		create_directory(os.path.join(directory, VISUALIZATION_DIR_NAME))
+		hypercube_filename = list(crops.keys())[1]
 
-		for filename in glob(os.path.join(directory, hypercube_filename)):
+		# with open(os.path.join(directory, TRAIN_VAL_TEST_SPLIT_DIR_NAME, "test.txt"), "r") as test_file:
+		# 	hypercube_list = [filename.replace("\n", ".mat") for filename in test_file]
+
+		# for filename in hypercube_list:
+		for filename in glob(os.path.join(directory, GT_HYPERCUBES_DIR_NAME, hypercube_filename)):
 			hypercube_number = os.path.split(filename)[-1].split(".")[0]
+			print("Processing", hypercube_number)
 			xmin, xmax, ymin, ymax = crops[hypercube_number + ".mat"]
 
 			inf_hypercube = load_mat(os.path.join(inf_directory, os.path.split(filename)[-1]))
@@ -41,7 +46,7 @@ def main():
 			gt_hypercube = gt_hypercube[xmin:xmax, ymin:ymax, :]
 			gt_hypercube = gt_hypercube + EPS
 
-			rgb_image = imread(os.path.join(os.path.dirname(directory), GT_RGBN_DIR_NAME, hypercube_number + "_RGB.png"))
+			rgb_image = imread(os.path.join(directory, GT_RGBN_DIR_NAME, hypercube_number + "_RGB.png"))
 			rgb_image = rgb_image[xmin:xmax, ymin:ymax, :]
 
 			fig, axs = plt.subplots(nrows=3, ncols=len(VIEW_BANDS), figsize=(15, 8))
@@ -85,9 +90,8 @@ def main():
 			axs[1, len(VIEW_BANDS) - 1].set_ylabel("GT", loc="center", rotation=-90, labelpad=30, **text_font_dict)
 			axs[2, len(VIEW_BANDS) - 1].yaxis.set_label_position("right")
 			# axs[2, len(VIEW_BANDS) - 1].set_ylabel("Error Map", loc="center", rotation=-90, labelpad=30, **text_font_dict)
-
 			fig.tight_layout(pad=1)
-			fig.savefig(os.path.join(VISUALIZATION_DIR_NAME, "visualResultsAO.pdf"), dpi=fig.dpi*2, bbox_inches="tight")
+			fig.savefig(os.path.join(directory, VISUALIZATION_DIR_NAME, "%s.pdf" % hypercube_number), dpi=fig.dpi*2, bbox_inches="tight")
 			plt.show()
 
 if __name__ == "__main__":
