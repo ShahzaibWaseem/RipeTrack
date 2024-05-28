@@ -64,7 +64,7 @@ shelflife
 │	│
 │	└── split				Training, Validation and Testing split
 │
-│	496_H.mat					Ground truth Hypercubes
+│	496_H.mat				Ground truth Hypercubes
 │	497_H.mat
 │	...
 │
