@@ -1,6 +1,6 @@
 # RipeTrack: Assessing Fruit Ripeness using Smartphones
 An overview of RipeTrack is shown in the figure below. Some information regarding the modules in the overview will be discussed below.
-![Overview](images/overview.pdf)
+![Overview](images/overview.png)
 
 ## Hyperspectral Reconstruction
 The Hyperspectral Reconstruction model is built on PyTorch and is trained to produce hyperspectral cubes when the input to it is an RGB and NIR image.
