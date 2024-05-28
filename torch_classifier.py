@@ -50,8 +50,8 @@ def get_label_weights(train_data_loader, val_data_loader):
 
 def test_model_only():
 	# checkpoint_filename, epoch, iter, state_dict, optimizer, val_loss, (val_acc_labels, val_acc_sublabels) = get_best_checkpoint(task="classification")
-	checkpoint_filename = "RT_ModelWithAttention_shelflife_100 corrected trained on all 4 fruits [Reconstructed].pkl"
-	checkpoint = torch.load(os.path.join(MODEL_PATH, "classification", "others", checkpoint_filename))
+	checkpoint_filename = "RT_ModelWithAttention_shelflife_100 corrected transferLearning on new Fruits [Reconstructed].pkl"
+	checkpoint = torch.load(os.path.join(MODEL_PATH, "classification", "pre-trained", checkpoint_filename))
 	epoch, iter, state_dict, opt_state, val_loss, (val_acc_labels, val_acc_sublabels) = checkpoint["epoch"], checkpoint["iter"], checkpoint["state_dict"],\
 		checkpoint["optimizer"], checkpoint["val_loss"], checkpoint["val_acc"]
 	model = ModelWithAttention(input_channels=len(BANDS), num_classes=len(LABELS_DICT), num_subclasses=len(TIME_LEFT_DICT))
@@ -98,8 +98,8 @@ def main():
 
 	if run_pretrained:
 		# checkpoint_filename, epoch, iteration, state_dict, optimizer, val_loss, (val_acc_labels, val_acc_sublabels) = get_best_checkpoint(task="classification")
-		checkpoint_filename = "RT_ModelWithAttention_shelflife_100 final trained on 4 fruits.pkl"
-		checkpoint = torch.load(os.path.join(MODEL_PATH, "classification", "others", checkpoint_filename))
+		checkpoint_filename = "RT_ModelWithAttention_shelflife_100 corrected trained on all 4 fruits [Reconstructed].pkl"
+		checkpoint = torch.load(os.path.join(MODEL_PATH, "classification", "pre-trained", checkpoint_filename))
 		epoch, iter, state_dict, opt_state, val_loss, (val_acc_labels, val_acc_sublabels) = checkpoint["epoch"], checkpoint["iter"], checkpoint["state_dict"],\
 			checkpoint["optimizer"], checkpoint["val_loss"], checkpoint["val_acc"]
 		model.load_state_dict(state_dict)
@@ -465,5 +465,5 @@ def classification_evaluate(y_true, y_pred, title, labels_dict=LABELS_DICT, acc=
 if __name__ == "__main__":
 	create_directory(os.path.join(VISUALIZATION_DIR_NAME))
 	create_directory(os.path.join(MODEL_PATH, "classification"))
-	main()
-	# test_model_only()
+	# main()
+	test_model_only()

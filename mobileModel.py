@@ -44,6 +44,6 @@ if __name__ == "__main__":
 	print(torch.__version__)
 	checkpoint_filename = "RT_MST++_shelflife_080 RGBNIR Final [ThinModel][L+A].pkl"
 	# checkpoint_filename = "MSLP_ModelWithAttention_shelflife_100.pkl"
-	checkpoint = torch.load(os.path.join(MODEL_PATH, "reconstruction", "others", checkpoint_filename))
+	checkpoint = torch.load(os.path.join(MODEL_PATH, "reconstruction", "pre-trained", checkpoint_filename))
 	makeMobileModel(checkpoint, task="reconstruction")
 	# sklernModelToONNX()

@@ -121,7 +121,7 @@ tflite_filename = "model.tflite"
 plt_dict = {"mathtext.default": "regular", "axes.linewidth": 2}
 confusion_font_dict = {"family" : "serif", "weight": "normal", "size" : 45}
 text_font_dict = {"family": "serif", "size": 30}
-title_font_dict = {"fontname": "serif", "size": 40}
+title_font_dict = {"fontname": "serif", "size": 30}
 
 def sampler():
 	global BANDS, NUMBER_OF_BANDS, BANDS_WAVELENGTHS

@@ -20,7 +20,7 @@ from config import GT_RGBN_DIR_NAME, GT_REMOVED_IR_CUTOFF_DIR_NAME, GT_AUXILIARY
 	BANDS, BANDS_WAVELENGTHS, BAND_SPACING, RGBN_BANDS, NIR_BANDS, TEST_DATASETS, TRAIN_DATASET_DIR, TEST_ROOT_DATASET_DIR, DATA_PREP_PATH,\
 	TRAIN_DATASET_FILES, VALID_DATASET_FILES, APPLICATION_NAME, IMAGE_SIZE, PATCH_SIZE, CLASSIFICATION_PATCH_SIZE, STRIDE, SHELF_LIFE_GROUND_TRUTH_FILENAME,\
 	GT_DATASET_CROPS_FILENAME, MOBILE_DATASET_CROPS_FILENAME, MOBILE_OP_DATASET_CROPS_FILENAME, LABELS_DICT, TIME_LEFT_DICT, FRUITS_DICT, EPS,\
-	batch_size, device, use_mobile_dataset
+	batch_size, device, use_mobile_dataset, transfer_learning
 
 class DatasetFromHdf5(Dataset):
 	def __init__(self, file_path):
@@ -386,6 +386,8 @@ def get_dataloaders_classification(trainset_size=0.7):
 	dataset = DatasetFromDirectoryClassification(
 		root=TEST_ROOT_DATASET_DIR,
 		application_name=APPLICATION_NAME,
+		patch_size=PATCH_SIZE,
+		stride=STRIDE,
 		hypercube_directory=MOBILE_RECONSTRUCTED_HS_DIR_NAME if use_mobile_dataset else None,
 		transforms=classificationTransforms,
 		verbose=True
@@ -468,12 +470,12 @@ class DatasetFromDirectoryClassification(Dataset):
 				if len(shelflife_record) == 0: continue
 
 				shelflife_record = shelflife_record.iloc[0]
-				if shelflife_record["Skip"] == "yes": continue
+				# if shelflife_record["Skip"] == "yes": continue		# Skip the record if it is marked as "yes" in the "Skip" column
 
 				hypercube = load_mat(filename)
 				hypercube = hypercube[:, :, BANDS] if hypercube_directory == None else hypercube
 				hypercube = (hypercube - hypercube.min()) / (hypercube.max() - hypercube.min())
-				# hypercube = hypercube[ymin:ymax, xmin:xmax, :]
+				hypercube = hypercube[ymin:ymax, xmin:xmax, :] if not transfer_learning else hypercube
 				hypercube = np.transpose(hypercube, [2, 0, 1]) + EPS
 				_, height, width = hypercube.shape
 

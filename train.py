@@ -58,7 +58,7 @@ def main():
 	if run_pretrained:
 		# checkpoint_filename, epoch, iter, state_dict, optimizer, val_loss, val_acc = get_best_checkpoint(task="reconstruction")
 		checkpoint_filename = "RT_MST++_shelflife_080 RGBNIR Final [ThinModel][L+A].pkl"
-		checkpoint = torch.load(os.path.join(MODEL_PATH, "reconstruction", "others", checkpoint_filename))
+		checkpoint = torch.load(os.path.join(MODEL_PATH, "reconstruction", "pre-trained", checkpoint_filename))
 		epoch, iter, state_dict, opt_state, val_loss, val_acc = checkpoint["epoch"], checkpoint["iter"], checkpoint["state_dict"],\
 			checkpoint["optimizer"], checkpoint["val_loss"], checkpoint["val_acc"]
 		model.load_state_dict(state_dict)
