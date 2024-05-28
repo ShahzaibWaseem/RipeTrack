@@ -1,4 +1,6 @@
 # RipeTrack: Assessing Fruit Ripeness using Smartphones
+An overview of RipeTrack is shown in the figure below. Some information regarding the modules in the overview will be discussed below.
+![Overview](images/overview.pdf)
 
 ## Hyperspectral Reconstruction
 The Hyperspectral Reconstruction model is built on PyTorch and is trained to produce hyperspectral cubes when the input to it is an RGB and NIR image.
@@ -10,9 +12,7 @@ In order to reproduce our results using our pre-trained models or the models can
 - PyTorch 1.9.0 (Cuda 11.1)
 
 ### Installation
-Clone the repository.
-
-After Installing the Prerequisites and cloning the repository, the directory tree should look something like this:
+Clone the repository. After Installing the Prerequisites and cloning the repository, the directory tree should look something like this:
 
 ```
 RipeTrack
@@ -32,7 +32,7 @@ RipeTrack
 
 Some of the directories are created when the scripts are executed.
 
-### Dataset
+### Datasets
 Download the datasets from the following links:
 
 - Pear Bosc
@@ -108,14 +108,18 @@ In order to produce the Mobile Hypercubes, the command is same as above, set `us
 **Note**: do not set `use_mobile_dataset = True`, unless you want to perform inference on Mobile Datasets, as otherwise it will select wrong band numbers.
 
 ### Extension to other fruits
-In order to extend RipeTrack to other fruits, first of all, we need to spicify which datasets we need to include in `TEST DATASETS`. In RipeTrack, we change it to the following list `TEST_DATASETS = ["mango-ataulfo", "banana-ecuador", "banana-guatamala", "nectarine-chile"]`.
+In order to extend RipeTrack to other fruits, first of all, we need to spicify which datasets we need to include in `TEST DATASETS`. In RipeTrack, we change it to the following list `TEST_DATASETS = ["mango-ataulfo", "banana-ecuador", "banana-guatamala", "nectarine-chile"]`. Moreover, change the variable `transfer_learning = True` (in `config.py`).
 
 ## Ripeness & Remaining Life Prediction
+In RipeTrack we configure this module to use a `64 × 64 × 68` hypercube as input (This can be configured). This hypercube is received from running the `inference.py` [script](#reproduce-the-results-using-our-pretrained-models) from the reconstruction model on mobile datasets (`use_mobile_dataset` in `config.py`).
+
 The classification model script, which loads the data and runs the classification model, produce both the ripeness prediction and the remaining life estimation. To run the script, use the following command:
 
 ```bash
 python3 torch_classifier.py
 ```
+
+Same Transfer Learning logic applies to this module as well.
 
 ## Mobile Application
 We created an Android Application for RipeTrack, which can be found [here](https://github.com/ShahzaibWaseem/MobiSLP-Android) on GitHub.

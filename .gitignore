@@ -5,7 +5,6 @@ checkpoints/
 logs/
 inference/
 visualizations/
-images/
 **/__pycache__/
 tfmodel/
 dataPreparation/HSI_Annotations/
