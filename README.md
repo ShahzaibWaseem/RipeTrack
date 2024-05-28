@@ -64,14 +64,22 @@ shelflife
 │	│
 │	└── split				Training, Validation and Testing split
 │
-│	496.mat					Ground truth Hypercubes
-│	497.mat
+│	496_H.mat					Ground truth Hypercubes
+│	497_H.mat
 │	...
 │
 └── pear-bartlett
 │	│
 │	...
 ```
+
+We captured the images under various illuminations and these are:
+- Halogen suffix: `_H`.
+- LED (warm, neutral and cool color temperatures) suffix: `_L`.
+- CFL suffix: `_C`.
+- Mixed (with the different LED color temperatures) suffix: `_M`.
+
+The starting letters of these are suffixed after the image in `mobile-rgbn`, like _H for Halogen. Lastly, all RGB images are normalized by using [Deep White-Balance Editing](https://github.com/mahmoudnafifi/Deep_White_Balance), in order to represent the RGB image in a common illumination (Daylight; 5500K), these are represented by the suffix `-D`.
 
 Some of the directories (mobile-reconstructed, reconstructed, rgbnir-sensor-reconstructed) are created when the `inference.py` script is run.
 
@@ -86,7 +94,7 @@ python3 train.py
 
 To change any of the parameters like batch sizes, number of epochs, datasets considered, losses considered etc; check `config.py` file.
 
-In order to change the names of datasets considered change `TEST_DATASETS` list variable. By default it is set to `TEST_DATASETS = ["pear-bosc", "pear-bartlett", "avocado-organic", "avocado-hass"]`. Similarly, there is a list for the different loss functions implemented in the code (`losses.py`). In order to change the loss functions used change `lossfunctions_considered` list variable. By default it is set to `lossfunctions_considered = ["MRAE", "SAM", "SID"]`. We've only implemented loss functions for MRAE, SAM and SID; which is what we use in RipeTrack; In order to add your own consider changing the variable and `train.py`.
+In order to change the names of datasets considered change `TEST_DATASETS` list variable. By default it is set to `TEST_DATASETS = ["pear-bosc", "pear-bartlett", "avocado-organic", "avocado-hass"]`. Similarly, there is a list for the different loss functions implemented in the code (`losses.py`). In order to change the loss functions used change `lossfunctions_considered` list variable. By default it is set to `lossfunctions_considered = ["MRAE", "SAM", "SID"]`. We've only implemented loss functions for MRAE, SAM and SID; which is what we use in RipeTrack; In order to add your own consider changing the variable and `train.py`. Lastly, the datasets are captured under various illuminations, these can be configured by changing this variable `ILLUMINATIONS`.
 
 If you want to employ Transfer Learning, set `transfer_learning = True` in `config.py`. In order to train on Mobile images, set `use_mobile_dataset = True`. Set `run_pretrained = True` (in `config.py`) if you want to resume training the model (if the script was stopped).
 
@@ -122,4 +130,4 @@ python3 torch_classifier.py
 Same Transfer Learning logic applies to this module as well.
 
 ## Mobile Application
-We created an Android Application for RipeTrack, which can be found [here](https://github.com/ShahzaibWaseem/MobiSLP-Android) on GitHub.
+We created an Android Application for RipeTrack, which can be found [here](https://github.com/ShahzaibWaseem/RipeTrack-Android) on GitHub.
