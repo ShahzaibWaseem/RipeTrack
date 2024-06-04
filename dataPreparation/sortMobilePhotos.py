@@ -50,7 +50,8 @@ def main():
 	for index in ground_truth_df.index:
 		date, month = ground_truth_df["Date"][index].split("-")
 		date = date.zfill(2)
-		hs_filenames = [int(x) for x in ground_truth_df["HS Files"][index].split(",")]
+		hs_filenames = [int(x) for x in ground_truth_df["HS Files"][index].split(",")]	# For HS Images
+		# hs_filename = int(ground_truth_df["HS Files"][index])							# For Mobile Images
 		mobile_fid = ground_truth_df["Fruit ID"][index]
 		dataset_name = ground_truth_df["Fruit"][index].lower() + "-" + ground_truth_df["Type"][index].lower()
 		fruit_name_short = ground_truth_df["Fruit"][index]
