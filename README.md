@@ -35,13 +35,13 @@ Some of the directories are created when the scripts are executed.
 ### Datasets
 Download the datasets from the following links:
 
-- Pear Bosc
-- Pear Bartlett
-- Avocado Organic
-- Avocado Hass
-- Banana
-- Mango
-- Nectarine
+- Pear Bosc.
+- Pear Bartlett, 2, [3](https://drive.google.com/file/d/1ZnPNRkW2EMkiiVjKCbxsjsZ0InTEHKZh/view?usp=drive_link "Bartlett 3 (2.2 GB)").
+- Avocado Organic.
+- Avocado Hass.
+- Banana, [2](https://drive.google.com/file/d/1NUNm8_ARbHJK3OeFOJ_jw6WKwlZt3H64/view?usp=drive_link "Guatamala (3.5 GB)").
+- Mango.
+- Nectarine.
 
 The dataset directories are divided as follows:
 
@@ -74,10 +74,10 @@ shelflife
 ```
 
 We captured the images under various illuminations and these are:
-- Halogen suffix: `_H`.
-- LED (warm, neutral and cool color temperatures) suffix: `_L`.
-- CFL suffix: `_C`.
-- Mixed (with the different LED color temperatures) suffix: `_M`.
+- Halogen suffix: 	`_H`.
+- LED suffix: 		`_L` (warm, neutral and cool color temperatures).
+- CFL suffix: 		`_C`.
+- Mixed suffix: 	`_M` (with the different LED color temperatures).
 
 The starting letters of these are suffixed after the image in `mobile-rgbn`, like _H for Halogen. Lastly, all RGB images are normalized by using [Deep White-Balance Editing](https://github.com/mahmoudnafifi/Deep_White_Balance), in order to represent the RGB image in a common illumination (Daylight; 5500K), these are represented by the suffix `-D`.
 
@@ -89,7 +89,7 @@ Some of the directories (mobile-reconstructed, reconstructed, rgbnir-sensor-reco
 In order to train the spectral upsampling model, you can use the following command:
 
 ```bash
-python3 train.py
+$ python3 train.py
 ```
 
 To change any of the parameters like batch sizes, number of epochs, datasets considered, losses considered etc; check `config.py` file.
@@ -104,7 +104,7 @@ During training, please also check the `dataset.py` for which input set is loade
 To run the inference script, which produces the hypercubes, use the following command:
 
 ```bash
-python3 inference.py
+$ python3 inference.py
 ```
 
 The same parameters apply here (`config.py`). To use a different model type out the name of it in this variable `checkpoint_filename`, and fix the image sizes if they need fixing. The Pre-trained models can be found here. Place the pre-trained models in `checkpoints/reconstruction/{pre-trained}`.
@@ -119,12 +119,12 @@ In order to produce the Mobile Hypercubes, the command is same as above, set `us
 In order to extend RipeTrack to other fruits, first of all, we need to spicify which datasets we need to include in `TEST DATASETS`. In RipeTrack, we change it to the following list `TEST_DATASETS = ["mango-ataulfo", "banana-ecuador", "banana-guatamala", "nectarine-chile"]`. Moreover, change the variable `transfer_learning = True` (in `config.py`).
 
 ## Ripeness & Remaining Life Prediction
-In RipeTrack we configure this module to use a `64 × 64 × 68` hypercube as input (This can be configured). This hypercube is received from running the `inference.py` [script](#reproduce-the-results-using-our-pretrained-models) from the reconstruction model on mobile datasets (`use_mobile_dataset` in `config.py`).
+In RipeTrack we configure this module to use a `64 × 64 × 68` (`h × w × c`) hypercube as input (This can be configured). This hypercube is received from running the `inference.py` [script](#reproduce-the-results-using-our-pretrained-models) from the reconstruction model on mobile datasets (`use_mobile_dataset` in `config.py`).
 
 The classification model script, which loads the data and runs the classification model, produce both the ripeness prediction and the remaining life estimation. To run the script, use the following command:
 
 ```bash
-python3 torch_classifier.py
+$ python3 torch_classifier.py
 ```
 
 Same Transfer Learning logic applies to this module as well.
