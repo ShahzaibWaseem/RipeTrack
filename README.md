@@ -35,13 +35,15 @@ Some of the directories are created when the scripts are executed.
 ### Datasets
 Download the datasets from the following links:
 
-- Pear Bosc.
-- Pear Bartlett, 2, [3](https://drive.google.com/file/d/1ZnPNRkW2EMkiiVjKCbxsjsZ0InTEHKZh/view?usp=drive_link "Bartlett 3 (2.2 GB)").
-- Avocado Organic.
-- Avocado Hass.
-- Banana, [2](https://drive.google.com/file/d/1NUNm8_ARbHJK3OeFOJ_jw6WKwlZt3H64/view?usp=drive_link "Guatamala (3.5 GB)").
-- Mango.
-- Nectarine.
+- [Pear Bosc](https://drive.google.com/file/d/1ibD8tcYOyy7KDlG6tKgWK8IaWsRhy-Qs/view?usp=drive_link "Pear Bosc (14.3 GB)").
+- [Pear Bartlett](https://drive.google.com/file/d/1dwdWF6JUkVClx6ac550kZ5m2UpfBrRC2/view?usp=drive_link "Bartlett (7.3 GB)"), [2](https://drive.google.com/file/d/1lYB3a8Md9Xke-vA44OZ89zk9kyDMJbaC/view?usp=drive_link "(Bartlett 2 (11.9 GB))"), [3](https://drive.google.com/file/d/1ZnPNRkW2EMkiiVjKCbxsjsZ0InTEHKZh/view?usp=drive_link "Bartlett 3 (2.2 GB)").
+- [Avocado Organic](https://drive.google.com/file/d/1wel97b1lvpb4eMtouyRnTEfGsXAjMALy/view?usp=drive_link "Avocado Organic (8.2 GB)"), [2](https://drive.google.com/file/d/1fiiiGktBQfR95QwwZWPUI233kq5j0n8V/view?usp=drive_link "Avocado Organic 2 (16.8 GB)").
+- [Avocado Hass](https://drive.google.com/file/d/1korY2g7qLBcFfXsP-aXbU1SRFaodoYAB/view?usp=drive_link "Avocado Hass (12.2 GB)").
+- [Banana](https://drive.google.com/file/d/1OdPM2rAjJ1nRFwMBVylLpxbL2ytNqqzv/view?usp=drive_link "Banana Ecuador (12.9 GB)"), [2](https://drive.google.com/file/d/1NUNm8_ARbHJK3OeFOJ_jw6WKwlZt3H64/view?usp=drive_link "Guatamala (3.5 GB)").
+- [Mango](https://drive.google.com/file/d/12z4iemamsWuhZ188MuHnCF7p9f1Wqy8y/view?usp=drive_link "Mango Ataulfo (8.5 GB)").
+- [Nectarine](https://drive.google.com/file/d/1zJyUj2uOe-7VTXbWn4b7Fx8s3ffiSj_1/view?usp=drive_link "Nectarine Chile (8.8 GB)").
+
+The above links contain the whole datasets and might be too large; for just inference (or [Mobile Application](https://github.com/ShahzaibWaseem/RipeTrack-Android "RipeTrack-Android GitHub Page")) you can download the RGB+NIR files using this [link](https://drive.google.com/drive/folders/1oBmib1meInQ5zZzC0itiRDGs5IKJRZPb?usp=drive_link "RGB+NIR Directory (5.4 GB)").
 
 The dataset directories are divided as follows:
 
@@ -74,10 +76,10 @@ shelflife
 ```
 
 We captured the images under various illuminations and these are:
-- Halogen suffix: 	`_H`.
-- LED suffix: 		`_L` (warm, neutral and cool color temperatures).
-- CFL suffix: 		`_C`.
-- Mixed suffix: 	`_M` (with the different LED color temperatures).
+- Halogen suffix: `_H`.
+- LED suffix: `_L` (warm, neutral and cool color temperatures).
+- CFL suffix: `_C`.
+- Mixed suffix: `_M` (with the different LED color temperatures).
 
 The starting letters of these are suffixed after the image in `mobile-rgbn`, like _H for Halogen. Lastly, all RGB images are normalized by using [Deep White-Balance Editing](https://github.com/mahmoudnafifi/Deep_White_Balance), in order to represent the RGB image in a common illumination (Daylight; 5500K), these are represented by the suffix `-D`.
 
@@ -88,7 +90,7 @@ Some of the directories (mobile-reconstructed, reconstructed, rgbnir-sensor-reco
 ### Training
 In order to train the spectral upsampling model, you can use the following command:
 
-```bash
+```console
 $ python3 train.py
 ```
 
@@ -103,7 +105,7 @@ During training, please also check the `dataset.py` for which input set is loade
 ### Reproduce the results using our pretrained models
 To run the inference script, which produces the hypercubes, use the following command:
 
-```bash
+```console
 $ python3 inference.py
 ```
 
@@ -123,7 +125,7 @@ In RipeTrack we configure this module to use a `64 × 64 × 68` (`h × w × c`) 
 
 The classification model script, which loads the data and runs the classification model, produce both the ripeness prediction and the remaining life estimation. To run the script, use the following command:
 
-```bash
+```console
 $ python3 torch_classifier.py
 ```
 
