@@ -22,6 +22,49 @@ from config import GT_RGBN_DIR_NAME, GT_AUXILIARY_RGB_CAM_DIR_NAME, GT_HYPERCUBE
 
 import matplotlib.pyplot as plt
 
+def normalize(band, min=-1, max=-1):
+	if min ==-1 or max == -1:
+		min = np.min(band)
+		max = np.max(band)
+	return (band - min) / (max - min)
+
+def reverse_normalize(band, min, max, dtype=np.uint8):
+	return (band * (max - min) + min).astype(dtype)
+
+def reduce_noise(band):
+	fourier_transform = np.fft.fft2(band)
+	center_shift = np.fft.fftshift(fourier_transform)
+
+	rows, cols = band.shape
+	crow, ccol = rows // 2, cols // 2
+
+	# horizontal mask
+	center_shift[crow - 4:crow + 4, 0:ccol - 10] = 1
+	center_shift[crow - 4:crow + 4, ccol + 10:] = 1
+
+	f_shift = np.fft.ifftshift(center_shift)
+	denoised_image = np.fft.ifft2(f_shift)
+	denoised_image = np.real(denoised_image)
+
+	return denoised_image
+
+def denoise_image(image, dtype=np.uint8):
+	image = np.expand_dims(image, axis=-1) if (len(image.shape) != 3) else image
+
+	channels = image.shape[2]
+	min, max = image.min(), image.max()
+	normalized_image = normalize(image, min=min, max=max)
+
+	removed_noise_image = np.zeros(image.shape)
+
+	for band in range(channels):
+		removed_noise_image[:, :, band] = reduce_noise(normalized_image[:, :, band])
+	
+	removed_noise_image = normalize(removed_noise_image)
+	removed_noise_image = reverse_normalize(removed_noise_image, min, max, dtype)
+
+	return removed_noise_image
+
 class CommonLighting(torch.nn.Module):
 	net_awb = deepWBnet()
 	net_t = deepWBnet()
@@ -70,7 +113,7 @@ def plotImages(rgb_image, nir_image, hypercube, rgb_secondary_image):
 	ax2.imshow(nir_image)
 	ax2.title.set_text("NIR Image")
 	rgb_from_cube = hypercube[var_name][:,:, RGBN_BANDS[:3]]
-	rgb_from_cube = bandToNpNormalize(rgb_from_cube)
+	rgb_from_cube = hypercubeBandtoImage(rgb_from_cube)
 	rgb_from_cube[:, :, [0, 2]] = rgb_from_cube[:, :, [2, 0]]
 	ax3.imshow(rgb_secondary_image)
 	ax3.title.set_text("RGB Secondary Image")
@@ -78,9 +121,14 @@ def plotImages(rgb_image, nir_image, hypercube, rgb_secondary_image):
 	ax4.title.set_text("Hypercube")
 	plt.show()
 
-def bandToNpNormalize(image):
-	image = (image - image.min())/(image.max() - image.min())
-	image *= 255
+def hypercubeBandtoImage(image):
+	"""
+	Normalizes band chosen from hypercube to an image which can be saved
+		Input:	Hyperspectral band	[0 - 4095]
+		Output:	Image				[0 - 255]
+	"""
+	image = (image - image.min())/(image.max() - image.min())	# normalizing 	[0 - 4095]	-> [0.0 - 1.0]
+	image *= 255												# scaling		[0.0 - 1.0]	-> [0 - 255]
 	image = image.astype(np.uint8)
 	return image
 
@@ -112,6 +160,7 @@ def main():
 
 			rgb_filepath = os.path.join(input_catalog_directory, "%d" % hs_filenumber, "results", "REFLECTANCE_%s.png" % hs_filenumber)
 			rgb_image = imageio.imread(rgb_filepath)[:, :, :3]
+			# rgb_image = denoise_image(rgb_image)
 
 			rgb_secondary_filepath = os.path.join(input_catalog_directory, "%d" % hs_filenumber, "results", "RGBBACKGROUND_%d.png" % hs_filenumber)
 			rgb_secondary_image = imageio.imread(rgb_secondary_filepath)[:, :, :3]
@@ -119,9 +168,11 @@ def main():
 			rgb_secondary_image = np.asarray(rgb_secondary_image.resize((512, 512)))
 
 			nir_image = np.expand_dims(np.rot90(hypercube.read_band(RGBN_BANDS[-1]), k=-1), axis=-1)
-			nir_image = bandToNpNormalize(nir_image)
+			# nir_image = denoise_image(nir_image, dtype=np.float32)
+			nir_image = hypercubeBandtoImage(nir_image)
 
-			hypercube = hypercube.load()*256
+			hypercube = hypercube.load() * 256
+			# hypercube = denoise_image(hypercube, dtype=np.float32)
 			hypercube = {var_name: np.rot90(hypercube, k=-1)}
 
 			# plotImages(rgb_image, nir_image, hypercube, rgb_secondary_image)
