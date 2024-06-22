@@ -27,8 +27,8 @@ def calculate_metrics(img_pred, img_gt, expand=False):
 	msam = test_msam(img_pred_flat, img_gt_flat)
 	sid = test_sid(img_pred_flat, img_gt_flat)
 	psnr = test_psnr(img_pred, img_gt, max_value=1)		# max_value = 1 for 0-1 normalized images
-	# ssim = test_ssim(img_pred, img_gt, max_value=1)		# max_value = 1 for 0-1 normalized images
-	ssim = test_ssim_db(img_pred, img_gt, max_value=1)	# max_value = 1 for 0-1 normalized images
+	ssim = test_ssim(img_pred, img_gt, max_value=1)		# max_value = 1 for 0-1 normalized images
+	# ssim = test_ssim_db(img_pred, img_gt, max_value=1)	# max_value = 1 for 0-1 normalized images
 	return mrae, rrmse, msam, sid, psnr, ssim
 
 def getBandErrors():
@@ -211,19 +211,19 @@ if __name__ == "__main__":
 	print(errors.keys())
 	mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors = meanErrors(errors)
 
-	jsonFile = open(os.path.join(VISUALIZATION_DIR_NAME, "tempJSON", "errorsRaw(RGBNto68)[ThinModel].json"), "w")
+	jsonFile = open(os.path.join(VISUALIZATION_DIR_NAME, "tempJSON", "errorsRaw(RGBNCustomto68)[ThinModel].json"), "w")
 	jsonFile.write(json.dumps(str(errors), indent=4))
 	jsonFile.close()
 
 	errors = {}
 	errors.update({"RipeTrack": {"MRAE": mrae_errors.tolist(), "RRMSE": rrmse_errors.tolist(), "SAM": sam_errors.tolist(), "SID": sid_errors.tolist(), "PSNR": psnr_errors.tolist(), "SSIM": ssim_errors.tolist()}})
 
-	jsonFile = open(os.path.join(VISUALIZATION_DIR_NAME, "tempJSON", "errors(RGBNto68)[ThinModel].json"), "w")
+	jsonFile = open(os.path.join(VISUALIZATION_DIR_NAME, "tempJSON", "errors(RGBNCustomto68)[ThinModel].json"), "w")
 	jsonFile.write(json.dumps(str(errors), indent=4))
 	jsonFile.close()
 
 	# mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors = readDataFromFile(json_file=os.path.join("tempJSON","errors(RGBNto68)[ThinModel].json"))
-	plotBandErrors(mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors, filename=os.path.join("tempJSON", "errors(RGBNto68)[ThinModel].pdf"))
+	plotBandErrors(mrae_errors, rrmse_errors, sam_errors, sid_errors, psnr_errors, ssim_errors, filename=os.path.join("tempJSON", "errors(RGBNCustomto68)[ThinModel].pdf"))
 
 	# fruitname = "pear-bartlett"
 	# processRawJSON("errorsRaw(RGBNto68)[ThinModel].json", "Pear Bartlett", fruitname)
