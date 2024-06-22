@@ -135,7 +135,6 @@ def train(train_data_loader, model, criterions, optimizer, iteration, scheduler)
 		loss_sam = torch.mul(criterion_sam(output, labels), 0.1) if "SAM" in lossfunctions_considered else torch.tensor(0)
 		loss_sid = torch.mul(criterion_sid(output, labels), 0.0001) if "SID" in lossfunctions_considered else torch.tensor(0)
 		loss = loss_mrae + loss_sam + loss_sid
-		loss = torch.autograd.Variable(loss, requires_grad = True)
 
 		loss.backward()
 
