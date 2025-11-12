@@ -35,15 +35,15 @@ Some of the directories are created when the scripts are executed.
 ### Datasets
 Download the datasets from the following links:
 
-- [Pear Bosc](https://drive.google.com/file/d/1ibD8tcYOyy7KDlG6tKgWK8IaWsRhy-Qs/view?usp=drive_link "Pear Bosc (14.3 GB)").
-- [Pear Bartlett](https://drive.google.com/file/d/1dwdWF6JUkVClx6ac550kZ5m2UpfBrRC2/view?usp=drive_link "Bartlett (7.3 GB)"), [2](https://drive.google.com/file/d/1lYB3a8Md9Xke-vA44OZ89zk9kyDMJbaC/view?usp=drive_link "(Bartlett 2 (11.9 GB))"), [3](https://drive.google.com/file/d/1ZnPNRkW2EMkiiVjKCbxsjsZ0InTEHKZh/view?usp=drive_link "Bartlett 3 (2.2 GB)").
-- [Avocado Organic](https://drive.google.com/file/d/1wel97b1lvpb4eMtouyRnTEfGsXAjMALy/view?usp=drive_link "Avocado Organic (8.2 GB)"), [2](https://drive.google.com/file/d/1fiiiGktBQfR95QwwZWPUI233kq5j0n8V/view?usp=drive_link "Avocado Organic 2 (16.8 GB)").
-- [Avocado Hass](https://drive.google.com/file/d/1korY2g7qLBcFfXsP-aXbU1SRFaodoYAB/view?usp=drive_link "Avocado Hass (12.2 GB)").
-- [Banana](https://drive.google.com/file/d/1OdPM2rAjJ1nRFwMBVylLpxbL2ytNqqzv/view?usp=drive_link "Banana Ecuador (12.9 GB)"), [2](https://drive.google.com/file/d/1NUNm8_ARbHJK3OeFOJ_jw6WKwlZt3H64/view?usp=drive_link "Guatamala (3.5 GB)").
-- [Mango](https://drive.google.com/file/d/12z4iemamsWuhZ188MuHnCF7p9f1Wqy8y/view?usp=drive_link "Mango Ataulfo (8.5 GB)").
-- [Nectarine](https://drive.google.com/file/d/1zJyUj2uOe-7VTXbWn4b7Fx8s3ffiSj_1/view?usp=drive_link "Nectarine Chile (8.8 GB)").
+- [Pear Bosc](https://drive.google.com/file/d/1CoWAT102OyHhkFG2fjRPVPkYcNk1EQrb/view?usp=drive_link "Pear Bosc (14.3 GB)").
+- [Pear Bartlett](https://drive.google.com/file/d/1DCZN94uPy9iTyuroTQMjxneKlJsEbEb2/view?usp=drive_link "Bartlett (7.3 GB)"), [2](https://drive.google.com/file/d/1CCN08idYSkCClw4niuANqFnocFSo9qrf/view?usp=drive_link "(Bartlett 2 (11.9 GB))"), [3](https://drive.google.com/file/d/1Ch4Lr7Lb30sjbbUjWR4rmwEL-PqF6vfo/view?usp=drive_link "Bartlett 3 (2.2 GB)").
+- [Avocado Organic](https://drive.google.com/file/d/1Cir0ZyjCmcrHclplWKeSENZk8JxsFNiQ/view?usp=drive_link "Avocado Organic (8.2 GB)"), [2](https://drive.google.com/file/d/1CsOY0-OwiF2-YApZV8oJxOVGejKH1jiE/view?usp=drive_link "Avocado Organic 2 (16.8 GB)").
+- [Avocado Hass](https://drive.google.com/file/d/1Cvn5mscBfjVlfbTcEUSBGPXNkB9n8Ak2/view?usp=drive_link "Avocado Hass (12.2 GB)").
+- [Banana](https://drive.google.com/file/d/1CkadgAhqRBMmHbHpBZfYAXq7CLOdShsr/view?usp=drive_link "Banana Ecuador (12.9 GB)"), [2](https://drive.google.com/file/d/1CeNYMhaYBwYHUOOz4NGrmUXXEhTWGvwO/view?usp=drive_link "Banana Guatamala (3.5 GB)").
+- [Mango](https://drive.google.com/file/d/1CJo-41oH4fVR0qu1aQJ-H-0tDLU7lDNy/view?usp=drive_link "Mango Ataulfo (8.5 GB)").
+- [Nectarine](https://drive.google.com/file/d/1CPdYpSRVy_WpOEAne86Rz5pMFw0_BcF1/view?usp=drive_link "Nectarine Chile (8.8 GB)").
 
-The above links contain the whole datasets and might be too large; for just inference (or [Mobile Application](https://github.com/ShahzaibWaseem/RipeTrack-Android "RipeTrack-Android GitHub Page")) you can download the RGB+NIR files using this [link](https://drive.google.com/drive/folders/1oBmib1meInQ5zZzC0itiRDGs5IKJRZPb?usp=drive_link "RGB+NIR Directory (5.4 GB)").
+The above links contain the whole datasets and might be too large; for just inference (or [Mobile Application](https://github.com/ShahzaibWaseem/RipeTrack-Android "RipeTrack-Android GitHub Page")) you can download the RGB+NIR files using this [link](https://drive.google.com/file/d/1DLmwc_TJmoh6Q3nx1mudvswgPtS8S3bU/view?usp=drive_link "RGB+NIR Directory (5.4 GB)").
 
 The dataset directories are divided as follows:
 
