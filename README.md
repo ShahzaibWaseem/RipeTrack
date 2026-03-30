@@ -133,3 +133,21 @@ Same Transfer Learning logic applies to this module as well.
 
 ## Mobile Application
 We created an Android Application for RipeTrack, which can be found [here](https://github.com/ShahzaibWaseem/RipeTrack-Android) on GitHub.
+
+## Citation
+```
+@article{10.1109/TMC.2025.3599917,
+	author = {Waseem, Muhammad Shahzaib and Sharma, Neha and Hefeeda, Mohamed},
+	title = {RipeTrack: Assessing Fruit Ripeness using Smartphones},
+	abstract = {Several studies have shown that a significant fraction of fresh fruits is discarded at the retail and consumer levels, wasting precious resources, polluting the environment, and contributing to increased food prices. An important factor contributing to this problem is the lack of scalable solutions for determining fruit ripeness and remaining lifetime. We propose a cost-effective solution that leverages the sensing capabilities of phones and machine learning models to analyze the optical properties of fruits at various ripening stages. The proposed solution is non-invasive, works for different fruits, and produces intuitive outputs, e.g., Unripe/Ripe/Expired and the percentage of remaining lifetime, enabling retailers and consumers to minimize food waste. We implement a proof-of-concept mobile application, RipeTrack, and demonstrate the accuracy and robustness of the proposed approach using an extensive empirical study with multiple fruits, including avocados, pears, bananas, nectarines, and mangoes. Our results show, for example, that RipeTrack can identify the ripeness level of avocados and pears with an accuracy of 95% and 98%, respectively, and it can predict their remaining lifetimes with an accuracy of 93% and 97%. Our results also show that RipeTrack can easily be extended to new fruits using transfer learning, and it functions in realistic environments, e.g., homes and grocery stores, that have diverse illuminations.},
+	journal = {IEEE Transactions on Mobile Computing},
+	publisher = {Institute of Electrical and Electronics Engineers Inc.},
+	month = {01},
+	year = {2026},
+	volume = {25},
+	number = {1},
+	pages = {830-845},
+	keywords = {Smart phones;Accuracy;Measurement;Spectral analysis;Liquids;Lighting;Image color analysis;Food waste;Cameras;Mobile computing;Fruit ripening;mobile applications;hyperspectral imaging;spectral analysis},
+	doi = {10.1109/TMC.2025.3599917}
+}
+```
